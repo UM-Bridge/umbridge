@@ -1,4 +1,4 @@
-name: ci
+name: testmodel
 
 on:
   push:
