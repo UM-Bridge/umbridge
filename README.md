@@ -14,5 +14,5 @@ docker run -p 4242:80 -e PORT=80 linusseelinger/testmodel:latest
 
 A model of the Tohoku tsunami based on the ExaHyPE PDE engine.
 ```
-sudo docker run -p 4242:80 linusseelinger/exahype-tsunami
+docker run -p 4242:80 linusseelinger/exahype-tsunami
 ```
