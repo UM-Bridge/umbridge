@@ -28,6 +28,6 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v2
         with:
-          context: exahype-tsunami/
+          context: models/exahype-tsunami/
           push: true
           tags: linusseelinger/exahype-tsunami:latest
