@@ -16,3 +16,13 @@ A model of the Tohoku tsunami based on the ExaHyPE PDE engine.
 ```
 docker run -p 4242:80 linusseelinger/exahype-tsunami:latest
 ```
+
+# Clients
+
+## Minimal python client
+
+```
+python3 minimal-client.py http://localhost:4242
+```
+
+This requires a model running locally, e.g. one of the docker commands above.
