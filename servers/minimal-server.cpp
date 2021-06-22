@@ -33,9 +33,12 @@ public:
 int main(){
 
   char const* port_cstr = std::getenv("PORT");
+  int port = 0;
   if ( port_cstr == NULL ) {
-    std::cerr << "Environment variable PORT not set!" << std::endl;
-    exit(-1);
+    std::cout << "Environment variable PORT not set! Using port 4242 as default." << std::endl;
+    port = 4242;
+  } else {
+    port = atoi(port_cstr);
   }
 
   char const* delay_cstr = std::getenv("TEST_DELAY");
@@ -44,7 +47,7 @@ int main(){
   }
 
 
-  const int port = atoi(port_cstr);
+
   ExampleModPiece modPiece;
 
   serveModPiece(modPiece, "0.0.0.0", port);
