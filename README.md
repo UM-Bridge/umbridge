@@ -26,3 +26,12 @@ python3 minimal-client.py http://localhost:4242
 ```
 
 This requires a model running locally, e.g. one of the docker commands above.
+
+# Protocol
+
+Endpoint         | Type | Input   | Output
+-----------------|------|---------|--------
+/GetInputSizes   | GET  | None    | Forward model input dimensions
+/GetOutputSizes  | GET  | None    | Forward model output dimensions
+/Evaluate        | POST | Input to forward model (Dimension as in /GetInputSizes) | Output of forward model (Dimension as in /GetOutputSizes)
+
