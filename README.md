@@ -8,6 +8,16 @@ A simple one-dimensional Gaussian density of mean zero and variance one.
 ```
 docker run -p 4242:4242 linusseelinger/testmodel:latest
 ```
+
+### Poisson model
+
+[![exahype-tsunami](https://github.com/UQ-Containers/testing/actions/workflows/push_poisson-mi.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_poisson-mi.yml)
+
+Fast Poisson PDE model with multiindex support.
+```
+docker run -p 4242:4242 linusseelinger/poisson-mi:latest
+```
+
 ### Tsunami model
 
 [![exahype-tsunami](https://github.com/UQ-Containers/testing/actions/workflows/push_exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_exahype-tsunami.yml)
