@@ -23,9 +23,9 @@ print(r.text)
 print("Requesting evaluation")
 
 # Build input parameter vectors of dimensions expected by model, fill with zeros for testing
-inputParams = {"level":0}
+inputParams = {"input": [], "config": {}}
 for i in range(0,len(rInputSizes["inputSizes"])):
-  inputParams[f"input{i}"] = [0] * rInputSizes["inputSizes"][i]
+  inputParams["input"].append([0] * rInputSizes["inputSizes"][i])
 print(inputParams)
 
 r = requests.post(f"{args.url}/Evaluate", json=inputParams)

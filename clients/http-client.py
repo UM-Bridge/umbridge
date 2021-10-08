@@ -13,6 +13,12 @@ model = httpmodel.HTTPModel(args.url)
 
 print(model.get_input_sizes())
 print(model.get_output_sizes())
-print(model(0,[0]))
 
+param = [0]*4
+param[0] = 1.0
 
+# Simple model evaluation
+print(model([param]))
+
+# Model evaluation with configuration parameters
+print(model([param], {"level": [2,2]}))

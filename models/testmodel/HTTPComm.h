@@ -48,7 +48,7 @@ public:
    : inputSizes(inputSizes), outputSizes(outputSizes)
   {}
 
-  virtual void Evaluate(std::vector<Eigen::VectorXd> const& inputs, int level) = 0;
+  virtual void Evaluate(std::vector<Eigen::VectorXd> const& inputs, json config) = 0;
 
   const Eigen::VectorXi inputSizes;
   const Eigen::VectorXi outputSizes;
@@ -58,7 +58,7 @@ public:
 
 
 void serveModPiece(ShallowModPiece& modPiece, std::string host, int port) {
-  // HTTP
+
   httplib::Server svr;
 
   svr.Post("/Evaluate", [&](const httplib::Request &req, httplib::Response &res) {
@@ -67,24 +67,21 @@ void serveModPiece(ShallowModPiece& modPiece, std::string host, int port) {
 
     std::vector<Eigen::VectorXd> inputs;
     for (int i = 0; i < modPiece.inputSizes.rows(); i++) {
-      std::vector<double> parameter = request_body["input" + std::to_string(i)].get<std::vector<double>>();
-      std::cout << "Input " << i << ": " << stdvector_to_eigenvectord(parameter) << std::endl;
+      std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
       inputs.push_back(stdvector_to_eigenvectord(parameter));
     }
 
-    std::cout << "Building response" << std::endl;
-
-    modPiece.Evaluate(inputs, request_body["level"]);
+    modPiece.Evaluate(inputs, request_body["config"]);
 
 
     json response_body;
     for (int i = 0; i < modPiece.outputSizes.rows(); i++) {
-      response_body["output" + std::to_string(i)] = eigenvectord_to_stdvector(modPiece.outputs[i]);
+      response_body["output"][i] = eigenvectord_to_stdvector(modPiece.outputs[i]);
     }
 
     res.set_content(response_body.dump(), "text/plain");
-    std::cout << "Sending " << response_body.dump() << std::endl;
   });
+
   svr.Get("/GetInputSizes", [&](const httplib::Request &, httplib::Response &res) {
 
     json response_body;
@@ -92,12 +89,14 @@ void serveModPiece(ShallowModPiece& modPiece, std::string host, int port) {
 
     res.set_content(response_body.dump(), "text/plain");
   });
+
   svr.Get("/GetOutputSizes", [&](const httplib::Request &, httplib::Response &res) {
     json response_body;
     response_body["outputSizes"] = eigenvectori_to_stdvector(modPiece.outputSizes);
 
     res.set_content(response_body.dump(), "text/plain");
   });
+
   svr.Post("/Quit", [&](const httplib::Request &, httplib::Response &res) {
     svr.stop();
   });
