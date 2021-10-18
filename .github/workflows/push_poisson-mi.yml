@@ -50,7 +50,7 @@ jobs:
        -
         name: GetInputSizes
         run: |
-          if [ "$(curl http://model:4242/GetInputSizes)" != "{\"inputSizes\":[4]}" ]; then exit 1; fi
+          sleep 10; if [ "$(curl http://model:4242/GetInputSizes)" != "{\"inputSizes\":[4]}" ]; then exit 1; fi
        -
         name: GetInputSizesFalse
         run: |
