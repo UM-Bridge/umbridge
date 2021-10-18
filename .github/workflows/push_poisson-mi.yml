@@ -6,7 +6,7 @@ on:
       - 'main'
 
 jobs:
-  docker:
+  build:
     runs-on: ubuntu-latest
     steps:
       -
@@ -31,3 +31,26 @@ jobs:
           context: models/poisson-mi/
           push: true
           tags: linusseelinger/poisson-mi:latest
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+
+    services:
+      model:
+        image: linusseelinger/poisson-mi:latest
+        ports:
+        - 4242/tcp
+
+    steps:
+       -
+        name: Checkout
+        uses: actions/checkout@v2
+       -
+        name: GetInputSizes
+        run: |
+          if [ "$(curl http://localhost:4242/GetInputSizes)" != "{\"inputSizes\":[4]}" ]; then exit 1; fi
+       -
+        name: GetInputSizesFalse
+        run: |
+          if [ "$(curl http://localhost:4242/GetInputSizes)" == "{\"inputSizes\":[4]}" ]; then exit 1; fi
