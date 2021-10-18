@@ -45,7 +45,7 @@ Endpoint         | Type | Input   | Output
 -----------------|------|---------|--------
 /GetInputSizes   | GET  | None    | Forward model input dimensions
 /GetOutputSizes  | GET  | None    | Forward model output dimensions
-/Evaluate        | POST | Input to forward model (Dimensions as in /GetInputSizes) | Output of forward model (Dimensions as in /GetOutputSizes)
+/Evaluate        | POST | Input to forward model (Dimensions as in /GetInputSizes), model-specific configuration (may be empty for defaults) | Output of forward model (Dimensions as in /GetOutputSizes)
 
 Inputs and outputs are defined in JSON format as illustrated in the example below. This example can be reproduced by sending listed inputs to the tsunami model above.
 
@@ -53,7 +53,7 @@ Inputs and outputs are defined in JSON format as illustrated in the example belo
 
 ```json
 {
-  "inputSizes": [2]
+  'inputSizes': [4]
 }
 ```
 
@@ -62,7 +62,7 @@ Inputs and outputs are defined in JSON format as illustrated in the example belo
 
 ```json
 {
-  "outputSizes": [4]
+  'outputSizes': [25,1]
 }
 ```
 #### /Evaluate
@@ -70,14 +70,14 @@ Inputs and outputs are defined in JSON format as illustrated in the example belo
 Input:
 ```json
 {
-  "level": 0,
-  "input0": [0, 0]
+  'input': [[0, 0, 0, 0]],
+  'config': {}
 }
 ```
 
 Output:
 ```json
 {
-  "output0": [1847.5905422957376,0.001675019006367,5492.84,0.000329495]
+  'output':[[0.10000000000000056,0.10000000000000052,0.1000000000000005,0.1000000000000005,0.10000000000000055,0.30000000000000165,0.3000000000000017,0.30000000000000165,0.3000000000000017,0.3000000000000017,0.5000000000000022,0.5000000000000023,0.5000000000000022,0.5000000000000023,0.5000000000000026,0.7000000000000018,0.7000000000000016,0.7000000000000021,0.7000000000000026,0.7000000000000028,0.9000000000000007,0.9000000000000008,0.900000000000001,0.9000000000000009,0.9000000000000012],[0.016300154320987727]]
 }
 ```
