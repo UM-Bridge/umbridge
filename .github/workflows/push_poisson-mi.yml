@@ -42,14 +42,13 @@ jobs:
         image: linusseelinger/poisson-mi:latest
         ports:
         - 4242:4242
-        #- 4242/tcp
 
     steps:
        -
         name: Checkout
         uses: actions/checkout@v2
        -
-        name: GetInputSizes
+        name: Validate
         run: |
-          apt update; apt install -y curl; if [ "$(curl model:4242/GetInputSizes)" != "{\"inputSizes\":[4]}" ]; then exit 1; fi
+          apt update; apt install -y python3-pip; pip3 install pytest requests; pytest
 
