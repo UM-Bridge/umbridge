@@ -49,13 +49,9 @@ jobs:
         name: Checkout
         uses: actions/checkout@v2
        -
-        name: Ping
-        run: |
-          ping -c 10 model; ping -c 10 127.0.0.1
-       -
         name: GetInputSizes
         run: |
-          sleep 10; if [ "$(curl model:4242/GetInputSizes)" != "{\"inputSizes\":[4]}" ]; then exit 1; fi
+          apt update; apt install curl; if [ "$(curl model:4242/GetInputSizes)" != "{\"inputSizes\":[4]}" ]; then exit 1; fi
        -
         name: GetInputSizesFalse
         run: |
