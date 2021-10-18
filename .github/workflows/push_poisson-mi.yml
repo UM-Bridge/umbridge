@@ -48,7 +48,11 @@ jobs:
         name: Checkout
         uses: actions/checkout@v2
        -
+        name: Dependencies
+        run: |
+          apt update; apt install -y python3-pip; pip3 install pytest requests
+       -
         name: Validate
         run: |
-          apt update; apt install -y python3-pip; pip3 install pytest requests; pytest
+          pytest
 
