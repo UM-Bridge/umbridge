@@ -1,7 +1,7 @@
 import requests
 import json
 
-host = 'http://model:4242/'
+host = 'http://model:4242'
 
 def test_Evaluate():
     url = f'{host}/Evaluate'
