@@ -47,7 +47,7 @@ Endpoint         | Type | Input   | Output
 /GetOutputSizes  | GET  | None    | Forward model output dimensions
 /Evaluate        | POST | Input to forward model (Dimensions as in /GetInputSizes), model-specific configuration (may be empty for defaults) | Output of forward model (Dimensions as in /GetOutputSizes)
 
-Inputs and outputs are defined in JSON format as illustrated in the example below. This example can be reproduced by sending listed inputs to the tsunami model above.
+Inputs and outputs are defined in JSON format as illustrated in the example below. This example can be reproduced by sending listed inputs to the Poisson model above.
 
 #### /GetInputSizes
 
@@ -57,7 +57,6 @@ Inputs and outputs are defined in JSON format as illustrated in the example belo
 }
 ```
 
-
 #### /GetOutputSizes
 
 ```json
@@ -65,6 +64,7 @@ Inputs and outputs are defined in JSON format as illustrated in the example belo
   "outputSizes": [25,1]
 }
 ```
+
 #### /Evaluate
 
 Input:
