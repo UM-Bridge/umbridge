@@ -51,8 +51,5 @@ jobs:
        -
         name: GetInputSizes
         run: |
-          apt update; apt install -y curl; if [ "$(curl model:4242/GetInputSizes)" != "{\"inputSizes\":[4]}" ]; then exit 1; fi
-       -
-        name: GetInputSizesFalse
-        run: |
-          if [ "$(curl http://model:4242/GetInputSizes)" == "{\"inputSizes\":[4]}" ]; then exit 1; fi
+          apt update; apt install -y curl; if [ "$(curl model:4242/GetInputSizes)" != "{\"inputSizes\":[5]}" ]; then exit 1; fi
+
