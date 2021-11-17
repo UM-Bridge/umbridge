@@ -1,3 +1,3 @@
 #!/bin/sh
 
-g++ -pthread -I/usr/include/eigen3/ -o minimal-server minimal-server.cpp
+g++ minimal-server.cpp -pthread -I/usr/include/eigen3/ -lssl -lcrypto -o minimal-server
