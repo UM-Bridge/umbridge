@@ -80,15 +80,18 @@ public:
     std::cout << "Request: " << request_body.dump() << std::endl;
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    auto res = cli.Post("/Evaluate", headers, request_body.dump(), "text/plain");
-    auto current_time = std::chrono::high_resolution_clock::now();
+    if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "text/plain")) {
+      auto current_time = std::chrono::high_resolution_clock::now();
 
-    std::cout << "Response after " << std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count() << "ms:"  << res->body << std::endl;
+      std::cout << "Response after " << std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count() << "ms:"  << res->body << std::endl;
 
-    json response_body = json::parse(res->body);
-    for (int i = 0; i < this->outputSizes.size(); i++) {
-      std::vector<double> outputvec = response_body["output"][i].get<std::vector<double>>();
-      outputs[i] = stdvector_to_eigenvectord(outputvec);
+      json response_body = json::parse(res->body);
+      for (int i = 0; i < this->outputSizes.size(); i++) {
+        std::vector<double> outputvec = response_body["output"][i].get<std::vector<double>>();
+        outputs[i] = stdvector_to_eigenvectord(outputvec);
+      }
+    } else {
+      throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
     }
   }
 
@@ -98,22 +101,30 @@ private:
     httplib::Client cli(host.c_str());
 
     std::cout << "GET GetInputSizes" << std::endl;
-    auto res = cli.Get("/GetInputSizes", headers);
-    std::cout << "got GetInputSizes" << std::endl;
-    json response_body = json::parse(res->body);
-    std::vector<int> outputvec = response_body["inputSizes"].get<std::vector<int>>();
-    return stdvector_to_eigenvectori(outputvec);
+    if (auto res = cli.Get("/GetInputSizes", headers)) {
+      std::cout << "got GetInputSizes" << std::endl;
+      json response_body = json::parse(res->body);
+      std::vector<int> outputvec = response_body["inputSizes"].get<std::vector<int>>();
+      return stdvector_to_eigenvectori(outputvec);
+    } else {
+      throw std::runtime_error("GET GetInputSizes failed with error type '" + to_string(res.error()) + "'");
+      return Eigen::VectorXi(0);
+    }
   }
 
   Eigen::VectorXi read_output_size(const std::string host, const httplib::Headers& headers){
     httplib::Client cli(host.c_str());
 
     std::cout << "GET GetOutputSizes" << std::endl;
-    auto res = cli.Get("/GetOutputSizes", headers);
-    std::cout << "got GetOutputSizes" << std::endl;
-    json response_body = json::parse(res->body);
-    std::vector<int> outputvec = response_body["outputSizes"].get<std::vector<int>>();
-    return stdvector_to_eigenvectori(outputvec);
+    if (auto res = cli.Get("/GetOutputSizes", headers)) {
+      std::cout << "got GetOutputSizes" << std::endl;
+      json response_body = json::parse(res->body);
+      std::vector<int> outputvec = response_body["outputSizes"].get<std::vector<int>>();
+      return stdvector_to_eigenvectori(outputvec);
+    } else {
+      throw std::runtime_error("GET GetOutputSizes failed with error type '" + to_string(res.error()) + "'");
+      return Eigen::VectorXi(0);
+    }
   }
 
   std::string host;
