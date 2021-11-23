@@ -3,6 +3,9 @@
 
 #include <boost/property_tree/ptree.hpp>
 
+// Needed for HTTPS
+#define CPPHTTPLIB_OPENSSL_SUPPORT
+
 #include <MUQ/Modeling/OneStepCachePiece.h>
 #include <MUQ/Modeling/ModPiece.h>
 #include <MUQ/Modeling/ModGraphPiece.h>

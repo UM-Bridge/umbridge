@@ -4,6 +4,9 @@
 
 //#include <resolv.h> // Header included in httplib.h, causing potential issues with Eigen!
 
+// Needed for HTTPS
+#define CPPHTTPLIB_OPENSSL_SUPPORT
+
 #include "HTTPComm.h"
 
 #include <chrono>

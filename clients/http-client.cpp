@@ -1,3 +1,6 @@
+// Needed for HTTPS
+#define CPPHTTPLIB_OPENSSL_SUPPORT
+
 #include "HTTPComm.h"
 
 int main(int argc, char** argv) {
