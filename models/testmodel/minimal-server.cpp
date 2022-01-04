@@ -25,9 +25,7 @@ public:
 
   void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) override {
     std::this_thread::sleep_for(std::chrono::seconds(test_delay));
-    const double mu = 0;
-    const double sigma = 1;
-    outputs[0][0] = - 1.0/2.0 * std::pow(((inputs[0].get()))[0] - mu, 2) / std::pow(sigma, 2);
+    outputs[0][0] = (inputs[0].get())[0] * 2;
   }
 };
 
