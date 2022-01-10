@@ -48,8 +48,10 @@ RUN cd ApplicationExamples/SWE/ && \
     cd ../SWE_asagi_limited_l1 && make -j2  && mkdir Probes && mkdir vtk-output && \
     cd ../SWE_asagi_limited_l2 && make -j2 && mkdir Probes && mkdir vtk-output
 
-RUN cd / && git clone --branch docker-models-experimental https://bitbucket.org/mituq/muq2.git muq2 && \
-    cd muq2/examples/Modeling/DockerModPiece/cpp && \
+# Build model server
+COPY . /server
+RUN cd /server && \
     g++ -o server HTTPModPieceServerExaHyPE.cpp -I /usr/include/eigen3/ -lpthread
+
 ENV PORT=80
-CMD /muq2/examples/Modeling/DockerModPiece/cpp/server
+CMD /server/server
