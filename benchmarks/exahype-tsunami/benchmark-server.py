@@ -30,6 +30,6 @@ class Benchmark(httpmodel.Model):
         posterior = scipy.stats.multivariate_normal.logpdf(model_output, data, likelihood_cov_matrix_diag)
         return [[posterior]]
 
-benckmark = Benchmark("http://localhost:4242")
+benckmark = Benchmark("http://localhost:80")
 
 httpmodel.serve_model(benckmark, 4243)
