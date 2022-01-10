@@ -15,7 +15,7 @@ class Benchmark(httpmodel.Model):
         return [1]
 
     def __call__(self, parameters, config={}):
-        output = self.model(parameters)[0]
+        output = self.model(parameters, config)[0]
         print(output)
         posterior = scipy.stats.multivariate_normal.logpdf(output, self.artificial_data, 1e-4)# \
 #                    + scipy.stats.multivariate_normal.logpdf(parameters[0], [0,0,0,0], 5)  # logpdf args: x, loc, scale
