@@ -1,17 +1,23 @@
 # Models
 
 ### Test model
-[![testmodel](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel.yml)
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel.yml) [![build](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel-python.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel-python.yml)
 
-A simple one-dimensional Gaussian density of mean zero and variance one.
+A simple one-dimensional model shifting the input parameter.
+
+For demonstration purposes, there is both a c++ and a Python implementation of the model available. To the client, they appear entirely identical.
 
 ```
 docker run -p 4242:4242 linusseelinger/testmodel:latest
 ```
 
+```
+docker run -p 4242:4242 linusseelinger/testmodel-python:latest
+```
+
 ### Poisson model
 
-[![exahype-tsunami](https://github.com/UQ-Containers/testing/actions/workflows/push_poisson-mi.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_poisson-mi.yml)
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_poisson-mi.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_poisson-mi.yml)
 
 Fast Poisson PDE model with multiindex support.
 ```
@@ -20,11 +26,29 @@ docker run -p 4242:4242 linusseelinger/poisson-mi:latest
 
 ### Tsunami model
 
-[![exahype-tsunami](https://github.com/UQ-Containers/testing/actions/workflows/push_exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_exahype-tsunami.yml)
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_exahype-tsunami.yml)
 
 A model of the Tohoku tsunami based on the ExaHyPE PDE engine.
 ```
 docker run -p 4242:80 linusseelinger/exahype-tsunami:latest
+```
+
+# Benchmarks
+
+### Test benchmark
+
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_testbenchmark.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testbenchmark.yml)
+
+```
+docker run -p 4243:4243 linusseelinger/testbenchmark:latest
+```
+
+### Tsunami benchmark
+
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_benchmark_exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_benchmark_exahype-tsunami.yml)
+
+```
+docker run -p 4243:4243 linusseelinger/benchmark-exahype-tsunami:latest
 ```
 
 # Clients
