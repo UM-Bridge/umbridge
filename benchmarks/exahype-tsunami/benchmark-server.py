@@ -12,6 +12,10 @@ class Benchmark(httpmodel.Model):
         return [1]
 
     def __call__(self, parameters, config={}):
+
+        if (not "level" in config):
+            config["level"] = 0
+
         level = config["level"]
 
         # Cut-off prior
