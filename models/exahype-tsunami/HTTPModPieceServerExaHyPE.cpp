@@ -23,7 +23,9 @@ public:
   }
 
   void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) override {
-    int level = config.value<int>("level", 0);
+    int level = 0;
+    if (config.contains("level"))
+      level = config["level"];
 
     std::cout << "Entered for level " << level << std::endl;
 
