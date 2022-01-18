@@ -16,11 +16,11 @@ std::shared_ptr<WorkGraph> createWorkGraph(std::string host, std::string bearer_
 
   json model_config;
   model_config["level"] = level;
-  auto model = std::make_shared<HTTPModPiece>(host, headers, model_config);
+  auto model = std::make_shared<HTTPModPiece>(host, model_config, headers);
 
   json finest_model_config;
   finest_model_config["level"] = finest_level;
-  auto finest_model = std::make_shared<HTTPModPiece>(host, headers, finest_model_config);
+  auto finest_model = std::make_shared<HTTPModPiece>(host, finest_model_config, headers);
 
   const int input_dim = model->inputSizes[0];
   Eigen::VectorXd artificial_truth = Eigen::ArrayXd::Zero(input_dim);
