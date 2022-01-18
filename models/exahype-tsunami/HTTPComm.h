@@ -92,7 +92,7 @@ public:
         outputs[i] = stdvector_to_eigenvectord(outputvec);
       }
     } else {
-      throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
+      throw std::runtime_error("POST Evaluate failed with error type '" + std::to_string(res.error()) + "'");
     }
   }
 
@@ -108,7 +108,7 @@ private:
       std::vector<int> outputvec = response_body["inputSizes"].get<std::vector<int>>();
       return stdvector_to_eigenvectori(outputvec);
     } else {
-      throw std::runtime_error("GET GetInputSizes failed with error type '" + to_string(res.error()) + "'");
+      throw std::runtime_error("GET GetInputSizes failed with error type '" + std::to_string(res.error()) + "'");
       return Eigen::VectorXi(0);
     }
   }
@@ -123,7 +123,7 @@ private:
       std::vector<int> outputvec = response_body["outputSizes"].get<std::vector<int>>();
       return stdvector_to_eigenvectori(outputvec);
     } else {
-      throw std::runtime_error("GET GetOutputSizes failed with error type '" + to_string(res.error()) + "'");
+      throw std::runtime_error("GET GetOutputSizes failed with error type '" + std::to_string(res.error()) + "'");
       return Eigen::VectorXi(0);
     }
   }
