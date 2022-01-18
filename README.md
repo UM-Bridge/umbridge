@@ -1,4 +1,14 @@
+# HTTP Models
+
+HTTP models provide a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods. The main benefits are:
+
+* Faster development of advanced software stacks combining the state-of-the art of modelling with statistics / optimization due to a unified and simple interface
+* Easier collaboration due to portable models and separation of concerns between fields (specifically model and statistics experts)
+* Unified and black-box benchmark problems defined in software, particularly for the uncertainty quantification (UQ) community
+
 # Models
+
+There is a number of pre-defined models available from this repository in the form of ready-to-use docker containers.
 
 ### Test model
 [![build](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel.yml) [![build](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel-python.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel-python.yml)
@@ -155,9 +165,13 @@ Apart from the constructor, HTTPModPiece behaves like any ModPiece in MUQ. For e
 
 ## Servers
 
+Refer to the servers in this repository for working examples of the server integrations shown in the following.
+
 ### Python server
 
-In order to provide a model via HTTP, it first needs to be defined by specifying its input and output sizes as well as the actual model evaluation. The latter is implemented in the ```__call__``` method.
+In order to provide a model server, again the httpmodel.py module can be used.
+
+First the model needs to be defined by specifying its input and output sizes as well as the actual model evaluation. The latter is implemented in the ```__call__``` method.
 
 ```
 class TestModel(httpmodel.Model):
@@ -185,6 +199,8 @@ This server can be connected to by any client at port 4242.
 
 ### C++ server
 
+The c++ server abstraction is part of the HTTPComm.h header-only library. Note that it has some header-only dependencies by itself in addition to the Eigen library.
+
 In order to provide a model via HTTP, it first needs to be defined by inheriting from ShallowModPiece. Input and output sizes are defined in the ShallowModPiece constructor, by means of vectors. Each of these size vectors define how many input/output vectors there will be, and the size vector entries define the dimension of each input/output vector. The actual model evaluation is then defined in the Evaluate method.
 
 ```
@@ -211,6 +227,16 @@ ExampleModPiece modPiece;
 
 serveModPiece(modPiece, "0.0.0.0", 4242);
 ```
+
+## Benchmarks
+
+Uncertainty quantification benchmarks are identical to models regarding implementation of both server and client. They only differ in that they fully define a UQ problem rather than just a forward model.
+
+The existing benchmarks provide Bayesian inverse problems by defining the Bayesian posterior density evaluation. They are based on forward models that are themselves available as stand-alone containers.
+
+When defining your own benchmarks, it is recommended to separate forward model and UQ problem in the implementation. The result is a general-purpose forward model and a benchmark only adding minimal code overhead. This can easily be achieved by having the benchmark server (defining the UQ problem) in turn connect to the forward model as a client. The entire benchmark (forward model and UQ problem) can then easily be provided in a single container by building the benchmark container on top of the forward model base image. Communication between benchmark and forward model then happens inside the container, while the benchmark itself is exposed to the outside.
+
+Refer to benchmarks defined in this repository for working examples.
 
 # Protocol
 
