@@ -75,7 +75,8 @@ public:
     for (int i = 0; i < this->inputSizes.size(); i++) {
       request_body["input"][i] = eigenvectord_to_stdvector(inputs[i]);
     }
-    request_body["config"] = config;
+    if (!config.empty())
+      request_body["config"] = config;
 
     std::cout << "Request: " << request_body.dump() << std::endl;
 
@@ -148,7 +149,10 @@ void serveModPiece(ShallowModPiece& modPiece, std::string host, int port) {
     std::vector<std::reference_wrapper<const Eigen::VectorXd>> inputs_refs;
     for (auto& input : inputs)
       inputs_refs.push_back(std::reference_wrapper<const Eigen::VectorXd>(input));
-    modPiece.Evaluate(inputs_refs, request_body["config"]);
+
+    json empty_default_config;
+    json config = request_body.value("config", empty_default_config);
+    modPiece.Evaluate(inputs_refs, config);
 
 
     json response_body;
