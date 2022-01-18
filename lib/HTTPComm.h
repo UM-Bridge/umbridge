@@ -49,7 +49,7 @@ public:
    : inputSizes(inputSizes), outputSizes(outputSizes)
   {}
 
-  virtual void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) = 0;
+  virtual void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config = json()) = 0;
 
   const Eigen::VectorXi inputSizes;
   const Eigen::VectorXi outputSizes;
@@ -67,7 +67,7 @@ public:
     outputs.resize(outputSizes.size());
   }
 
-  void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) override {
+  void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config = json()) override {
     httplib::Client cli(host.c_str());
 
     json request_body;
@@ -92,7 +92,7 @@ public:
         outputs[i] = stdvector_to_eigenvectord(outputvec);
       }
     } else {
-      throw std::runtime_error("POST Evaluate failed with error type '" + std::to_string(res.error()) + "'");
+      throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
     }
   }
 
@@ -108,7 +108,7 @@ private:
       std::vector<int> outputvec = response_body["inputSizes"].get<std::vector<int>>();
       return stdvector_to_eigenvectori(outputvec);
     } else {
-      throw std::runtime_error("GET GetInputSizes failed with error type '" + std::to_string(res.error()) + "'");
+      throw std::runtime_error("GET GetInputSizes failed with error type '" + to_string(res.error()) + "'");
       return Eigen::VectorXi(0);
     }
   }
@@ -123,7 +123,7 @@ private:
       std::vector<int> outputvec = response_body["outputSizes"].get<std::vector<int>>();
       return stdvector_to_eigenvectori(outputvec);
     } else {
-      throw std::runtime_error("GET GetOutputSizes failed with error type '" + std::to_string(res.error()) + "'");
+      throw std::runtime_error("GET GetOutputSizes failed with error type '" + to_string(res.error()) + "'");
       return Eigen::VectorXi(0);
     }
   }
