@@ -35,6 +35,8 @@ docker run -p 4242:80 linusseelinger/exahype-tsunami:latest
 
 # Benchmarks
 
+Each of these benchmarks defines a (Bayesian) posterior to sample from. Dimensions of input parameters may be queried from the model; the output is always the evaluation of the posterior density function for the given input parameter.
+
 ### Test benchmark
 
 [![build](https://github.com/UQ-Containers/testing/actions/workflows/push_testbenchmark.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testbenchmark.yml)
@@ -51,15 +53,164 @@ docker run -p 4243:4243 linusseelinger/testbenchmark:latest
 docker run -p 4243:4243 linusseelinger/benchmark-exahype-tsunami:latest
 ```
 
-# Clients
+# Howto
 
-### Minimal python client
+Communication between client (UQ software) and server (model) is defined by a simple HTTP protocol, and therefore clients and servers can be written in any language or framework supporting HTTP.
+
+In addition, there are pre-built integrations available that make creating your own clients and servers a convenient and quick task.
+
+## Clients
+
+Refer to the clients in this repository for working examples of the client integrations shown in the following.
+
+### Python client
+
+Using the httpmodel.py module, connecting to a server is as easy as
 
 ```
-python3 minimal-client.py http://localhost:4242
+import httpmodel
+
+model = httpmodel.HTTPModel("http://localhost:4242")
 ```
 
-This requires a model running locally, e.g. one of the docker commands above.
+Now that we have connected to a model, we can query its input and output dimensions.
+
+```
+print(model.get_input_sizes())
+print(model.get_output_sizes())
+```
+
+Evaluating a model that expects an input consisting of a single 2D vector then consists of the following.
+
+```
+print(model([[0.0, 10.0]]))
+```
+
+Finally, additional configuration options may be passed to the model in a JSON-compatible Python structure.
+
+```
+print(model([[0.0, 10.0]], {"level": 0}))
+```
+
+Each time, the output of the model evaluation is an array of arrays containing the output defined by the model.
+
+### C++ client
+
+The c++ client abstraction is part of the HTTPComm.h header-only library. Note that it has some header-only dependencies by itself in addition to the Eigen library.
+
+Invoking it is mostly analogous to the above. Note that HTTP headers may optionally be used, for example to include access tokens.
+
+```
+httplib::Headers headers;
+ShallowModPieceClient client("http://localhost:4242", headers);
+```
+
+As before, we can query input and output dimensions.
+
+```
+std::cout << client.inputSizes << std::endl;
+std::cout << client.outputSizes << std::endl;
+```
+
+In order to evaluate the model, we first define an input. Inputs consist of a std::vector of Eigen::VectorXd instances. The following example creates a single 2D vector in that structure.
+
+```
+const Eigen::VectorXd zero = Eigen::VectorXd::Ones(2);
+std::vector input = {std::reference_wrapper(zero)};
+```
+
+The input vector can then be passed into the model.
+
+```
+client.Evaluate(input);
+```
+
+Optionally, configuration options may be passed to the model using a JSON structure.
+
+```
+json config;
+config["level"] = 0;
+client.Evaluate(input, config);
+```
+
+Each time, the output of the model evaluation is an vector of vectors containing the output defined by the model.
+
+### MUQ client
+
+Within the [MIT Uncertainty Quantification library (MUQ)](https://mituq.bitbucket.io), there is a ModPiece available that allows embedding an HTTP model in MUQ's model graph framework.
+
+```
+auto modpiece = std::make_shared<HTTPModPiece>("http://localhost:4242");
+```
+
+The HTTPModPiece optionally allows passing a configuration to the model as in the c++ case.
+
+```
+json config;
+config["level"] = 0;
+auto modpiece = std::make_shared<HTTPModPiece>("http://localhost:4242", config);
+```
+
+Apart from the constructor, HTTPModPiece behaves like any ModPiece in MUQ. For example, models or benchmarks outputting a posterior density may be directly passed into a SamplingProblem, to which Markov Chain Monte Carlo methods provided by MUQ may then be applied for sampling.
+
+## Servers
+
+### Python server
+
+In order to provide a model via HTTP, it first needs to be defined by specifying its input and output sizes as well as the actual model evaluation. The latter is implemented in the ```__call__``` method.
+
+```
+class TestModel(httpmodel.Model):
+
+    def get_input_sizes(self):
+        return [1]
+
+    def get_output_sizes(self):
+        return [1]
+
+    def __call__(self, parameters, config={}):
+        output = parameters[0][0] * 2 # Simply multiply the first input entry by two.
+        return [[output]]
+```
+
+An instance of this model may then be provided as a server in the following way.
+
+```
+testmodel = TestModel()
+
+httpmodel.serve_model(testmodel, 4242)
+```
+
+This server can be connected to by any client at port 4242.
+
+### C++ server
+
+In order to provide a model via HTTP, it first needs to be defined by inheriting from ShallowModPiece. Input and output sizes are defined in the ShallowModPiece constructor, by means of vectors. Each of these size vectors define how many input/output vectors there will be, and the size vector entries define the dimension of each input/output vector. The actual model evaluation is then defined in the Evaluate method.
+
+```
+class ExampleModPiece : public ShallowModPiece {
+public:
+
+  ExampleModPiece()
+   : ShallowModPiece(Eigen::VectorXi::Ones(1)*1, Eigen::VectorXi::Ones(1))
+  {
+    outputs.push_back(Eigen::VectorXd::Ones(1));
+  }
+
+  void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) override {
+    std::this_thread::sleep_for(std::chrono::seconds(test_delay));
+    outputs[0][0] = (inputs[0].get())[0] * 2;
+  }
+};
+```
+
+Hosting the model is then as simple as:
+
+```
+ExampleModPiece modPiece;
+
+serveModPiece(modPiece, "0.0.0.0", 4242);
+```
 
 # Protocol
 
