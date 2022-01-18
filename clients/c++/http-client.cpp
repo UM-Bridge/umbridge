@@ -14,6 +14,19 @@ int main(int argc, char** argv) {
   httplib::Headers headers;
   ShallowModPieceClient client(host, headers);
 
+  // Print out input and output sizes
   std::cout << client.inputSizes << std::endl;
   std::cout << client.outputSizes << std::endl;
+
+  // Define a single 2D vector as input parameter
+  const Eigen::VectorXd zero = Eigen::VectorXd::Ones(2);
+  std::vector input = {std::reference_wrapper(zero)};
+
+  // Evaluate model for input
+  client.Evaluate(input);
+
+  // And evaluate again, this time specifying config parameters
+  json config;
+  config["level"] = 0;
+  client.Evaluate(input, config);
 }
