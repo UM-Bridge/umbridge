@@ -43,7 +43,9 @@ def serve_model(model, port=4242):
         print(req_json)
         parameters = req_json["input"]
         print(parameters)
-        config = req_json["config"]
+        config = {}
+        if "config" in req_json:
+            config = req_json["config"]
         return web.Response(text=f"{{\"output\": {model(parameters, config)} }}")
 
     @routes.get('/GetInputSizes')
