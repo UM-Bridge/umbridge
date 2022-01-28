@@ -57,7 +57,7 @@ docker run -p 4243:4243 linusseelinger/benchmark-testbenchmark:latest
 
 ### Tsunami benchmark
 
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-exahype-tsunami.yml.yml)
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-exahype-tsunami.yml)
 
 ```
 docker run -p 4243:4243 linusseelinger/benchmark-exahype-tsunami:latest
