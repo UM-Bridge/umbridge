@@ -1,4 +1,4 @@
-name: poisson-mi
+name: benchmark-testbenchmark
 
 on:
   push:
@@ -28,9 +28,9 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v2
         with:
-          context: models/poisson-mi/
+          context: benchmarks/testbenchmark/
           push: true
-          tags: linusseelinger/poisson-mi:latest
+          tags: linusseelinger/benchmark-testbenchmark:latest
 
   test:
     runs-on: ubuntu-latest
@@ -39,9 +39,9 @@ jobs:
 
     services:
       model:
-        image: linusseelinger/poisson-mi:latest
+        image: linusseelinger/benchmark-testbenchmark:latest
         ports:
-        - 4242:4242
+        - 4242:4243
 
     steps:
        -
@@ -54,5 +54,4 @@ jobs:
        -
         name: Validate
         run: |
-          pytest models/poisson-mi/test_model_output.py
-
+          pytest -v models/test_model_schema.py

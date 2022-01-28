@@ -1,4 +1,4 @@
-FROM linusseelinger/poisson-mi
+FROM linusseelinger/model-poisson-mi
 
 COPY . /benchmark-server
 

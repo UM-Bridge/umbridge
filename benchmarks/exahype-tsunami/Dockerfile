@@ -1,4 +1,4 @@
-FROM linusseelinger/exahype-tsunami
+FROM linusseelinger/model-exahype-tsunami
 
 COPY . /benchmark-server
 

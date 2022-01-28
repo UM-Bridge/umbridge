@@ -1,4 +1,4 @@
-FROM linusseelinger/testmodel
+FROM linusseelinger/model-testmodel
 
 COPY . /benchmark-server
 

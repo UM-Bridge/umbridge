@@ -1,0 +1,58 @@
+name: model-poisson-mi
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: models/poisson-mi/
+          push: true
+          tags: linusseelinger/model-poisson-mi:latest
+
+  test:
+    runs-on: ubuntu-latest
+    container: ubuntu:latest
+    needs: build
+
+    services:
+      model:
+        image: linusseelinger/model-poisson-mi:latest
+        ports:
+        - 4242:4242
+
+    steps:
+       -
+        name: Checkout
+        uses: actions/checkout@v2
+       -
+        name: Dependencies
+        run: |
+          apt update; apt install -y python3-pip; pip3 install pytest requests
+       -
+        name: Validate
+        run: |
+          pytest -v models/test_model_schema.py
+          pytest -v models/poisson-mi/test_model_output.py
