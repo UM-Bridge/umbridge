@@ -50,7 +50,7 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update; apt install -y python3-pip; pip3 install pytest requests
+          apt update; apt install -y python3-pip; pip3 install pytest requests jsonschema
        -
         name: Validate
         run: |
