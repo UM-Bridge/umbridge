@@ -11,36 +11,36 @@ HTTP models provide a unified interface for numerical models that is accessible 
 There is a number of pre-defined models available from this repository in the form of ready-to-use docker containers.
 
 ### Test model
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel.yml) [![build](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel-python.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testmodel-python.yml)
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel.yml) [![build](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel-python.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel-python.yml)
 
 A simple one-dimensional model shifting the input parameter.
 
 For demonstration purposes, there is both a c++ and a Python implementation of the model available. To the client, they appear entirely identical.
 
 ```
-docker run -p 4242:4242 linusseelinger/testmodel:latest
+docker run -p 4242:4242 linusseelinger/model-testmodel:latest
 ```
 
 ```
-docker run -p 4242:4242 linusseelinger/testmodel-python:latest
+docker run -p 4242:4242 linusseelinger/model-testmodel-python:latest
 ```
 
 ### Poisson model
 
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_poisson-mi.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_poisson-mi.yml)
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/model-poisson-mi.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-poisson-mi.yml)
 
 Fast Poisson PDE model with multiindex support.
 ```
-docker run -p 4242:4242 linusseelinger/poisson-mi:latest
+docker run -p 4242:4242 linusseelinger/model-poisson-mi:latest
 ```
 
 ### Tsunami model
 
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_exahype-tsunami.yml)
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/model-exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-exahype-tsunami.yml)
 
 A model of the Tohoku tsunami based on the ExaHyPE PDE engine.
 ```
-docker run -p 4242:80 linusseelinger/exahype-tsunami:latest
+docker run -p 4242:80 linusseelinger/model-exahype-tsunami:latest
 ```
 
 # Benchmarks
@@ -49,15 +49,15 @@ Each of these benchmarks defines a (Bayesian) posterior to sample from. Dimensio
 
 ### Test benchmark
 
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_testbenchmark.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_testbenchmark.yml)
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-testbenchmark.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-testbenchmark.yml)
 
 ```
-docker run -p 4243:4243 linusseelinger/testbenchmark:latest
+docker run -p 4243:4243 linusseelinger/benchmark-testbenchmark:latest
 ```
 
 ### Tsunami benchmark
 
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/push_benchmark_exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/push_benchmark_exahype-tsunami.yml)
+[![build](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-exahype-tsunami.yml.yml)
 
 ```
 docker run -p 4243:4243 linusseelinger/benchmark-exahype-tsunami:latest
