@@ -12,7 +12,7 @@ class Benchmark(httpmodel.Model):
         return [1]
 
     def __call__(self, parameters, config={}):
-        model = httpmodel.HTTPModel(self.model_url, config)
+        model = httpmodel.HTTPModel(self.model_url)
         posterior = scipy.stats.norm.logpdf(model(parameters)[0][0], 2.0, 1)  # logpdf args: x, loc, scale
         return [[posterior]]
 
