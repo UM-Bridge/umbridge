@@ -50,9 +50,9 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update; apt install -y python3-pip; pip3 install pytest requests
+          apt update; apt install -y python3-pip; pip3 install requests
        -
         name: Validate
         run: |
-          pytest
+          python3 models/poisson-mi/test_model_output.py
 
