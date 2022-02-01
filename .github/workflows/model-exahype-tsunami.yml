@@ -41,7 +41,7 @@ jobs:
       model:
         image: linusseelinger/model-exahype-tsunami:latest
         ports:
-        - 4242:4242
+        - 4242:80
 
     steps:
        -
