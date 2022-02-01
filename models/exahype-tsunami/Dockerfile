@@ -14,7 +14,7 @@ RUN cd / && mkdir dependencies && \
 ENV PKG_CONFIG_PATH="/dependencies/ImpalaJIT/build/:/usr/lib/x86_64-linux-gnu/pkgconfig"
 
 RUN cd /dependencies && git clone --recursive https://github.com/TUM-I5/ASAGI.git && \
-    cd ASAGI/ && \
+    cd ASAGI/ &&  git checkout 601886131ab3cda7e75e19d10964198093674048 && \
     mkdir build && cd build &&\
     cmake .. && make && make install
 
@@ -36,8 +36,8 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/dependencies/easi/build"
 ENV COMPILER=GNU
 ENV TBB_INC=/usr/include/tbb
 ENV TBB_SHLIB=/usr/lib/x86_64-linux-gnu/libtbb.so
-ENV EXAHYPE_CC=mpicc
-ENV EXAHYPE_CXX=mpicxx
+ENV EXAHYPE_CC=mpicxx
+ENV EXAHYPE_FC=mpicxx
 ENV PROJECT_CFLAGS=-DUSE_ASAGI
 
 RUN cd ApplicationExamples/SWE/ && \
