@@ -29,6 +29,11 @@ class Benchmark(httpmodel.Model):
         likelihood_std_dev_time = [2.5, 1.5, 0.75]
         likelihood_std_dev_height = [0.15, 0.1, 0.1]
 
+        data[0] /= 60.0
+        data[2] /= 60.0
+        model_output[0] /= 60.0
+        model_output[2] /= 60.0
+
         likelihood_cov_matrix_diag = [likelihood_std_dev_time[level]**2, likelihood_std_dev_height[level]**2] * 2
 
         posterior = scipy.stats.multivariate_normal.logpdf(model_output, data, likelihood_cov_matrix_diag)
