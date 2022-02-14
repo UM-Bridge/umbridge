@@ -54,7 +54,7 @@ def serve_model(model, port=4242):
 
     @routes.get('/GetOutputSizes')
     async def hello(request):
-        return web.Response(text=f"{{\"outputSizes\": {model.get_input_sizes()} }}")
+        return web.Response(text=f"{{\"outputSizes\": {model.get_output_sizes()} }}")
 
     app = web.Application()
     app.add_routes(routes)
