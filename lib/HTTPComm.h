@@ -59,14 +59,14 @@ public:
 
   virtual void ApplyJacobian(unsigned int outWrt,
                              unsigned int inWrt,
-                             muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                             std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                              Eigen::VectorXd const& vec,
                              json config = json()) = 0;
 
   virtual void ApplyHessian(unsigned int outWrt,
                             unsigned int inWrt1,
                             unsigned int inWrt2,
-                            muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                            std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                             Eigen::VectorXd const& sens,
                             Eigen::VectorXd const& vec,
                             json config = json()) = 0;
@@ -123,7 +123,7 @@ public:
 
   void Gradient(unsigned int outWrt,
                 unsigned int inWrt,
-                muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                 Eigen::VectorXd const& sens,
                 json config = json()) override
   {
@@ -150,7 +150,7 @@ public:
 
   void ApplyJacobian(unsigned int outWrt,
                              unsigned int inWrt,
-                             muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                             std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                              Eigen::VectorXd const& vec,
                              json config = json()) override {
     httplib::Client cli(host.c_str());
@@ -177,7 +177,7 @@ public:
   void ApplyHessian(unsigned int outWrt,
                     unsigned int inWrt1,
                     unsigned int inWrt2,
-                    muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                    std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                     Eigen::VectorXd const& sens,
                     Eigen::VectorXd const& vec,
                     json config = json()) override {
