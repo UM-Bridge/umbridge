@@ -49,19 +49,26 @@ public:
    : inputSizes(inputSizes), outputSizes(outputSizes)
   {}
 
-  virtual void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config = json()) = 0;
+  virtual void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
+                        json config = json()) {
+    throw std::runtime_error("Gradient was called, but not implemented by model!");
+  }
 
   virtual void Gradient(unsigned int outWrt,
                         unsigned int inWrt,
                         std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                         Eigen::VectorXd const& sens,
-                        json config = json()) = 0;
+                        json config = json()) {
+    throw std::runtime_error("Gradient was called, but not implemented by model!");
+  }
 
   virtual void ApplyJacobian(unsigned int outWrt,
                              unsigned int inWrt,
                              std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                              Eigen::VectorXd const& vec,
-                             json config = json()) = 0;
+                             json config = json()) {
+    throw std::runtime_error("ApplyJacobian was called, but not implemented by model!");
+  }
 
   virtual void ApplyHessian(unsigned int outWrt,
                             unsigned int inWrt1,
@@ -69,7 +76,9 @@ public:
                             std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                             Eigen::VectorXd const& sens,
                             Eigen::VectorXd const& vec,
-                            json config = json()) = 0;
+                            json config = json()) {
+    throw std::runtime_error("ApplyHessian was called, but not implemented by model!");
+  }
 
   virtual bool SupportsEvaluate() {return false;}
   virtual bool SupportsGradient() {return false;}
