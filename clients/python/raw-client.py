@@ -20,6 +20,10 @@ r = requests.get(f"{args.url}/GetOutputSizes")
 print(r.text)
 
 
+print("Requesting info...")
+r = requests.get(f"{args.url}/Info")
+print(r.text)
+
 print("Requesting evaluation")
 
 # Build input parameter vectors of dimensions expected by model, fill with zeros for testing

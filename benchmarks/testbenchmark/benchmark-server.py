@@ -16,6 +16,8 @@ class Benchmark(httpmodel.Model):
         posterior = scipy.stats.norm.logpdf(model(parameters)[0][0], 2.0, 1)  # logpdf args: x, loc, scale
         return [[posterior]]
 
+    def supports_evaluate(self):
+        return True
 
 benckmark = Benchmark("http://localhost:4242")
 

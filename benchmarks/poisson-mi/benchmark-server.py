@@ -21,6 +21,9 @@ class Benchmark(httpmodel.Model):
 #                    + scipy.stats.multivariate_normal.logpdf(parameters[0], [0,0,0,0], 5)  # logpdf args: x, loc, scale
         return [[posterior]]
 
+    def supports_evaluate(self):
+        return True
+
 benckmark = Benchmark("http://localhost:4242")
 
 httpmodel.serve_model(benckmark, 4243)
