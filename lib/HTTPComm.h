@@ -15,7 +15,7 @@
 #include <Eigen/Core>
 
 
-#include "json.hpp"
+#include "json.h"
 using json = nlohmann::json;
 
 
@@ -51,10 +51,38 @@ public:
 
   virtual void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config = json()) = 0;
 
+  virtual void Gradient(unsigned int outWrt,
+                        unsigned int inWrt,
+                        std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
+                        Eigen::VectorXd const& sens,
+                        json config = json()) = 0;
+
+  virtual void ApplyJacobian(unsigned int outWrt,
+                             unsigned int inWrt,
+                             muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                             Eigen::VectorXd const& vec,
+                             json config = json()) = 0;
+
+  virtual void ApplyHessian(unsigned int outWrt,
+                            unsigned int inWrt1,
+                            unsigned int inWrt2,
+                            muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                            Eigen::VectorXd const& sens,
+                            Eigen::VectorXd const& vec,
+                            json config = json()) = 0;
+
+  virtual bool SupportsEvaluate() {return false;}
+  virtual bool SupportsGradient() {return false;}
+  virtual bool SupportsApplyJacobian() {return false;}
+  virtual bool SupportsApplyHessian() {return false;}
+
   const Eigen::VectorXi inputSizes;
   const Eigen::VectorXi outputSizes;
 
   std::vector<Eigen::VectorXd> outputs;
+  Eigen::VectorXd gradient;
+  Eigen::VectorXd jacobianAction;
+  Eigen::VectorXd hessAction;
 };
 
 // Client-side ModPiece connecting to a server for the actual evaluations etc.
@@ -65,6 +93,7 @@ public:
    : host(host), headers(headers), ShallowModPiece(read_input_size(host, headers), read_output_size(host, headers))
   {
     outputs.resize(outputSizes.size());
+    retrieveSupportedFeatures();
   }
 
   void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config = json()) override {
@@ -78,13 +107,9 @@ public:
     if (!config.empty())
       request_body["config"] = config;
 
-    std::cout << "Request: " << request_body.dump() << std::endl;
-
     auto start_time = std::chrono::high_resolution_clock::now();
     if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "text/plain")) {
       auto current_time = std::chrono::high_resolution_clock::now();
-
-      std::cout << "Response after " << std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count() << "ms:"  << res->body << std::endl;
 
       json response_body = json::parse(res->body);
       for (int i = 0; i < this->outputSizes.size(); i++) {
@@ -96,7 +121,129 @@ public:
     }
   }
 
+  void Gradient(unsigned int outWrt,
+                unsigned int inWrt,
+                muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                Eigen::VectorXd const& sens,
+                json config = json()) override
+  {
+    httplib::Client cli(host.c_str());
+
+    json request_body;
+    request_body["outWrt"] = outWrt;
+    request_body["inWrt"] = inWrt;
+    for (int i = 0; i < this->inputSizes.size(); i++) {
+      request_body["input"][i] = eigenvectord_to_stdvector(inputs[i]);
+    }
+    request_body["sens"] = eigenvectord_to_stdvector(sens);
+    if (!config.empty())
+      request_body["config"] = config;
+
+    if (auto res = cli.Post("/Gradient", headers, request_body.dump(), "text/plain")) {
+      json response_body = json::parse(res->body);
+      std::vector<double> outputvec = response_body.at("output");
+      gradient = stdvector_to_eigenvectord(outputvec);
+    } else {
+      throw std::runtime_error("POST Gradient failed with error type '" + to_string(res.error()) + "'");
+    }
+  }
+
+  void ApplyJacobian(unsigned int outWrt,
+                             unsigned int inWrt,
+                             muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                             Eigen::VectorXd const& vec,
+                             json config = json()) override {
+    httplib::Client cli(host.c_str());
+
+    json request_body;
+    request_body["outWrt"] = outWrt;
+    request_body["inWrt"] = inWrt;
+    for (int i = 0; i < this->inputSizes.size(); i++) {
+      request_body["input"][i] = eigenvectord_to_stdvector(inputs[i]);
+    }
+    request_body["vec"] = eigenvectord_to_stdvector(vec);
+    if (!config.empty())
+      request_body["config"] = config;
+
+    if (auto res = cli.Post("/ApplyJacobian", headers, request_body.dump(), "text/plain")) {
+      json response_body = json::parse(res->body);
+      std::vector<double> outputvec = response_body.at("output");
+      jacobianAction = stdvector_to_eigenvectord(outputvec);
+    } else {
+      throw std::runtime_error("POST ApplyJacobian failed with error type '" + to_string(res.error()) + "'");
+    }
+  }
+
+  void ApplyHessian(unsigned int outWrt,
+                    unsigned int inWrt1,
+                    unsigned int inWrt2,
+                    muq::Modeling::ref_vector<Eigen::VectorXd> const& inputs,
+                    Eigen::VectorXd const& sens,
+                    Eigen::VectorXd const& vec,
+                    json config = json()) override {
+    httplib::Client cli(host.c_str());
+
+    json request_body;
+    request_body["outWrt"] = outWrt;
+    request_body["inWrt1"] = inWrt1;
+    request_body["inWrt2"] = inWrt2;
+    for (int i = 0; i < this->inputSizes.size(); i++) {
+      request_body["input"][i] = eigenvectord_to_stdvector(inputs[i]);
+    }
+    request_body["sens"] = eigenvectord_to_stdvector(sens);
+    request_body["vec"] = eigenvectord_to_stdvector(vec);
+    if (!config.empty())
+      request_body["config"] = config;
+
+    if (auto res = cli.Post("/ApplyHessian", headers, request_body.dump(), "text/plain")) {
+      json response_body = json::parse(res->body);
+      std::vector<double> outputvec = response_body.at("output");
+      hessAction = stdvector_to_eigenvectord(outputvec);
+    } else {
+      throw std::runtime_error("POST ApplyHessian failed with error type '" + to_string(res.error()) + "'");
+    }
+  }
+
+  bool SupportsEvaluate() override {
+    return supportsEvaluate;
+  }
+  bool SupportsGradient() override {
+    return supportsGradient;
+  }
+  bool SupportsApplyJacobian() override {
+    return supportsApplyJacobian;
+  }
+  bool SupportsApplyHessian() override {
+    return supportsApplyHessian;
+  }
+
 private:
+
+  std::string host;
+  httplib::Headers headers;
+
+  bool supportsEvaluate = false;
+  bool supportsGradient = false;
+  bool supportsApplyJacobian = false;
+  bool supportsApplyHessian = false;
+
+  void retrieveSupportedFeatures() {
+    httplib::Client cli(host.c_str());
+
+    if (auto res = cli.Get("/Info", headers)) {
+      json response = json::parse(res->body);
+      json supported_features = response.at("support");
+      supportsEvaluate = supported_features.value("Evaluate", false);
+      supportsGradient = supported_features.value("Gradient", false);
+      supportsApplyJacobian = supported_features.value("ApplyJacobian", false);
+      supportsApplyHessian = supported_features.value("ApplyHessian", false);
+
+      if (response.value<double>("protocolVersion",0) != 0.9)
+        throw std::runtime_error("Model protocol version not supported!");
+    } else {
+      throw std::runtime_error("GET Info failed with error type '" + to_string(res.error()) + "'");
+    }
+  }
 
   Eigen::VectorXi read_input_size(const std::string host, const httplib::Headers& headers){
     httplib::Client cli(host.c_str());
@@ -127,9 +274,6 @@ private:
       return Eigen::VectorXi(0);
     }
   }
-
-  std::string host;
-  httplib::Headers headers;
 };
 
 // Provides access to a modPiece via network
@@ -138,7 +282,15 @@ void serveModPiece(ShallowModPiece& modPiece, std::string host, int port) {
   httplib::Server svr;
 
   svr.Post("/Evaluate", [&](const httplib::Request &req, httplib::Response &res) {
-    std::cout << "Received a Get with body " << req.body << std::endl;
+    if (!modPiece.SupportsEvaluate()) {
+      json response_body;
+      response_body["error"]["type"] = "FeatureUnsupported";
+      response_body["error"]["message"] = "Evaluate requested by client, but not supported by model!";
+      res.set_content(response_body.dump(), "text/plain");
+      return;
+    }
+
+    //std::cout << "Received a Get with body " << req.body << std::endl;
     json request_body = json::parse(req.body);
 
     std::vector<Eigen::VectorXd> inputs;
@@ -163,8 +315,130 @@ void serveModPiece(ShallowModPiece& modPiece, std::string host, int port) {
     res.set_content(response_body.dump(), "text/plain");
   });
 
-  svr.Get("/GetInputSizes", [&](const httplib::Request &, httplib::Response &res) {
+  svr.Post("/Gradient", [&](const httplib::Request &req, httplib::Response &res) {
+    if (!modPiece.SupportsGradient()) {
+      json response_body;
+      response_body["error"]["type"] = "FeatureUnsupported";
+      response_body["error"]["message"] = "Gradient requested by client, but not supported by model!";
+      res.set_content(response_body.dump(), "text/plain");
+      return;
+    }
 
+    json request_body = json::parse(req.body);
+
+    unsigned int inWrt = request_body.at("inWrt");
+    unsigned int outWrt = request_body.at("outWrt");
+
+    std::vector<Eigen::VectorXd> inputs;
+    for (int i = 0; i < modPiece.inputSizes.rows(); i++) {
+      std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
+      inputs.push_back(stdvector_to_eigenvectord(parameter));
+    }
+    std::vector<std::reference_wrapper<const Eigen::VectorXd>> inputs_refs;
+    for (auto& input : inputs)
+      inputs_refs.push_back(std::reference_wrapper<const Eigen::VectorXd>(input));
+
+    std::vector<double> sens_raw = request_body.at("sens");
+    Eigen::VectorXd sens = stdvector_to_eigenvectord(sens_raw);
+
+    json empty_default_config;
+    json config = request_body.value("config", empty_default_config);
+    modPiece.Gradient(outWrt, inWrt, inputs_refs, sens, config);
+
+    json response_body;
+    response_body["output"] = eigenvectord_to_stdvector(modPiece.gradient);
+
+    res.set_content(response_body.dump(), "text/plain");
+  });
+
+  svr.Post("/ApplyJacobian", [&](const httplib::Request &req, httplib::Response &res) {
+    if (!modPiece.SupportsApplyJacobian()) {
+      json response_body;
+      response_body["error"]["type"] = "FeatureUnsupported";
+      response_body["error"]["message"] = "ApplyJacobian requested by client, but not supported by model!";
+      res.set_content(response_body.dump(), "text/plain");
+      return;
+    }
+
+    json request_body = json::parse(req.body);
+
+    unsigned int inWrt = request_body.at("inWrt");
+    unsigned int outWrt = request_body.at("outWrt");
+
+    std::vector<Eigen::VectorXd> inputs;
+    for (int i = 0; i < modPiece.inputSizes.rows(); i++) {
+      std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
+      inputs.push_back(stdvector_to_eigenvectord(parameter));
+    }
+    std::vector<std::reference_wrapper<const Eigen::VectorXd>> inputs_refs;
+    for (auto& input : inputs)
+      inputs_refs.push_back(std::reference_wrapper<const Eigen::VectorXd>(input));
+
+    std::vector<double> vec_raw = request_body.at("vec");
+    Eigen::VectorXd vec = stdvector_to_eigenvectord(vec_raw);
+
+    json empty_default_config;
+    json config = request_body.value("config", empty_default_config);
+    modPiece.ApplyJacobian(outWrt, inWrt, inputs_refs, vec, config);
+
+    json response_body;
+    response_body["output"] = eigenvectord_to_stdvector(modPiece.jacobianAction);
+
+    res.set_content(response_body.dump(), "text/plain");
+  });
+
+  svr.Post("/ApplyHessian", [&](const httplib::Request &req, httplib::Response &res) {
+    if (!modPiece.SupportsApplyHessian()) {
+      json response_body;
+      response_body["error"]["type"] = "FeatureUnsupported";
+      response_body["error"]["message"] = "ApplyHessian requested by client, but not supported by model!";
+      res.set_content(response_body.dump(), "text/plain");
+      return;
+    }
+
+    json request_body = json::parse(req.body);
+
+    unsigned int outWrt = request_body.at("outWrt");
+    unsigned int inWrt1 = request_body.at("inWrt1");
+    unsigned int inWrt2 = request_body.at("inWrt2");
+
+    std::vector<Eigen::VectorXd> inputs;
+    for (int i = 0; i < modPiece.inputSizes.rows(); i++) {
+      std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
+      inputs.push_back(stdvector_to_eigenvectord(parameter));
+    }
+    std::vector<std::reference_wrapper<const Eigen::VectorXd>> inputs_refs;
+    for (auto& input : inputs)
+      inputs_refs.push_back(std::reference_wrapper<const Eigen::VectorXd>(input));
+
+    std::vector<double> sens_raw = request_body.at("sens");
+    Eigen::VectorXd sens = stdvector_to_eigenvectord(sens_raw);
+    std::vector<double> vec_raw = request_body.at("vec");
+    Eigen::VectorXd vec = stdvector_to_eigenvectord(vec_raw);
+
+    json empty_default_config;
+    json config = request_body.value("config", empty_default_config);
+    modPiece.ApplyHessian(outWrt, inWrt1, inWrt2, inputs_refs, sens, vec, config);
+
+    json response_body;
+    response_body["output"] = eigenvectord_to_stdvector(modPiece.hessAction);
+
+    res.set_content(response_body.dump(), "text/plain");
+  });
+
+  svr.Get("/Info", [&](const httplib::Request &, httplib::Response &res) {
+    json response_body;
+    response_body["support"]["Evaluate"] = modPiece.SupportsEvaluate();
+    response_body["support"]["Gradient"] = modPiece.SupportsGradient();
+    response_body["support"]["ApplyJacobian"] = modPiece.SupportsApplyJacobian();
+    response_body["support"]["ApplyHessian"] = modPiece.SupportsApplyHessian();
+
+    response_body["protocolVersion"] = 0.9;
+
+    res.set_content(response_body.dump(), "text/plain");
+  });
+
+  svr.Get("/GetInputSizes", [&](const httplib::Request &, httplib::Response &res) {
     json response_body;
     response_body["inputSizes"] = eigenvectori_to_stdvector(modPiece.inputSizes);
 

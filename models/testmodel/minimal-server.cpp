@@ -27,6 +27,10 @@ public:
     std::this_thread::sleep_for(std::chrono::seconds(test_delay));
     outputs[0][0] = (inputs[0].get())[0] * 2;
   }
+
+  bool SupportsEvaluate() override {
+    return true;
+  }
 };
 
 int main(){

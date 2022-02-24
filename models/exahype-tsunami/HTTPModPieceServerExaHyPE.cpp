@@ -60,6 +60,10 @@ public:
 
     std::cout << "Left" << std::endl;
   }
+
+  bool SupportsEvaluate() override {
+    return true;
+  }
 };
 
 int main(){
