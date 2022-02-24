@@ -15,7 +15,7 @@
 #include <Eigen/Core>
 
 
-#include "json.h"
+#include "json.hpp"
 using json = nlohmann::json;
 
 
