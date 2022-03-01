@@ -1,10 +1,16 @@
-# HTTP Models
+# HTTPModel
 
-HTTP models provide a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods. The main benefits are:
+HTTPModel provides a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods. The main benefits are:
 
 * Faster development of advanced software stacks combining the state-of-the art of modelling with statistics / optimization due to a unified and simple interface
 * Easier collaboration due to portable models and separation of concerns between fields (specifically model and statistics experts)
 * Unified and black-box benchmark problems defined in software, particularly for the uncertainty quantification (UQ) community
+
+#### Content
+* [Models](#models)
+* [UQ Benchmarks](#uq-benchmarks)
+* [Howto](#howto)
+* [Protocol definition](#protocol-definition)
 
 # Models
 
@@ -43,7 +49,7 @@ A model of the Tohoku tsunami based on the ExaHyPE PDE engine.
 docker run -p 4242:80 linusseelinger/model-exahype-tsunami:latest
 ```
 
-# Benchmarks
+# UQ Benchmarks
 
 Each of these benchmarks defines a (Bayesian) posterior to sample from. Dimensions of input parameters may be queried from the model; the output is always the evaluation of the posterior density function for the given input parameter.
 
@@ -185,6 +191,9 @@ class TestModel(httpmodel.Model):
     def __call__(self, parameters, config={}):
         output = parameters[0][0] * 2 # Simply multiply the first input entry by two.
         return [[output]]
+
+    def supports_evaluate(self):
+        return True
 ```
 
 An instance of this model may then be provided as a server in the following way.
@@ -216,6 +225,10 @@ public:
   void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) override {
     outputs[0][0] = (inputs[0].get())[0] * 2;
   }
+
+  bool SupportsEvaluate() override {
+    return true;
+  }
 };
 ```
 
@@ -237,19 +250,24 @@ When defining your own benchmarks, it is recommended to separate forward model a
 
 Refer to benchmarks defined in this repository for working examples.
 
-# Protocol
+# Protocol definition
 
 Communication between model server and client is based on a simple HTTP protocol. Inputs and outputs are in JSON format as defined below. The model server offers the following endpoints:
 
+#### Required endpoints
 Endpoint         | Purpose
 -----------------|-------------
 /GetInputSizes   | Mmodel input dimensions
 /GetOutputSizes  | Model output dimensions
+/Info            | Technical information about the model, in particular defines what optional endpoints are supported
+
+#### Optional endpoints
+Endpoint         | Purpose
+-----------------|-------------
 /Evaluate        | Model evaluation
-/Info            | 
-/Gradient        | 
-/ApplyJacobian   | 
-/ApplyHessian    | 
+/Gradient        | Gradient of arbitrary objective of model output
+/ApplyJacobian   | Action of model Jacobian to given vector
+/ApplyHessian    | Action of model Hessian
 
 ### GET /GetInputSizes
 
@@ -332,44 +350,44 @@ Output example:
 
 Input key        | Value type       | Purpose
 -----------------|------------------|-------------
-inWrt            | Integer          | 
-outWrt           | Integer          | 
-sens             | Array            | 
-input            | Array of array of numbers | Parameter for which to evaluate model, dimension defined in /GetInputSizes
+inWrt            | Integer          | Index of model input to differentiate with respect to
+outWrt           | Integer          | Index of model output to consider in the objective
+sens             | Array            | Gradient of the objective with respect to model output `outWrt`
+input            | Array of array of numbers | Parameter for which to evaluate model, dimension defined in `/GetInputSizes`
 config           | Any              | Optional and model-specific JSON structure containing additional model configuration parameters.
 
 Output key       | Value type       | Purpose
 -----------------|------------------|-------------
-output           | Array of numbers | 
+output           | Array of numbers | Gradient of objective
 
 ### POST /ApplyJacobian
 
 Input key        | Value type       | Purpose
 -----------------|------------------|-------------
-inWrt            | Integer          | 
-outWrt           | Integer          | 
-vec              | Array            | 
-input            | Array of array of numbers | Parameter for which to evaluate model, dimension defined in /GetInputSizes
+inWrt            | Integer          | Index of model input with respect to which the Jacobian should be taken
+outWrt           | Integer          | Index of model output which is to be differentiated
+vec              | Array            | Vector to apply the Jacobian matrix to, dimension defined in the `inWrt`th entry of `/GetInputSizes`
+input            | Array of array of numbers | Parameter at which to evaluate the Jacobian, dimension defined in `/GetInputSizes`
 config           | Any              | Optional and model-specific JSON structure containing additional model configuration parameters.
 
 Output key       | Value type       | Purpose
 -----------------|------------------|-------------
-output           | Array of numbers | 
+output           | Array of numbers | Jacobian of output `outWrt` with respect to input parameter `inWrt` applied to vector `vec`
 
 ### POST /ApplyHessian
 
 Input key        | Value type       | Purpose
 -----------------|------------------|-------------
-inWrt1           | Integer          | 
-inWrt2           | Integer          | 
-outWrt           | Integer          | 
-vec              | Array            | 
-sens             | Array            | 
-input            | Array of array of numbers | Parameter for which to evaluate model, dimension defined in /GetInputSizes
+inWrt1           | Integer          | Index of first input to differentiate with respect to
+inWrt2           | Integer          | Index of second input to differentiate with respect to
+outWrt           | Integer          | Index of model output to consider in the objective
+vec              | Array            | Vector to apply the Hessian matrix to
+sens             | Array            | Gradient of the objective with respect to model output `outWrt`
+input            | Array of array of numbers | Parameter at which to evaluate the Hessian, dimension defined in `/GetInputSizes`
 config           | Any              | Optional and model-specific JSON structure containing additional model configuration parameters.
 
 Output key       | Value type       | Purpose
 -----------------|------------------|-------------
-output           | Array of numbers | 
+output           | Array of numbers | Hessian at `input` applied to vector `vec`
 
 
