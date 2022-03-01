@@ -239,17 +239,25 @@ Refer to benchmarks defined in this repository for working examples.
 
 # Protocol
 
-Communication between model server and client is based on a simple HTTP protocol. The model server offers the following endpoints:
+Communication between model server and client is based on a simple HTTP protocol. Inputs and outputs are in JSON format as defined below. The model server offers the following endpoints:
 
-Endpoint         | Type | Input   | Output
------------------|------|---------|--------
-/GetInputSizes   | GET  | None    | Forward model input dimensions
-/GetOutputSizes  | GET  | None    | Forward model output dimensions
-/Evaluate        | POST | Input to forward model (Dimensions as in /GetInputSizes), model-specific configuration (may be empty for defaults) | Output of forward model (Dimensions as in /GetOutputSizes)
+Endpoint         | Purpose
+-----------------|-------------
+/GetInputSizes   | Mmodel input dimensions
+/GetOutputSizes  | Model output dimensions
+/Evaluate        | Model evaluation
+/Info            | 
+/Gradient        | 
+/ApplyJacobian   | 
+/ApplyHessian    | 
 
-Inputs and outputs are defined in JSON format as illustrated in the example below. This example can be reproduced by sending listed inputs to the Poisson model above.
+### GET /GetInputSizes
 
-#### /GetInputSizes
+Output key       | Value type       | Purpose
+-----------------|------------------|-------------
+inputSizes       | Array of numbers | Model input dimensions
+
+Output example:
 
 ```json
 {
@@ -257,7 +265,13 @@ Inputs and outputs are defined in JSON format as illustrated in the example belo
 }
 ```
 
-#### /GetOutputSizes
+### GET /GetOutputSizes
+
+Output key       | Value type       | Purpose
+-----------------|------------------|-------------
+outputSizes      | Array of numbers | Model output dimensions
+
+Output example:
 
 ```json
 {
@@ -265,9 +279,41 @@ Inputs and outputs are defined in JSON format as illustrated in the example belo
 }
 ```
 
-#### /Evaluate
+### GET /Info
 
-Input:
+Output key       | Value type       | Purpose
+-----------------|------------------|-------------
+protocolVersion  | Number           | Protocol version supported by model
+support : Evaluate | Boolean        | Whether model supports Evaluate endpoint
+support : Gradient | Boolean        | Whether model supports Gradient endpoint
+support : ApplyJacobian | Boolean   | Whether model supports ApplyJacobian endpoint
+support : ApplyHessian | Boolean    | Whether model supports ApplyHessian endpoint
+
+Output example:
+```json
+{
+  "support": {
+    "Evaluate": true,
+    "Gradient": false,
+    "ApplyJacobian": false,
+    "ApplyHessian": false
+  },
+  "protocolVersion": 0.9
+}
+```
+
+### POST /Evaluate
+
+Input key        | Value type       | Purpose
+-----------------|------------------|-------------
+input            | Array of array of numbers | Parameter for which to evaluate model, dimension defined in /GetInputSizes
+config           | Any              | Optional and model-specific JSON structure containing additional model configuration parameters.
+
+Output key       | Value type       | Purpose
+-----------------|------------------|-------------
+output           | Array of array of numbers | Model evaluation for given input, dimension defined in /GetOutputSizes
+
+Input example:
 ```json
 {
   "input": [[0, 0, 0, 0]],
@@ -275,9 +321,55 @@ Input:
 }
 ```
 
-Output:
+Output example:
 ```json
 {
   "output":[[0.10000000000000056,0.10000000000000052,0.1000000000000005,0.1000000000000005,0.10000000000000055,0.30000000000000165,0.3000000000000017,0.30000000000000165,0.3000000000000017,0.3000000000000017,0.5000000000000022,0.5000000000000023,0.5000000000000022,0.5000000000000023,0.5000000000000026,0.7000000000000018,0.7000000000000016,0.7000000000000021,0.7000000000000026,0.7000000000000028,0.9000000000000007,0.9000000000000008,0.900000000000001,0.9000000000000009,0.9000000000000012],[0.016300154320987727]]
 }
 ```
+
+### POST /Gradient
+
+Input key        | Value type       | Purpose
+-----------------|------------------|-------------
+inWrt            | Integer          | 
+outWrt           | Integer          | 
+sens             | Array            | 
+input            | Array of array of numbers | Parameter for which to evaluate model, dimension defined in /GetInputSizes
+config           | Any              | Optional and model-specific JSON structure containing additional model configuration parameters.
+
+Output key       | Value type       | Purpose
+-----------------|------------------|-------------
+output           | Array of numbers | 
+
+### POST /ApplyJacobian
+
+Input key        | Value type       | Purpose
+-----------------|------------------|-------------
+inWrt            | Integer          | 
+outWrt           | Integer          | 
+vec              | Array            | 
+input            | Array of array of numbers | Parameter for which to evaluate model, dimension defined in /GetInputSizes
+config           | Any              | Optional and model-specific JSON structure containing additional model configuration parameters.
+
+Output key       | Value type       | Purpose
+-----------------|------------------|-------------
+output           | Array of numbers | 
+
+### POST /ApplyHessian
+
+Input key        | Value type       | Purpose
+-----------------|------------------|-------------
+inWrt1           | Integer          | 
+inWrt2           | Integer          | 
+outWrt           | Integer          | 
+vec              | Array            | 
+sens             | Array            | 
+input            | Array of array of numbers | Parameter for which to evaluate model, dimension defined in /GetInputSizes
+config           | Any              | Optional and model-specific JSON structure containing additional model configuration parameters.
+
+Output key       | Value type       | Purpose
+-----------------|------------------|-------------
+output           | Array of numbers | 
+
+
