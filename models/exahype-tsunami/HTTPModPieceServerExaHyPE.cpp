@@ -38,6 +38,14 @@ public:
     inputsfile.close();
 
     int status;
+    if(verbose) {
+        system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && mv exahype_debug.log-filter exahype.log-filter");
+    }
+    if(vtk_output){
+        system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE && sed -i 's/\"time\": 10000.0,/\"time\": 0.0,/g' SWE_asagi_limited_l0.exahype2");
+        system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE && sed -i 's/\"time\": 10000.0,/\"time\": 0.0,/g' SWE_asagi_limited_l1.exahype2");
+        system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE && sed -i 's/\"time\": 10000.0,/\"time\": 0.0,/g' SWE_asagi_limited_l2.exahype2");
+    }
     if(level == 0) {
       status = system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && ./ExaHyPE-SWE ../SWE_asagi_limited_l0.exahype2");
     } else if(level == 1) {
@@ -49,7 +57,6 @@ public:
       exit(-1);
     }
     std::cout << "Exahype exit status " << status << std::endl;
-
 
     std::ifstream outputsfile("/tmp/outputs.txt");
     for (int i = 0; i < outputs[0].rows(); i++) {
