@@ -42,6 +42,6 @@ class Benchmark(httpmodel.Model):
     def supports_evaluate(self):
         return True
 
-benckmark = Benchmark("http://localhost:80")
+benckmark = Benchmark("http://localhost:4242")
 
 httpmodel.serve_model(benckmark, 4243)

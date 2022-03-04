@@ -53,5 +53,5 @@ COPY . /server
 RUN cd /server && \
     g++ -o server HTTPModPieceServerExaHyPE.cpp -I /usr/include/eigen3/ -lpthread
 
-ENV PORT=80
+ENV PORT=4242
 CMD /server/server

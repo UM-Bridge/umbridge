@@ -46,7 +46,7 @@ docker run -p 4242:4242 linusseelinger/model-poisson-mi:latest
 
 A model of the Tohoku tsunami based on the ExaHyPE PDE engine.
 ```
-docker run -p 4242:80 linusseelinger/model-exahype-tsunami:latest
+docker run -p 4242:4242 linusseelinger/model-exahype-tsunami:latest
 ```
 
 # UQ Benchmarks
