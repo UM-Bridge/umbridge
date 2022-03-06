@@ -2,22 +2,20 @@ import requests
 import json
 import jsonschema
 
-host = 'http://model:4242'
+def test_evaluate(model_url):
 
-def test_evaluate():
-
-    resp_info = requests.get(f'{host}/Info')
+    resp_info = requests.get(f'{model_url}/Info')
     assert resp_info.status_code == 200
     if not resp_info.json()["support"]["Evaluate"]:
       return
 
-    inputSizesJSON = requests.get(f'{host}/GetInputSizes').json()
+    inputSizesJSON = requests.get(f'{model_url}/GetInputSizes').json()
 
     inputParams = {"input": [], "config": {}}
     for i in range(0,len(inputSizesJSON["inputSizes"])):
       inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
 
-    resp = requests.post(f'{host}/Evaluate', headers={}, data=json.dumps(inputParams,indent=4))
+    resp = requests.post(f'{model_url}/Evaluate', headers={}, data=json.dumps(inputParams,indent=4))
 
     assert resp.status_code == 200
 
@@ -44,15 +42,15 @@ def test_evaluate():
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-def test_gradient():
+def test_gradient(model_url):
 
-    resp_info = requests.get(f'{host}/Info')
+    resp_info = requests.get(f'{model_url}/Info')
     assert resp_info.status_code == 200
     if not resp_info.json()["support"]["Gradient"]:
       return
 
-    inputSizesJSON = requests.get(f'{host}/GetInputSizes').json()
-    outputSizesJSON = requests.get(f'{host}/GetOutputSizes').json()
+    inputSizesJSON = requests.get(f'{model_url}/GetInputSizes').json()
+    outputSizesJSON = requests.get(f'{model_url}/GetOutputSizes').json()
 
     inputParams = {"input": [], "config": {}}
     for i in range(0,len(inputSizesJSON["inputSizes"])):
@@ -65,7 +63,7 @@ def test_gradient():
     for i in range(0,len(inputSizesJSON["inputSizes"])):
       inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
 
-    resp = requests.post(f'{host}/Gradient', headers={}, data=json.dumps(inputParams,indent=4))
+    resp = requests.post(f'{model_url}/Gradient', headers={}, data=json.dumps(inputParams,indent=4))
 
     assert resp.status_code == 200
 
@@ -88,14 +86,14 @@ def test_gradient():
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-def test_apply_jacobian():
+def test_apply_jacobian(model_url):
 
-    resp_info = requests.get(f'{host}/Info')
+    resp_info = requests.get(f'{model_url}/Info')
     assert resp_info.status_code == 200
     if not resp_info.json()["support"]["ApplyJacobian"]:
       return
 
-    inputSizesJSON = requests.get(f'{host}/GetInputSizes').json()
+    inputSizesJSON = requests.get(f'{model_url}/GetInputSizes').json()
 
     inputParams = {"input": [], "config": {}}
     for i in range(0,len(inputSizesJSON["inputSizes"])):
@@ -108,7 +106,7 @@ def test_apply_jacobian():
     for i in range(0,len(inputSizesJSON["inputSizes"])):
       inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
 
-    resp = requests.post(f'{host}/ApplyJacobian', headers={}, data=json.dumps(inputParams,indent=4))
+    resp = requests.post(f'{model_url}/ApplyJacobian', headers={}, data=json.dumps(inputParams,indent=4))
 
     assert resp.status_code == 200
 
@@ -131,15 +129,15 @@ def test_apply_jacobian():
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-def test_apply_hessian():
+def test_apply_hessian(model_url):
 
-    resp_info = requests.get(f'{host}/Info')
+    resp_info = requests.get(f'{model_url}/Info')
     assert resp_info.status_code == 200
     if not resp_info.json()["support"]["ApplyHessian"]:
       return
 
-    inputSizesJSON = requests.get(f'{host}/GetInputSizes').json()
-    outputSizesJSON = requests.get(f'{host}/GetOutputSizes').json()
+    inputSizesJSON = requests.get(f'{model_url}/GetInputSizes').json()
+    outputSizesJSON = requests.get(f'{model_url}/GetOutputSizes').json()
 
     inputParams = {"input": [], "config": {}}
     for i in range(0,len(inputSizesJSON["inputSizes"])):
@@ -154,7 +152,7 @@ def test_apply_hessian():
     for i in range(0,len(inputSizesJSON["inputSizes"])):
       inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
 
-    resp = requests.post(f'{host}/ApplyHessian', headers={}, data=json.dumps(inputParams,indent=4))
+    resp = requests.post(f'{model_url}/ApplyHessian', headers={}, data=json.dumps(inputParams,indent=4))
 
     assert resp.status_code == 200
 
@@ -177,9 +175,9 @@ def test_apply_hessian():
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-def test_input_sizes():
+def test_input_sizes(model_url):
 
-    resp = requests.get(f'{host}/GetInputSizes')
+    resp = requests.get(f'{model_url}/GetInputSizes')
 
     assert resp.status_code == 200
 
@@ -202,9 +200,9 @@ def test_input_sizes():
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-def test_output_sizes():
+def test_output_sizes(model_url):
 
-    resp = requests.get(f'{host}/GetOutputSizes')
+    resp = requests.get(f'{model_url}/GetOutputSizes')
 
     assert resp.status_code == 200
 
@@ -227,9 +225,9 @@ def test_output_sizes():
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-def test_info():
+def test_info(model_url):
 
-    resp = requests.get(f'{host}/Info')
+    resp = requests.get(f'{model_url}/Info')
 
     assert resp.status_code == 200
 
