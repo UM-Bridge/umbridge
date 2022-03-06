@@ -173,6 +173,14 @@ Apart from the constructor, HTTPModPiece behaves like any ModPiece in MUQ. For e
 
 Refer to the servers in this repository for working examples of the server integrations shown in the following.
 
+### Verifying correctness
+
+You can verify that your own model server fulfills the protocol definition by running the following test from the ```models``` directory and adjusting the URL to where your model is running.
+
+```
+pytest -v test_model_schema.py --model_url http://localhost:4242
+```
+
 ### Python server
 
 In order to provide a model server, again the httpmodel.py module can be used.
