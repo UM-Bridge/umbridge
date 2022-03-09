@@ -77,7 +77,7 @@ RUN cd /server && \
 
 ENV PORT=4242
 ENV RANKS=2
-RUN chown -R mpiuser /ExaHyPE-Tsunami
 RUN mkdir /output
+RUN chown -R mpiuser /ExaHyPE-Tsunami /output
 CMD /server/server
 #source /opt/intel/oneapi/setvars.sh &&
