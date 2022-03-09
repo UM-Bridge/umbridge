@@ -11,13 +11,11 @@
 #include <iomanip>
 #include <stdlib.h>
 
-int test_delay = 0;
-
 class ExampleModPiece : public ShallowModPiece {
 public:
 
-  ExampleModPiece()
-   : ShallowModPiece(Eigen::VectorXi::Ones(1)*2, Eigen::VectorXi::Ones(1)*4)
+  ExampleModPiece(int ranks)
+   : ShallowModPiece(Eigen::VectorXi::Ones(1)*2, Eigen::VectorXi::Ones(1)*4), ranks(ranks)
   {
     outputs.push_back(Eigen::VectorXd::Ones(4));
   }
@@ -57,11 +55,14 @@ public:
         system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE && sed -i 's/\"time\": 0.0,/\"time\": 10000.0,/g' SWE_asagi_limited_l2.exahype2");
     }
     if(level == 0) {
-      status = system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && ./ExaHyPE-SWE ../SWE_asagi_limited_l0.exahype2");
+      std::string cmd = "cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && mpirun -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l0.exahype2";
+      status = system(cmd.c_str());
     } else if(level == 1) {
-      status = system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && ./ExaHyPE-SWE ../SWE_asagi_limited_l1.exahype2");
+      std::string cmd = "cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && mpirun -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l1.exahype2";
+      status = system(cmd.c_str());
     } else if(level == 2) {
-      status = system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l2 && ./ExaHyPE-SWE ../SWE_asagi_limited_l2.exahype2");
+      std::string cmd = "cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l2 && mpirun -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l2.exahype2";
+      status = system(cmd.c_str());
     } else {
       std::cerr << "Unknown model requested by client!" << std::endl;
       exit(-1);
@@ -81,6 +82,8 @@ public:
   bool SupportsEvaluate() override {
     return true;
   }
+private:
+  int ranks;
 };
 
 int main(){
@@ -90,15 +93,16 @@ int main(){
     std::cerr << "Environment variable PORT not set!" << std::endl;
     exit(-1);
   }
-
-  char const* delay_cstr = std::getenv("TEST_DELAY");
-  if ( delay_cstr != NULL ) {
-    test_delay = atoi(delay_cstr);
-  }
-
-
   const int port = atoi(port_cstr);
-  ExampleModPiece modPiece;
+
+  char const* ranks_cstr =  std::getenv("RANKS");
+  if ( ranks_cstr == NULL ) {
+    std::cerr << "Environment variable RANKS not set!" << std::endl;
+    exit(-1);
+  }
+  const int ranks = atoi(ranks_cstr);
+
+  ExampleModPiece modPiece(ranks);
 
   serveModPiece(modPiece, "0.0.0.0", port);
 
