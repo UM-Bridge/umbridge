@@ -79,5 +79,6 @@ ENV PORT=4242
 ENV RANKS=2
 RUN mkdir /output
 RUN chown -R mpiuser /ExaHyPE-Tsunami /output
-CMD /server/server
+#RUN chmod 400 /home/mpiuser/.ssh/id_rsa
+#CMD /server/server
 #source /opt/intel/oneapi/setvars.sh &&
