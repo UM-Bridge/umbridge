@@ -70,6 +70,10 @@ RUN source /opt/intel/oneapi/setvars.sh && cd /ExaHyPE-Tsunami/ApplicationExampl
     cd ../SWE_asagi_limited_l1 && make -j24  && mkdir Probes && mkdir vtk-output && \
     cd ../SWE_asagi_limited_l2 && make -j24 && mkdir Probes && mkdir vtk-output
 
+RUN apt-get -y remove intel-oneapi-mpi-devel intel-oneapi-compiler-dpcpp-cpp libtbb-dev && \
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
+
 # Default verbosity level... need cleaner solution
 RUN cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && cp exahype_debug.log-filter exahype.log-filter && \
     cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && cp exahype_debug.log-filter exahype.log-filter && \
