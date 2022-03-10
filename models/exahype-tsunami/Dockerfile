@@ -8,7 +8,7 @@ RUN apt-get update && \
     apt-get install -y python3 git build-essential cmake libnetcdf-dev libnuma-dev doxygen libyaml-cpp-dev libeigen3-dev gfortran libtbb-dev \
         libstdc++-8-dev binutils procps clang \
         intel-oneapi-compiler-dpcpp-cpp \
-        intel-oneapi-mpi-devel curl
+        intel-oneapi-mpi-devel curl intel-hpckit
     #libtbb-dev
     # && \
     #apt-get remove clang
@@ -19,7 +19,7 @@ RUN apt-get update && \
 
 RUN source /opt/intel/oneapi/setvars.sh
 
-ENV I_MPI_CC=gcc I_MPI_CXX=g++
+#ENV I_MPI_CC=gcc I_MPI_CXX=g++
 
 RUN cd / && mkdir dependencies && \
     cd /dependencies/ && git clone https://github.com/uphoffc/ImpalaJIT.git && \
@@ -51,7 +51,7 @@ WORKDIR /ExaHyPE-Tsunami
 ENV COMPILER_LFLAGS="  -L/dependencies/easi/build/ -leasi -L/dependencies/ImpalaJIT/build/ -limpalajit -L/usr/lib/x86_64-linux-gnu/ -lyaml-cpp  -L/dependencies/ASAGI/ -lasagi -lpthread"
 ENV COMPILER_CFLAGS=" -I/dependencies/easi/include/"
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/dependencies/easi/build"
-ENV COMPILER=GNU
+ENV COMPILER=Intel
 ENV SHAREDMEM=None
 ENV TBB_INC=/usr/include/tbb
 #/opt/intel/oneapi/tbb/latest/include/tbb/
