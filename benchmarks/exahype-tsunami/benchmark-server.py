@@ -1,9 +1,9 @@
-import httpmodel
+import umbridge
 import scipy.stats
 
-class Benchmark(httpmodel.Model):
+class Benchmark(umbridge.Model):
     def __init__(self, model_url):
-        self.model = httpmodel.HTTPModel(model_url)
+        self.model = umbridge.HTTPModel(model_url)
 
     def get_input_sizes(self):
         return self.model.get_input_sizes()
@@ -44,4 +44,4 @@ class Benchmark(httpmodel.Model):
 
 benckmark = Benchmark("http://localhost:4242")
 
-httpmodel.serve_model(benckmark, 4243)
+umbridge.serve_model(benckmark, 4243)

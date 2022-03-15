@@ -1,6 +1,6 @@
-# HTTPModel
+# UM-Bridge
 
-HTTPModel provides a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods. The main benefits are:
+UM-Bridge provides a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods. The main benefits are:
 
 * Faster development of advanced software stacks combining the state-of-the art of modelling with statistics / optimization due to a unified and simple interface
 * Easier collaboration due to portable models and separation of concerns between fields (specifically model and statistics experts)
@@ -81,12 +81,12 @@ Refer to the clients in this repository for working examples of the client integ
 
 ### Python client
 
-Using the httpmodel.py module, connecting to a server is as easy as
+Using the umbridge.py module, connecting to a server is as easy as
 
 ```
-import httpmodel
+import umbridge
 
-model = httpmodel.HTTPModel("http://localhost:4242")
+model = umbridge.HTTPModel("http://localhost:4242")
 ```
 
 Now that we have connected to a model, we can query its input and output dimensions.
@@ -112,13 +112,12 @@ Each time, the output of the model evaluation is an array of arrays containing t
 
 ### C++ client
 
-The c++ client abstraction is part of the HTTPComm.h header-only library. Note that it has some header-only dependencies by itself in addition to the Eigen library.
+The c++ client abstraction is part of the umbridge.h header-only library. Note that it has some header-only dependencies by itself in addition to the Eigen library.
 
 Invoking it is mostly analogous to the above. Note that HTTP headers may optionally be used, for example to include access tokens.
 
 ```
-httplib::Headers headers;
-ShallowModPieceClient client("http://localhost:4242", headers);
+umbridge::HTTPModel client("http://localhost:4242");
 ```
 
 As before, we can query input and output dimensions.
@@ -183,12 +182,12 @@ pytest -v test_model_schema.py --model_url http://localhost:4242
 
 ### Python server
 
-In order to provide a model server, again the httpmodel.py module can be used.
+In order to provide a model server, again the umbridge.py module can be used.
 
 First the model needs to be defined by specifying its input and output sizes as well as the actual model evaluation. The latter is implemented in the ```__call__``` method.
 
 ```
-class TestModel(httpmodel.Model):
+class TestModel(umbridge.Model):
 
     def get_input_sizes(self):
         return [1]
@@ -209,7 +208,7 @@ An instance of this model may then be provided as a server in the following way.
 ```
 testmodel = TestModel()
 
-httpmodel.serve_model(testmodel, 4242)
+umbridge.serve_model(testmodel, 4242)
 ```
 
 This server can be connected to by any client at port 4242.
@@ -221,11 +220,11 @@ The c++ server abstraction is part of the HTTPComm.h header-only library. Note t
 In order to provide a model via HTTP, it first needs to be defined by inheriting from ShallowModPiece. Input and output sizes are defined in the ShallowModPiece constructor, by means of vectors. Each of these size vectors define how many input/output vectors there will be, and the size vector entries define the dimension of each input/output vector. The actual model evaluation is then defined in the Evaluate method.
 
 ```
-class ExampleModPiece : public ShallowModPiece {
+class ExampleModel : public umbridge::Model {
 public:
 
-  ExampleModPiece()
-   : ShallowModPiece(Eigen::VectorXi::Ones(1)*1, Eigen::VectorXi::Ones(1))
+  ExampleModel()
+   : umbridge::Model(Eigen::VectorXi::Ones(1)*1, Eigen::VectorXi::Ones(1))
   {
     outputs.push_back(Eigen::VectorXd::Ones(1));
   }
@@ -243,9 +242,9 @@ public:
 Hosting the model is then as simple as:
 
 ```
-ExampleModPiece modPiece;
+ExampleModel model;
 
-serveModPiece(modPiece, "0.0.0.0", 4242);
+umbridge::serveModel(model, "0.0.0.0", 4242);
 ```
 
 ## Benchmarks

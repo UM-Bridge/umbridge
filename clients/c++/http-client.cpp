@@ -1,7 +1,7 @@
 // Needed for HTTPS
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 
-#include "HTTPComm.h"
+#include "umbridge.h"
 
 int main(int argc, char** argv) {
   if (argc <= 1) {
@@ -11,8 +11,7 @@ int main(int argc, char** argv) {
   std::string host = argv[1];
   std::cout << "Connecting to host " << host << std::endl;
 
-  httplib::Headers headers;
-  ShallowModPieceClient client(host, headers);
+  umbridge::HTTPModel client(host);
 
   // Print out input and output sizes
   std::cout << client.inputSizes << std::endl;

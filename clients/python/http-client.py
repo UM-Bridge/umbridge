@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-import httpmodel
+import umbridge
 
 parser = argparse.ArgumentParser(description='Minimal HTTP model demo.')
 parser.add_argument('url', metavar='url', type=str,
@@ -9,7 +9,7 @@ args = parser.parse_args()
 print(f"Connecting to host URL {args.url}")
 
 # Set up a model by connecting to URL
-model = httpmodel.HTTPModel(args.url)
+model = umbridge.HTTPModel(args.url)
 
 print(model.get_input_sizes())
 print(model.get_output_sizes())

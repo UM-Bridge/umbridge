@@ -1,7 +1,7 @@
-import httpmodel
+import umbridge
 import scipy.stats
 
-class TestModel(httpmodel.Model):
+class TestModel(umbridge.Model):
 
     def get_input_sizes(self):
         return [1]
@@ -24,4 +24,4 @@ class TestModel(httpmodel.Model):
 
 testmodel = TestModel()
 
-httpmodel.serve_model(testmodel, 4242)
+umbridge.serve_model(testmodel, 4242)

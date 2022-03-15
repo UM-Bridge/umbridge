@@ -13,11 +13,11 @@
 
 int test_delay = 0;
 
-class ExampleModPiece : public ShallowModPiece {
+class ExampleModPiece : public umbridge::Model {
 public:
 
   ExampleModPiece()
-   : ShallowModPiece(Eigen::VectorXi::Ones(1)*2, Eigen::VectorXi::Ones(1)*4)
+   : umbridge::Model(Eigen::VectorXi::Ones(1)*2, Eigen::VectorXi::Ones(1)*4)
   {
     outputs.push_back(Eigen::VectorXd::Ones(4));
   }
@@ -100,7 +100,7 @@ int main(){
   const int port = atoi(port_cstr);
   ExampleModPiece modPiece;
 
-  serveModPiece(modPiece, "0.0.0.0", port);
+  umbridge::serveModPiece(modPiece, "0.0.0.0", port);
 
   return 0;
 }

@@ -1,10 +1,9 @@
-import httpmodel
+import umbridge
 import scipy.stats
-#import math
 
-class Benchmark(httpmodel.Model):
+class Benchmark(umbridge.Model):
     def __init__(self, model_url):
-        self.model = httpmodel.HTTPModel(model_url)
+        self.model = umbridge.HTTPModel(model_url)
         self.artificial_truth = [-0.5, 1.5, 1.0, -1.0]
         self.artificial_data = self.model([self.artificial_truth])[0]
 
@@ -26,4 +25,4 @@ class Benchmark(httpmodel.Model):
 
 benckmark = Benchmark("http://localhost:4242")
 
-httpmodel.serve_model(benckmark, 4243)
+umbridge.serve_model(benckmark, 4243)

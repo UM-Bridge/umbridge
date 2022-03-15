@@ -7,18 +7,18 @@
 // Needed for HTTPS
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 
-#include "HTTPComm.h"
+#include "umbridge.h"
 
 #include <chrono>
 #include <thread>
 
 int test_delay = 0;
 
-class ExampleModPiece : public ShallowModPiece {
+class ExampleModel : public umbridge::Model {
 public:
 
   ExampleModPiece()
-   : ShallowModPiece(Eigen::VectorXi::Ones(1)*1, Eigen::VectorXi::Ones(1))
+   : umbridge::Model(Eigen::VectorXi::Ones(1)*1, Eigen::VectorXi::Ones(1))
   {
     outputs.push_back(Eigen::VectorXd::Ones(1));
   }
@@ -51,9 +51,9 @@ int main(){
 
 
 
-  ExampleModPiece modPiece;
+  ExampleModel modPiece;
 
-  serveModPiece(modPiece, "0.0.0.0", port);
+  umbridge::serveModel(modPiece, "0.0.0.0", port);
 
   return 0;
 }
