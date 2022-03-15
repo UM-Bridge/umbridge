@@ -17,7 +17,7 @@ int test_delay = 0;
 class ExampleModel : public umbridge::Model {
 public:
 
-  ExampleModPiece()
+  ExampleModel()
    : umbridge::Model(Eigen::VectorXi::Ones(1)*1, Eigen::VectorXi::Ones(1))
   {
     outputs.push_back(Eigen::VectorXd::Ones(1));
