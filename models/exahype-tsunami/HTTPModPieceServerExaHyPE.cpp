@@ -96,9 +96,9 @@ int main(){
 
 
   const int port = atoi(port_cstr);
-  ExampleModel modPiece;
+  ExampleModel model;
 
-  umbridge::serveModPiece(modPiece, "0.0.0.0", port);
+  umbridge::serveModel(model, "0.0.0.0", port);
 
   return 0;
 }
