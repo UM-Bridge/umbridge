@@ -1,5 +1,5 @@
-#ifndef HTTPCOMM
-#define HTTPCOMM
+#ifndef UMBRIDGE
+#define UMBRIDGE
 
 // Ensure that we only have 1 handler running at once!
 // More might cause the model itself to run concurrently!
