@@ -2,9 +2,7 @@
 
 #include <string>
 
-//#include <resolv.h> // Header included in httplib.h, causing potential issues with Eigen!
-
-#include "HTTPComm.h"
+#include "umbridge.h"
 
 #include <chrono>
 #include <thread>
@@ -13,10 +11,10 @@
 
 int test_delay = 0;
 
-class ExampleModPiece : public umbridge::Model {
+class ExampleModel : public umbridge::Model {
 public:
 
-  ExampleModPiece()
+  ExampleModel()
    : umbridge::Model(Eigen::VectorXi::Ones(1)*2, Eigen::VectorXi::Ones(1)*4)
   {
     outputs.push_back(Eigen::VectorXd::Ones(4));
@@ -98,7 +96,7 @@ int main(){
 
 
   const int port = atoi(port_cstr);
-  ExampleModPiece modPiece;
+  ExampleModel modPiece;
 
   umbridge::serveModPiece(modPiece, "0.0.0.0", port);
 
