@@ -8,7 +8,7 @@ RUN apt-get update && \
     apt-get install -y python3 git build-essential cmake libnetcdf-dev libnuma-dev doxygen libyaml-cpp-dev libeigen3-dev gfortran libtbb-dev \
         libstdc++-8-dev binutils procps clang \
         intel-oneapi-compiler-dpcpp-cpp \
-        intel-oneapi-mpi-devel curl
+        intel-oneapi-mpi-devel curl intel-hpckit
     #libtbb-dev
     # && \
     #apt-get remove clang
@@ -34,7 +34,7 @@ ENV EXAHYPE_FC=/opt/intel/oneapi/mpi/latest/bin/mpiicpc
 
 RUN source /opt/intel/oneapi/setvars.sh && cd /ExaHyPE-Tsunami/ApplicationExamples/Euler/ && \
     ../../Toolkit/toolkit.sh Euler_ADERDG.exahype2 && \
-    && make -j24
+    make -j24
 
 # Build model server
 COPY . /server
