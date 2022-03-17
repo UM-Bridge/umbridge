@@ -51,7 +51,7 @@ namespace umbridge {
 
     virtual void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                           json config = json()) {
-      throw std::runtime_error("Gradient was called, but not implemented by model!");
+      throw std::runtime_error("Evaluate was called, but not implemented by model!");
     }
 
     virtual void Gradient(unsigned int outWrt,
