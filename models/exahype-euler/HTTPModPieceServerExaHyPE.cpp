@@ -32,7 +32,9 @@ public:
     inputsfile.close();
 
     int status;
-    std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/Euler/ && source /opt/intel/oneapi/setvars.sh && mpirun -n " + std::to_string(ranks) + " ./ExaHyPE-Euler Euler_ADERDG.exahype2'";
+    //std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/Euler/ && source /opt/intel/oneapi/setvars.sh && mpirun -n " + std::to_string(ranks) + " ./ExaHyPE-Euler Euler_ADERDG.exahype2'";
+    std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/Euler/ && mpirun -n " + std::to_string(ranks) + " ./ExaHyPE-Euler Euler_ADERDG.exahype2'";
+    std::cout << "Executing: " << cmd << std::endl;
     status = system(cmd.c_str());
     std::cout << "Exahype exit status " << status << std::endl;
 

@@ -1,4 +1,4 @@
-FROM mpioperator/intel
+FROM mpioperator/intel as builder
 
 SHELL ["/bin/bash", "-c"]
 
@@ -20,8 +20,10 @@ RUN apt-get update && \
 RUN source /opt/intel/oneapi/setvars.sh
 
 RUN cd / && git clone  https://github.com/annereinarz/ExaHyPE-Tsunami.git
+#COPY ExaHyPE-Tsunami /ExaHyPE-Tsunami
 WORKDIR /ExaHyPE-Tsunami
 
+#ENV COMPILER_LFLAGS="  -L/usr/lib/x86_64-linux-gnu/ -lyaml-cpp -lpthread"
 ENV COMPILER=Intel
 ENV SHAREDMEM=None
 ENV TBB_INC=/usr/include/tbb
@@ -41,10 +43,17 @@ COPY . /server
 RUN cd /server && \
     g++ -o server HTTPModPieceServerExaHyPE.cpp -I /usr/include/eigen3/ -lpthread
 
+FROM mpioperator/intel
+
+RUN apt-get update && \
+    apt-get install -y python3
+
+COPY --from=builder /server/server /server/server
+COPY --from=builder /ExaHyPE-Tsunami /ExaHyPE-Tsunami
+
 ENV PORT=4242
 ENV RANKS=2
 RUN mkdir /output
 RUN chown -R mpiuser /ExaHyPE-Tsunami /output
-#RUN chmod 400 /home/mpiuser/.ssh/id_rsa
-#CMD /server/server
-#source /opt/intel/oneapi/setvars.sh &&
+
+CMD /server/server
