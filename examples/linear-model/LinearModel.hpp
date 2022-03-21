@@ -3,8 +3,13 @@
 
 #include "umbridge/Model.hpp"
 
-class LinearModel {
+class LinearModel : public umbridge::Model {
 public:
+
+  inline LinearModel() {}
+
+  virtual ~LinearModel() = default;
+  
 private:
 };
 

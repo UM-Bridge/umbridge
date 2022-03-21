@@ -9,9 +9,8 @@ RUN apt update && \
     git clone https://github.com/UM-Bridge/umbridge.git && \
     cd umbridge && \
     git fetch && \
-    git branch -v -a && \
     git switch andy/joss && \
-    git branch && \
+    cp -r include/* /usr/include/ && \
     cd /server && \
     g++ minimal-server.cpp -pthread -I/usr/include/eigen3/ -lssl -lcrypto -o minimal-server
 

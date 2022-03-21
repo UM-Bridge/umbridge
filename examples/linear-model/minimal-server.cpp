@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 
+#include "umbridge/ServerModel.hpp"
+
 #include "LinearModel.hpp"
 
 int main() {
@@ -14,7 +16,6 @@ int main() {
     port = atoi(port_cstr);
   }
 
-  std::cout << "PORT: " << port << std::endl;
-
-  std::cout << "hello world!" << std::endl;
+  // create the linear model---this is the model that will run when we query the server
+  LinearModel model;
 }

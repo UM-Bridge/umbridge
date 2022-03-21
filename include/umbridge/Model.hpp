@@ -6,7 +6,7 @@ namespace umbridge {
 /// A model
 class Model {
 public:
-  inline Model() {}
+  Model();
 
   virtual ~Model() = default;
 private:
