@@ -67,3 +67,33 @@ if( UMBRIDGE_BUILD_FROM_PIP )
 else()
     add_library(${UMBRIDGE_LIBNAME} SHARED ${UMBRIDGE_SOURCE})
 endif()
+
+
+###############################################
+# Install step (if not a python install)
+###############################################
+
+if( NOT UMBRIDGE_BUILD_FROM_PIP )
+    # install all the UMBridge headers
+    install(DIRECTORY include/
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
+	      FILES_MATCHING PATTERN "*.hpp")
+    install(DIRECTORY include/
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
+	      FILES_MATCHING PATTERN "*.h")
+
+    # install the library
+    install(TARGETS ${UMBRIDGE_LIBNAME}
+        EXPORT ${CMAKE_PROJECT_NAME}Depends
+        LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+
+    # Install the config file
+    configure_file(cmake/UMBridgeConfig.cmake.in "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${CMAKE_PROJECT_NAME}Config.cmake" @ONLY)
+    install(FILES "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${CMAKE_PROJECT_NAME}Config.cmake"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}"
+	      COMPONENT dev)
+
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${INSTALL_LIB_DIR})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${INSTALL_LIB_DIR})
+endif()
