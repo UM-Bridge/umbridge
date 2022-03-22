@@ -1,9 +1,11 @@
 #include <iostream>
 #include <string>
 
-#include "umbridge/ServerModel.hpp"
+#include <umbridge/ServerModel.hpp>
 
 #include "LinearModel.hpp"
+
+using namespace umbridge;
 
 int main() {
   // get the the port number
@@ -18,4 +20,6 @@ int main() {
 
   // create the linear model---this is the model that will run when we query the server
   LinearModel model;
+
+  ServerModel server("0.0.0.0", port);
 }

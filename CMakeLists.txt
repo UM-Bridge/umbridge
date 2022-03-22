@@ -40,6 +40,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # the source code (no pybind11)
 set(UMBRIDGE_SOURCE
   src/Model.cpp
+  src/ServerModel.cpp
 )
 
 # if we are building for python, include the pybind11

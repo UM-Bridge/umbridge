@@ -8,11 +8,11 @@
 namespace umbridge {
 
 /// A server model
-class ServerModel : Model {
+class ServerModel {
 public:
 
   /// Construct
-  inline ServerModel() {}
+  ServerModel(std::string host, int port);
 
   virtual ~ServerModel() = default;
 private:
