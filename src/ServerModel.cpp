@@ -1,25 +1,46 @@
 #include "umbridge/ServerModel.hpp"
 
-#include "umbridge/external/json.hpp"
-
 using namespace nlohmann;
 using namespace umbridge;
 
-ServerModel::ServerModel(std::string host, int port) {
-  std::cout << "HELLO FROM SERVER MODEL!" << std::endl;
-  svr.Post("/Evaluate", [&](const httplib::Request &req, httplib::Response &res) {
-    if( true ) {
-      json response_body;
-      response_body["error"]["type"] = "FeatureUnsupported";
-      response_body["error"]["message"] = "Evaluate requested by client, but not supported by model!";
-      res.set_content(response_body.dump(), "text/plain");
-      std::cout << "HIRWHGRIGHRI" << std::endl;
-      svr.stop();
-      return;
-    }
-  });
+ServerModel::ServerModel(std::shared_ptr<Model> const& model) : Model(model->inputSizes, model->outputSizes), model(model) {
+  assert(model);
 
-  std::cout << "Listening on port " << port << "..." << std::endl;
-  svr.listen(host.c_str(), port);
-  std::cout << "Quit" << std::endl;
+  // tell the server how to send the input and output sizes
+  GetInOutSizes();
+
+  // tell the server how to evaluate the model
+  PostEvaluate();
+}
+
+void ServerModel::Listen(std::string const& host, int port) {
+  server.listen(host.c_str(), port);
+}
+
+void ServerModel::PostEvaluate() {
+  assert(model);
+
+  server.Post("/Evaluate", [&](httplib::Request const& req, httplib::Response& res) {
+    assert(model);
+
+    json request_body = json::parse(req.body);
+
+    // get the inputs
+    Vectors inputs(model->inputSizes.size());
+    for( std::size_t i=0; i<model->inputSizes.size(); ++i ) {
+      inputs[i] = request_body["input"][i].get<std::vector<double> >();
+    }
+
+    Vectors outputs;
+    Evaluate(inputs, outputs);
+    assert(outputs.size()==outputSizes.size());
+
+    json response_body;
+    for( std::size_t i=0; i<outputSizes.size(); ++i ) {
+      response_body["output"][i] = outputs[i];
+    }
+    res.set_content(response_body.dump(), "text/plain");
+
+    return;
+  });
 }

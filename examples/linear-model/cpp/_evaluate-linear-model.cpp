@@ -3,19 +3,24 @@
 #include "umbridge/external/json.hpp"
 #include "umbridge/external/httplib.h"
 
+#include "umbridge/ClientModel.hpp"
+
 using namespace nlohmann;
-//using namespace umbridge;
+using namespace umbridge;
 
 int main() {
-  httplib::Headers headers;
-  json request_body;
-  httplib::Client cli("http://localhost:4242");
-  if( auto res = cli.Post("/Evaluate", headers, request_body.dump(), "text/plain") ) {
-    std::cout << "YUP" << std::endl;
-    std::cout << "Response status " << res->status << std::endl;
-    std::cout << "Response after " << res->body << std::endl;
-  } else {
-    throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
-    std::cout << "NOPE" << std::endl;
-  }
+  ClientModel model("http://localhost:4242");
+
+  Vectors inputs(model.inputSizes.size());
+  inputs[0].resize(model.inputSizes[0]);
+  std::generate(inputs[0].begin(), inputs[0].end(), []() { return (double)rand()/RAND_MAX; });
+
+  Vectors outputs;
+  model.Evaluate(inputs, outputs);
+  assert(outputs.size()==1);
+  assert(outputs[0].size()==model.outputSizes[0]);
+
+  std::cout << "output: ";
+  for( std::size_t i=0; i<outputs[0].size(); ++i ) { std::cout << outputs[0][i] << " "; }
+  std::cout << std::endl;
 }

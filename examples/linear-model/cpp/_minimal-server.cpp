@@ -18,8 +18,19 @@ int main() {
     port = atoi(port_cstr);
   }
 
-  // create the linear model---this is the model that will run when we query the server
-  LinearModel model;
+  const std::size_t rows = 10, cols = 15;
+  std::vector<std::vector<double> > A(rows);
+  for( auto& it : A ) {
+    it.resize(cols);
+    std::generate(it.begin(), it.end(), []() { return (double)rand()/RAND_MAX; });
+  }
 
-  ServerModel server("0.0.0.0", port);
+  std::vector<double> b(rows);
+  std::generate(b.begin(), b.end(), []() { return (double)rand()/RAND_MAX; });
+
+  // create the linear model---this is the model that will run when we query the server
+  auto model = std::make_shared<LinearModel>(A, b);
+
+  ServerModel server(model);
+  server.Listen("0.0.0.0", port);
 }
