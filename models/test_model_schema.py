@@ -1,6 +1,19 @@
 import requests
 import json
 import jsonschema
+import time
+
+# We assume that pytest runs this first, so that we may wait for the server to spin up
+def test_connection(model_url):
+    start_time = time.time()
+    while True:
+        try:
+            requests.head(f"{model_url}")
+            break
+        except requests.exceptions.ConnectionError:
+            if time.time() - start_time > 300:
+                raise TimeoutError('Could not reach model server!')
+            time.sleep(1)
 
 def test_evaluate(model_url):
 
