@@ -1,14 +1,12 @@
-FROM mpioperator/intel
-
-SHELL ["/bin/bash", "-c"]
+FROM mpioperator/openmpi-builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y python3 git build-essential cmake libnetcdf-dev libnuma-dev doxygen libyaml-cpp-dev libeigen3-dev gfortran libtbb-dev \
-        libstdc++-8-dev binutils procps clang \
-        intel-oneapi-compiler-dpcpp-cpp \
-        intel-oneapi-mpi-devel curl intel-hpckit
+    apt-get install -y python3 git cmake libnetcdf-dev libnuma-dev doxygen libyaml-cpp-dev libeigen3-dev gfortran libtbb-dev libstdc++-8-dev
+#        intel-oneapi-compiler-dpcpp-cpp \
+#        intel-oneapi-mpi-devel curl intel-hpckit
+#        libstdc++-8-dev binutils procps clang \
     #libtbb-dev
     # && \
     #apt-get remove clang
@@ -17,7 +15,7 @@ RUN apt-get update && \
     #apt-get install -y openmpi-bin libopenmpi-dev
  # mpich
 
-RUN source /opt/intel/oneapi/setvars.sh
+#RUN source /opt/intel/oneapi/setvars.sh
 
 #ENV I_MPI_CC=gcc I_MPI_CXX=g++
 
@@ -29,50 +27,48 @@ RUN cd / && mkdir dependencies && \
 
 ENV PKG_CONFIG_PATH="/dependencies/ImpalaJIT/build/:/usr/lib/x86_64-linux-gnu/pkgconfig"
 
-RUN source /opt/intel/oneapi/setvars.sh && cd /dependencies && git clone --recursive https://github.com/TUM-I5/ASAGI.git && \
+RUN cd /dependencies && git clone --recursive https://github.com/TUM-I5/ASAGI.git && \
     cd ASAGI/ &&  git checkout 601886131ab3cda7e75e19d10964198093674048 && \
     mkdir build && cd build &&\
-    cmake -DMPIEXEC_EXECUTABLE=/opt/intel/oneapi/mpi/latest/bin/mpiexec .. && make -j24 && make install
+    cmake -DMPIEXEC_EXECUTABLE=mpiexec .. && make -j24 && make install
+    #cmake -DMPIEXEC_EXECUTABLE=/opt/intel/oneapi/mpi/latest/bin/mpiexec .. && make -j24 && make install
+
     #cmake -DMPI_C_COMPILER=/opt/intel/oneapi/mpi/latest/bin/mpiicc -DMPI_CXX_COMPILER=/opt/intel/oneapi/mpi/latest/bin/mpiicpc .. && make -j24 && make install
 #-DMPI_C_COMPILER=/opt/intel/oneapi/mpi/latest/bin/mpiicpc -DMPI_CXX_COMPILER=/opt/intel/oneapi/mpi/latest/bin/mpiicpc
 ENV COMPILER_LFLAGS=" -L/dependencies/ImpalaJIT/build/ -limpalajit -L/usr/lib/x86_64-linux-gnu/ -lyaml-cpp  -L/dependencies/ASAGI/ -lasagi -lpthread"
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/dependencies/ASAGI/build:/dependencies/ImpalaJIT/build"
 
-RUN source /opt/intel/oneapi/setvars.sh && cd /dependencies/ && git clone https://github.com/SeisSol/easi.git && \
+RUN cd /dependencies/ && git clone https://github.com/SeisSol/easi.git && \
     cd easi && git checkout 18382bf60204c67782057fc371c1e699c9bb31b0 && \
     sed -i "s|find_package (YAMLCPP REQUIRED yaml-cpp)|pkg_check_modules (YAMLCPP REQUIRED yaml-cpp) |g" CMakeLists.txt &&\
     sed -i "s|find_package (OpenMP)| |g" CMakeLists.txt && \
-    mkdir build && cd build && cmake .. && make -j24
+    mkdir build && cd build && CXX=mpicxx CC=mpicc cmake .. && make -j24
 #CC=/opt/intel/oneapi/mpi/latest/bin/mpiicc CXX=/opt/intel/oneapi/mpi/latest/bin/mpiicpc
 
 RUN cd / && git clone  https://github.com/annereinarz/ExaHyPE-Tsunami.git
 WORKDIR /ExaHyPE-Tsunami
 
-ENV COMPILER_LFLAGS="  -L/dependencies/easi/build/ -leasi -L/dependencies/ImpalaJIT/build/ -limpalajit -L/usr/lib/x86_64-linux-gnu/ -lyaml-cpp  -L/dependencies/ASAGI/ -lasagi -lpthread"
+ENV COMPILER_LFLAGS="-DMPI2 -lmpi_cxx -L/dependencies/easi/build/ -leasi -L/dependencies/ImpalaJIT/build/ -limpalajit -L/usr/lib/x86_64-linux-gnu/ -lyaml-cpp  -L/dependencies/ASAGI/ -lasagi -lpthread"
 ENV COMPILER_CFLAGS=" -I/dependencies/easi/include/"
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/dependencies/easi/build"
-ENV COMPILER=Intel
+ENV COMPILER=GNU
 ENV SHAREDMEM=None
 ENV TBB_INC=/usr/include/tbb
 #/opt/intel/oneapi/tbb/latest/include/tbb/
 ENV TBB_SHLIB=/usr/lib/x86_64-linux-gnu/libtbb.so
 #/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8/libtbb.so
-ENV EXAHYPE_CC=/opt/intel/oneapi/mpi/latest/bin/mpiicc
-ENV EXAHYPE_FC=/opt/intel/oneapi/mpi/latest/bin/mpiicpc
+ENV EXAHYPE_CC=mpicc
+ENV EXAHYPE_FC=mpicc++
 ENV PROJECT_CFLAGS="-DUSE_ASAGI"
 # -DMPI2"
 
-RUN source /opt/intel/oneapi/setvars.sh && cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/ && \
+RUN cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/ && \
     ../../Toolkit/toolkit.sh SWE_asagi_limited_l0.exahype2 && \
     ../../Toolkit/toolkit.sh SWE_asagi_limited_l1.exahype2 && \
     ../../Toolkit/toolkit.sh SWE_asagi_limited_l2.exahype2 && \
     cd SWE_asagi_limited_l0 && make -j24 && mkdir Probes && mkdir vtk-output  && \
     cd ../SWE_asagi_limited_l1 && make -j24  && mkdir Probes && mkdir vtk-output && \
     cd ../SWE_asagi_limited_l2 && make -j24 && mkdir Probes && mkdir vtk-output
-
-RUN apt-get -y remove intel-oneapi-mpi-devel intel-oneapi-compiler-dpcpp-cpp libtbb-dev && \
-    apt-get -y autoremove && \
-    rm -rf /var/lib/apt/lists/*
 
 # Default verbosity level... need cleaner solution
 RUN cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && cp exahype_debug.log-filter exahype.log-filter && \
@@ -87,7 +83,4 @@ RUN cd /server && \
 ENV PORT=4242
 ENV RANKS=2
 RUN mkdir /output
-RUN chown -R mpiuser /ExaHyPE-Tsunami /output
-#RUN chmod 400 /home/mpiuser/.ssh/id_rsa
-#CMD /server/server
-#source /opt/intel/oneapi/setvars.sh &&
+CMD /server/server

@@ -56,13 +56,13 @@ public:
         system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE && sed -i 's/\"time\": 0.0,/\"time\": 10000.0,/g' SWE_asagi_limited_l2.exahype2");
     }
     if(level == 0) {
-      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && source /opt/intel/oneapi/setvars.sh && mpirun -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l0.exahype2'";
+      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && mpirun --allow-run-as-root -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l0.exahype2'";
       status = system(cmd.c_str());
     } else if(level == 1) {
-      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && source /opt/intel/oneapi/setvars.sh && mpirun -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l1.exahype2'";
+      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && mpirun --allow-run-as-root -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l1.exahype2'";
       status = system(cmd.c_str());
     } else if(level == 2) {
-      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l2 && source /opt/intel/oneapi/setvars.sh && mpirun -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l2.exahype2'";
+      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l2 && mpirun --allow-run-as-root -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l2.exahype2'";
       status = system(cmd.c_str());
     } else {
       std::cerr << "Unknown model requested by client!" << std::endl;
