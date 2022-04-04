@@ -1,14 +1,13 @@
 apiVersion: kubeflow.org/v2beta1
 kind: MPIJob
 metadata:
-  name: pi
+  generateName: pi
 spec:
   slotsPerWorker: 1
   runPolicy:
     cleanPodPolicy: Running
-      #    ttlSecondsAfterFinished: 60
   sshAuthMountPath: /home/mpiuser/.ssh
-    #  mpiImplementation: Intel 
+    #  mpiImplementation: Intel
   mpiReplicaSpecs:
     Launcher:
       replicas: 1
@@ -23,8 +22,8 @@ spec:
             - /server/server
             resources:
               limits:
-                cpu: 1
-                memory: 1Gi
+                cpu: .1
+                memory: 0.5Gi
     Worker:
       replicas: 2
       template:
@@ -46,5 +45,5 @@ spec:
               initialDelaySeconds: 2
             resources:
               limits:
-                cpu: 1
-                memory: 1Gi
+                cpu: .1
+                memory: 0.5Gi
