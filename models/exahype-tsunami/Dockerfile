@@ -54,3 +54,26 @@ ENV EXAHYPE_CC=mpicc
 ENV EXAHYPE_FC=mpicc++
 ENV PROJECT_CFLAGS="-DUSE_ASAGI"
 
+RUN cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/ && \
+    ../../Toolkit/toolkit.sh SWE_asagi_limited_l0.exahype2 && \
+    ../../Toolkit/toolkit.sh SWE_asagi_limited_l1.exahype2 && \
+    ../../Toolkit/toolkit.sh SWE_asagi_limited_l2.exahype2 && \
+    cd SWE_asagi_limited_l0 &&\
+    make -j4 && mkdir Probes && mkdir vtk-output  &&\
+    cd ../SWE_asagi_limited_l1 && make -j4  && mkdir Probes && mkdir vtk-output && \
+    cd ../SWE_asagi_limited_l2 && make -j4 && mkdir Probes && mkdir vtk-output
+
+# Default verbosity level... need cleaner solution
+RUN cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && cp exahype_debug.log-filter exahype.log-filter && \
+    cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && cp exahype_debug.log-filter exahype.log-filter && \
+    cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l2 && cp exahype_debug.log-filter exahype.log-filter
+
+# Build model server
+COPY . /server
+RUN cd /server && \
+    g++ -o server HTTPModPieceServerExaHyPE.cpp -I /usr/include/eigen3/ -lpthread
+
+ENV PORT=4242
+ENV RANKS=2
+RUN mkdir /output
+CMD /server/server
