@@ -238,6 +238,10 @@ def test_output_sizes(model_url):
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
+def test_protocol_version(model_url):
+    respJSON = requests.get(f'{model_url}/Info').json()
+    assert respJSON["protocolVersion"] == 0.9
+
 def test_info(model_url):
 
     resp = requests.get(f'{model_url}/Info')
