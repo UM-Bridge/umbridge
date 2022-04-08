@@ -11,7 +11,7 @@ def test_connection(model_url):
             requests.head(f"{model_url}")
             break
         except requests.exceptions.ConnectionError:
-            if time.time() - start_time > 300:
+            if time.time() - start_time > 60:
                 raise TimeoutError('Could not reach model server!')
             time.sleep(1)
 

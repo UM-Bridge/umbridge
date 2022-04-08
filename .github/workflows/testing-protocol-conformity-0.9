@@ -1,4 +1,4 @@
-name: model-testmodel
+name: testing-protocol-conformity-0.9
 
 on:
   push:
@@ -28,23 +28,6 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v2
         with:
-          context: models/testmodel/
+          context: testing/protocol_conformity_0.9/
           push: true
-          tags: linusseelinger/model-testmodel:latest
-
-  test:
-    runs-on: ubuntu-latest
-    container: ubuntu:latest
-    needs: build
-
-    services:
-      model:
-        image: linusseelinger/model-testmodel:latest
-        ports:
-        - 4242:4242
-
-    steps:
-       -
-        name: Validate
-        run: |
-          docker run --network=host -e model_host=http://localhost:4242 linusseelinger/testing-protocol-conformity-0.9:latest
+          tags: linusseelinger/testing-protocol-conformity-0.9:latest
