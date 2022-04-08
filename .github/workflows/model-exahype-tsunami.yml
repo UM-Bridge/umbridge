@@ -34,7 +34,6 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    container: ubuntu:latest
     needs: build
 
     services:
@@ -45,13 +44,6 @@ jobs:
 
     steps:
        -
-        name: Checkout
-        uses: actions/checkout@v2
-       -
-        name: Dependencies
-        run: |
-          apt update; apt install -y python3-pip; pip3 install pytest requests jsonschema
-       -
         name: Validate
         run: |
-          pytest -v models/test_model_schema.py --model_url http://model:4242
+          docker run --network=host -e model_host=http://localhost:4242 linusseelinger/testing-protocol-conformity-0.9:latest

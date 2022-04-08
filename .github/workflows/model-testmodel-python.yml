@@ -34,7 +34,6 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    container: ubuntu:latest
     needs: build
 
     services:
