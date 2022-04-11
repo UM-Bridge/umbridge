@@ -40,15 +40,6 @@ Fast Poisson PDE model with multiindex support.
 docker run -p 4242:4242 linusseelinger/model-poisson-mi:latest
 ```
 
-### Tsunami model
-
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/model-exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-exahype-tsunami.yml)
-
-A model of the Tohoku tsunami based on the ExaHyPE PDE engine.
-```
-docker run -p 4242:4242 linusseelinger/model-exahype-tsunami:latest
-```
-
 # UQ Benchmarks
 
 Each of these benchmarks defines a (Bayesian) posterior to sample from. Dimensions of input parameters may be queried from the model; the output is always the evaluation of the posterior density function for the given input parameter.
@@ -59,14 +50,6 @@ Each of these benchmarks defines a (Bayesian) posterior to sample from. Dimensio
 
 ```
 docker run -p 4243:4243 linusseelinger/benchmark-testbenchmark:latest
-```
-
-### Tsunami benchmark
-
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-exahype-tsunami.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-exahype-tsunami.yml)
-
-```
-docker run -p 4243:4243 linusseelinger/benchmark-exahype-tsunami:latest
 ```
 
 # Howto
