@@ -157,10 +157,10 @@ Refer to the servers in this repository for working examples of the server integ
 
 ### Verifying correctness
 
-You can verify that your own model server fulfills the protocol definition by running the following test from the ```models``` directory and adjusting the URL to where your model is running.
+You can verify that your own model server fulfills the protocol definition by running the following test, adjusting the URL to where your model is running.
 
 ```
-pytest -v test_model_schema.py --model_url http://localhost:4242
+docker run -it --network=host -e model_host=http://localhost:4242 linusseelinger/testing-protocol-conformity-0.9
 ```
 
 ### Python server
