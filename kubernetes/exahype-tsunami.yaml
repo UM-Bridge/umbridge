@@ -22,7 +22,7 @@ spec:
             - /server/server
             resources:
               limits:
-                cpu: .1
+                cpu: 1
                 memory: 2Gi
     Worker:
       replicas: 2
@@ -45,5 +45,5 @@ spec:
               initialDelaySeconds: 2
             resources:
               limits:
-                cpu: .1
+                cpu: 1
                 memory: 2Gi
