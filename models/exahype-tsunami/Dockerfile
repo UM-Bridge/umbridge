@@ -1,4 +1,4 @@
-FROM mpioperator/openmpi-builder
+FROM mpioperator/openmpi-builder as builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -13,7 +13,7 @@ RUN cd / && mkdir dependencies && \
 
 RUN cd /dependencies && wget https://downloads.unidata.ucar.edu/netcdf-c/4.8.1/netcdf-c-4.8.1.tar.gz &&\
     tar -xvzf netcdf-c-4.8.1.tar.gz && cd netcdf-c-4.8.1 &&\
-    CC=mpicc CXX=mpicxx CPPFLAGS=-I/usr/include/hdf5/openmpi/ LDFLAGS=-L/usr/lib/x86_64-linux-gnu/hdf5/openmpi/ ./configure --enable-parallel &&\ 
+    CC=mpicc CXX=mpicxx CPPFLAGS=-I/usr/include/hdf5/openmpi/ LDFLAGS=-L/usr/lib/x86_64-linux-gnu/hdf5/openmpi/ ./configure --enable-parallel &&\
     #CC=mpicc CXX=mpicxx ./configure -prefix=/dependencies/netcdf-c-4.8.1/lib --enable-parallel --disable-dap  &&\
     make install
 
@@ -70,6 +70,29 @@ RUN cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && cp exahy
 COPY . /server
 RUN cd /server && \
     g++ -o server HTTPModPieceServerExaHyPE.cpp -I /usr/include/eigen3/ -lpthread
+
+FROM mpioperator/openmpi
+
+#SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && \
+    apt-get install -y python3 libyaml-cpp0.6 libtbb2 libhdf5-openmpi-103 && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /server/server /server/server
+COPY --from=builder /ExaHyPE-Tsunami /ExaHyPE-Tsunami
+COPY --from=builder /dependencies /dependencies
+COPY --from=builder /usr/local /usr/local
+
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/usr/local/lib/:/dependencies/ImpalaJIT/build"
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/usr/local/lib:/dependencies/easi/build"
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/dependencies/netcdf-c-4.8.1/lib/lib/"
+
+#RUN cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && mkdir Probes && mkdir vtk-output && \
+#    cd ../SWE_asagi_limited_l1 && mkdir Probes && mkdir vtk-output && \
+#    cd ../SWE_asagi_limited_l2 && mkdir Probes && mkdir vtk-output
+
+WORKDIR /ExaHyPE-Tsunami
 
 ENV PORT=4242
 ENV RANKS=2
