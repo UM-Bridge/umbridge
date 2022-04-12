@@ -23,7 +23,7 @@ spec:
             resources:
               limits:
                 cpu: .1
-                memory: 0.5Gi
+                memory: 2Gi
     Worker:
       replicas: 2
       template:
@@ -46,4 +46,4 @@ spec:
             resources:
               limits:
                 cpu: .1
-                memory: 0.5Gi
+                memory: 2Gi
