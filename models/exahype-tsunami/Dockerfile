@@ -23,7 +23,7 @@ ENV CMAKE_PREFIX_PATH=/dependencies/netcdf-c-4.8.1/lib/
 RUN cd /dependencies && git clone --recursive https://github.com/TUM-I5/ASAGI.git && \
     cd ASAGI/ && \
     mkdir build && cd build && \
-    cmake -DNetCDF_LIBRARY=/dependencies/netcdf-c-4.8.1/lib -DMPI_C_COMPILER=mpicc -DMPI_CXX_COMPILER=mpicxx -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DSHARED_LIB=1 -DCMAKE_CXX_FLAGS="-I/dependencies/netcdf-c-4.8.1/include/" .. && \
+    NetCDF_LIBRARY=/dependencies/netcdf-c-4.8.1/lib cmake -DMPI_C_COMPILER=mpicc -DMPI_CXX_COMPILER=mpicxx -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DSHARED_LIB=1 -DCMAKE_CXX_FLAGS="-I/dependencies/netcdf-c-4.8.1/include/" .. && \
     make -j4 && make install
 
 ENV COMPILER_LFLAGS=" -L/dependencies/ImpalaJIT/build/ -limpalajit -L/dependencies/netcdf-c-4.8.1/lib -lnetcdf  -L/usr/lib/x86_64-linux-gnu/ -L/usr/local/lib/ -lyaml-cpp -lasagi -L/dependencies/easi/build -leasi -lpthread"
