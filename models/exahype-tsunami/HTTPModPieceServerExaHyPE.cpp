@@ -19,12 +19,12 @@ public:
   {
     outputs.push_back(Eigen::VectorXd::Ones(4));
 
-    char const* shared_file_cstr = std::getenv("SHARED_FILE");
-    if ( shared_file_cstr == NULL ) {
+    char const* shared_dir_cstr = std::getenv("SHARED_DIR");
+    if ( shared_dir_cstr == NULL ) {
       std::cerr << "Environment variable SHARED_DIR not set!" << std::endl;
       exit(-1);
     }
-    shared_file = std::string(shared_file_cstr);
+    shared_dir = std::string(shared_dir_cstr);
   }
 
   void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) override {
@@ -35,7 +35,7 @@ public:
 
     std::cout << "Entered for level " << level << std::endl;
 
-    std::ofstream inputsfile (shared_file + "inputs.txt");
+    std::ofstream inputsfile (shared_dir + "inputs.txt");
     typedef std::numeric_limits<double> dl;
     inputsfile << std::fixed << std::setprecision(dl::digits10);
     for (int i = 0; i < inputs[0].get().rows(); i++) {
@@ -63,13 +63,13 @@ public:
         system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE && sed -i 's/\"time\": 0.0,/\"time\": 10000.0,/g' SWE_asagi_limited_l2.exahype2");
     }
     if(level == 0) {
-      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_FILE -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l0.exahype2'";
+      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_DIR -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l0.exahype2'";
       status = system(cmd.c_str());
     } else if(level == 1) {
-      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_FILE -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l1.exahype2'";
+      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_DIR -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l1.exahype2'";
       status = system(cmd.c_str());
     } else if(level == 2) {
-      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l2 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_FILE -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l2.exahype2'";
+      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l2 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_DIR -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l2.exahype2'";
       status = system(cmd.c_str());
     } else {
       std::cerr << "Unknown model requested by client!" << std::endl;
@@ -77,7 +77,7 @@ public:
     }
     std::cout << "Exahype exit status " << status << std::endl;
 
-    std::ifstream outputsfile(shared_file + "outputs.txt");
+    std::ifstream outputsfile(shared_dir + "outputs.txt");
     for (int i = 0; i < outputs[0].rows(); i++) {
       outputsfile >> outputs[0](i);
     }
@@ -92,7 +92,7 @@ public:
   }
 private:
   int ranks;
-  std::string shared_file;
+  std::string shared_dir;
 };
 
 int main(){
