@@ -63,25 +63,33 @@ public:
         system("cd /ExaHyPE-Tsunami/ApplicationExamples/SWE && sed -i 's/\"time\": 0.0,/\"time\": 10000.0,/g' SWE_asagi_limited_l2.exahype2");
     }
     if(level == 0) {
-      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_DIR -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l0.exahype2'";
+      std::string cmd = "cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l0 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_DIR -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l0.exahype2";
       status = system(cmd.c_str());
     } else if(level == 1) {
-      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_DIR -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l1.exahype2'";
+      std::string cmd = "cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l1 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_DIR -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l1.exahype2";
       status = system(cmd.c_str());
     } else if(level == 2) {
-      std::string cmd = "bash -c 'cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l2 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_DIR -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l2.exahype2'";
+      std::string cmd = "cd /ExaHyPE-Tsunami/ApplicationExamples/SWE/SWE_asagi_limited_l2 && mpirun --allow-run-as-root -x LD_LIBRARY_PATH -x SHARED_DIR -n " + std::to_string(ranks) + " ./ExaHyPE-SWE ../SWE_asagi_limited_l2.exahype2";
       status = system(cmd.c_str());
     } else {
       std::cerr << "Unknown model requested by client!" << std::endl;
       exit(-1);
     }
     std::cout << "Exahype exit status " << status << std::endl;
-
-    std::ifstream outputsfile(shared_dir + "outputs.txt");
-    for (int i = 0; i < outputs[0].rows(); i++) {
+    {
+    std::ifstream outputsfile(shared_dir + "Probe18outputs.txt");
+    for (int i = 0; i < 2; i++) {
       outputsfile >> outputs[0](i);
     }
     outputsfile.close();
+    }
+    {
+    std::ifstream outputsfile(shared_dir + "Probe19outputs.txt");
+    for (int i = 2; i < 4; i++) {
+      outputsfile >> outputs[0](i);
+    }
+    outputsfile.close();
+    }
     std::cout << "Read outputs from exahype:" << outputs[0] << std::endl;
 
     std::cout << "Left" << std::endl;

@@ -96,5 +96,6 @@ WORKDIR /ExaHyPE-Tsunami
 
 ENV PORT=4242
 ENV RANKS=2
-RUN mkdir /output
+ENV SHARED_DIR=/shared/comm
+RUN mkdir /output /shared
 CMD /server/server
