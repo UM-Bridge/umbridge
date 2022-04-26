@@ -34,7 +34,7 @@ deploy_haproxy(){
 }
 
 create_user_pw(){
-    local secret=$(cat ./secret.txt)
+    local secret=$(cat ./setup/secret.txt)
     local uname=$(echo -n $secret | cut -d ":" -f 1)
     local pw=$(echo -n $secret | cut -d ":" -f 2)
     kubectl create secret generic haproxy-credentials \
@@ -42,12 +42,12 @@ create_user_pw(){
 }
 
 deploy_service_ingress(){
-    kubectl apply -f haproxy-networklb/setup.yml
+    kubectl apply -f ./setup/svc-ingress.yml
 }
 
 test_evaluate(){
     local url=34.89.67.193
-    local user_pw="$(cat ./secret.txt | base64)"
+    local user_pw="$(cat ./setup/secret.txt | base64)"
     curl $url/Evaluate \
     -H "Content-Type: application/json" \
     -H "Authorization: Basic $user_pw" \
@@ -60,17 +60,20 @@ test_evaluate(){
 #2. deploy kubeflow's mpi operator
 #deploy_mpi_operator
 
-#3. start mpi jobs
-# ...
+#3. setup disk, nfs server, pvc, pv
+#...
 
-#4. deploy haproxy as loadbalancer service
+#4. start mpi jobs
+#...
+
+#5. deploy haproxy as loadbalancer service
 #deploy_haproxy
 
-#5. set up user and password
+#6. set up user and password
 #create_user_pw
 
-#6. deploy service and ingress
+#7. deploy service and ingress
 #deploy_service_ingress
 
-#7. test endpoint
+#8. test endpoint
 #test_evaluate
