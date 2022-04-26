@@ -1,0 +1,66 @@
+#!/bin/bash
+create_mpi_cluster(){
+    gcloud beta container clusters create testcluster \
+    --machine-type c2-standard-4 \
+    --placement-type COMPACT \
+    --num-nodes=3 \
+    --zone=europe-west2-c
+}
+
+hibernate(){
+    gcloud container clusters resize testcluster --size 0
+}
+
+deploy_mpi_operator(){
+    kubectl apply -f https://raw.githubusercontent.com/kubeflow/mpi-operator/master/deploy/v2beta1/mpi-operator.yaml
+}
+
+deploy_haproxy(){
+    helm repo add haproxytech https://haproxytech.github.io/helm-charts
+    helm repo update
+
+    helm install kubernetes-ingress haproxytech/kubernetes-ingress \
+    --create-namespace \
+    --namespace haproxy-controller \
+    --set controller.service.type=LoadBalancer \
+    --set controller.replicaCount=1 \
+    --set defaultBackend.replicaCount=1 \
+    --set controller.logging.level=debug \
+    --set controller.ingressClass=haproxy
+}
+
+create_user_pw(){
+    kubectl create secret generic haproxy-credentials \
+    --from-literal=linus="$(openssl passwd -1 waszufallsgeneriertes)"
+}
+
+deploy_service_ingress(){
+    kubectl apply -f haproxy/networklb/setup.yml
+}
+
+test_evaluate(){
+    local url=34.89.67.193
+    local user_pw="$(cat ./secret.txt | base64)"
+    curl $url/Evaluate \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Basic $user_pw" \
+    -X POST -d '{"input": [[-20.0, 0.0]], "config": {}}'
+}
+
+#1. create mpi cluster on GCP
+#create_mpi_cluster
+
+#2. deploy kubeflow's mpi operator
+#deploy_mpi_operator
+
+#3. start mpi jobs
+# ...
+
+#4. deploy haproxy as loadbalancer service
+#deploy_haproxy
+
+#5. deploy service and ingress
+#deploy_service_ingress
+
+#6. test endpoint
+#test_evaluate
