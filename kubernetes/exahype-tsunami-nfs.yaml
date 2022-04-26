@@ -13,11 +13,24 @@ spec:
       replicas: 1
       template:
         spec:
+          volumes:
+          - name: my-pvc-nfs
+            persistentVolumeClaim:
+              claimName: nfs
           containers:
           - image: linusseelinger/model-exahype-tsunami:latest
             name: mpi-launcher
+            volumeMounts:
+              # name must match the volume name below
+              - name: my-pvc-nfs
+                mountPath: "/shared"
             securityContext:
               runAsUser: 1000
+            env:
+            - name: SHARED_DIR
+              value: "/shared/comm_test"
+            - name: RANKS
+              value: 2
             command:
             - /server/server
             resources:
@@ -28,11 +41,24 @@ spec:
       replicas: 2
       template:
         spec:
+          volumes:
+          - name: my-pvc-nfs
+            persistentVolumeClaim:
+              claimName: nfs
           containers:
           - image: linusseelinger/model-exahype-tsunami:latest
             name: mpi-worker
+            volumeMounts:
+              # name must match the volume name below
+              - name: my-pvc-nfs
+                mountPath: "/shared"
             securityContext:
               runAsUser: 1000
+            env:
+            - name: SHARED_DIR
+              value: "/shared/comm_test"
+            - name: RANKS
+              value: 2
             command:
             - /usr/sbin/sshd
             args:
