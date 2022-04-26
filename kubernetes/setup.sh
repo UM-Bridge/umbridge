@@ -7,8 +7,12 @@ create_mpi_cluster(){
     --zone=europe-west2-c
 }
 
-hibernate(){
+hibernate_cluster(){
     gcloud container clusters resize testcluster --size 0
+}
+
+delete_cluster(){
+    gcloud container clusters delete testcluster --zone=europe-west2-c
 }
 
 deploy_mpi_operator(){
