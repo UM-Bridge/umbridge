@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-svc
+  annotations:
+    # https://github.com/kubernetes/ingress-gce/blob/c8fd7bfc571b50d71cb68863f162ef8d8951060e/pkg/annotations/service.go#L36
+    cloud.google.com/neg: '{"ingress": true, "exposed_ports":{"4242":{my-neg}}}'
+spec: 
+  ports:
+  - port: 4242
+    protocol: TCP
+    targetPort: 4242
+  selector:
+    training.kubeflow.org/job-role: launcher
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-svc
+            port: 
+              number: 4242
+---
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: my-backendconfig
+spec:
+  healthCheck:
+    checkIntervalSec: 10
+    timeoutSec: 15
+    healthyThreshold: 1
+    unhealthyThreshold: 2
+    type: HTTP
+    requestPath: /Info
+    port: 4242

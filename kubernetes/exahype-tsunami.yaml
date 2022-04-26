@@ -1,0 +1,49 @@
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  generateName: pi
+spec:
+  slotsPerWorker: 1
+  runPolicy:
+    cleanPodPolicy: Running
+  sshAuthMountPath: /home/mpiuser/.ssh
+    #  mpiImplementation: Intel
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - image: linusseelinger/model-exahype-tsunami:latest
+            name: mpi-launcher
+            securityContext:
+              runAsUser: 1000
+            command:
+            - /server/server
+            resources:
+              limits:
+                cpu: 1
+                memory: 4Gi
+    Worker:
+      replicas: 2
+      template:
+        spec:
+          containers:
+          - image: linusseelinger/model-exahype-tsunami:latest
+            name: mpi-worker
+            securityContext:
+              runAsUser: 1000
+            command:
+            - /usr/sbin/sshd
+            args:
+            - -De
+            - -f
+            - /home/mpiuser/.sshd_config
+            readinessProbe:
+              tcpSocket:
+                port: 22
+              initialDelaySeconds: 2
+            resources:
+              limits:
+                cpu: 1
+                memory: 4Gi
