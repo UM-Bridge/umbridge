@@ -30,7 +30,7 @@ spec:
             - name: SHARED_DIR
               value: "/shared/comm_test"
             - name: RANKS
-              value: 2
+              value: "2"
             command:
             - /server/server
             resources:
@@ -58,7 +58,7 @@ spec:
             - name: SHARED_DIR
               value: "/shared/comm_test"
             - name: RANKS
-              value: 2
+              value: "2"
             command:
             - /usr/sbin/sshd
             args:

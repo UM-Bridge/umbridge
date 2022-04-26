@@ -35,14 +35,14 @@ deploy_haproxy(){
 
 create_user_pw(){
     local secret=$(cat ./secret.txt)
-    local uname=cut -d ":" -f 1
-    local pw=cut -d ":" -f 2
+    local uname=$(echo -n $secret | cut -d ":" -f 1)
+    local pw=$(echo -n $secret | cut -d ":" -f 2)
     kubectl create secret generic haproxy-credentials \
     --from-literal=$uname="$(openssl passwd -1 $pw)"
 }
 
 deploy_service_ingress(){
-    kubectl apply -f haproxy/networklb/setup.yml
+    kubectl apply -f haproxy-networklb/setup.yml
 }
 
 test_evaluate(){
@@ -66,8 +66,11 @@ test_evaluate(){
 #4. deploy haproxy as loadbalancer service
 #deploy_haproxy
 
-#5. deploy service and ingress
+#5. set up user and password
+#create_user_pw
+
+#6. deploy service and ingress
 #deploy_service_ingress
 
-#6. test endpoint
+#7. test endpoint
 #test_evaluate
