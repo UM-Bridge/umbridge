@@ -30,8 +30,11 @@ deploy_haproxy(){
 }
 
 create_user_pw(){
+    local secret=$(cat ./secret.txt)
+    local uname=cut -d ":" -f 1
+    local pw=cut -d ":" -f 2
     kubectl create secret generic haproxy-credentials \
-    --from-literal=linus="$(openssl passwd -1 waszufallsgeneriertes)"
+    --from-literal=$uname="$(openssl passwd -1 $pw)"
 }
 
 deploy_service_ingress(){
