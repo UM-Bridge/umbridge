@@ -6,4 +6,5 @@ RUN apt update && \
 
 COPY test_model_schema.py conftest.py ./
 
-CMD pytest-3 -v test_model_schema.py --model_url="${model_host}"
+ENV input_value=0.0
+CMD pytest-3 -v test_model_schema.py --model_url=${model_host} --input_value=${input_value}
