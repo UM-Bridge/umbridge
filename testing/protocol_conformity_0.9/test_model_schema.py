@@ -15,7 +15,7 @@ def test_connection(model_url):
                 raise TimeoutError('Could not reach model server!')
             time.sleep(1)
 
-def test_evaluate(model_url):
+def test_evaluate(model_url, input_value):
 
     resp_info = requests.get(f'{model_url}/Info')
     assert resp_info.status_code == 200
@@ -26,7 +26,7 @@ def test_evaluate(model_url):
 
     inputParams = {"input": [], "config": {}}
     for i in range(0,len(inputSizesJSON["inputSizes"])):
-      inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
+      inputParams["input"].append([input_value] * inputSizesJSON["inputSizes"][i])
 
     resp = requests.post(f'{model_url}/Evaluate', headers={}, data=json.dumps(inputParams,indent=4))
 
@@ -55,7 +55,7 @@ def test_evaluate(model_url):
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-def test_gradient(model_url):
+def test_gradient(model_url, input_value):
 
     resp_info = requests.get(f'{model_url}/Info')
     assert resp_info.status_code == 200
@@ -66,15 +66,11 @@ def test_gradient(model_url):
     outputSizesJSON = requests.get(f'{model_url}/GetOutputSizes').json()
 
     inputParams = {"input": [], "config": {}}
-    for i in range(0,len(inputSizesJSON["inputSizes"])):
-      inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
-
-    inputParams = {"input": [], "config": {}}
     inputParams["outWrt"] = 0
     inputParams["inWrt"] = 0
     inputParams["sens"] = [0] * outputSizesJSON["outputSizes"][0]
     for i in range(0,len(inputSizesJSON["inputSizes"])):
-      inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
+      inputParams["input"].append([input_value] * inputSizesJSON["inputSizes"][i])
 
     resp = requests.post(f'{model_url}/Gradient', headers={}, data=json.dumps(inputParams,indent=4))
 
@@ -99,7 +95,7 @@ def test_gradient(model_url):
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-def test_apply_jacobian(model_url):
+def test_apply_jacobian(model_url, input_value):
 
     resp_info = requests.get(f'{model_url}/Info')
     assert resp_info.status_code == 200
@@ -109,15 +105,11 @@ def test_apply_jacobian(model_url):
     inputSizesJSON = requests.get(f'{model_url}/GetInputSizes').json()
 
     inputParams = {"input": [], "config": {}}
-    for i in range(0,len(inputSizesJSON["inputSizes"])):
-      inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
-
-    inputParams = {"input": [], "config": {}}
     inputParams["outWrt"] = 0
     inputParams["inWrt"] = 0
-    inputParams["vec"] = [0] * inputSizesJSON["inputSizes"][0]
+    inputParams["vec"] = [input_value] * inputSizesJSON["inputSizes"][0]
     for i in range(0,len(inputSizesJSON["inputSizes"])):
-      inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
+      inputParams["input"].append([input_value] * inputSizesJSON["inputSizes"][i])
 
     resp = requests.post(f'{model_url}/ApplyJacobian', headers={}, data=json.dumps(inputParams,indent=4))
 
@@ -142,7 +134,7 @@ def test_apply_jacobian(model_url):
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-def test_apply_hessian(model_url):
+def test_apply_hessian(model_url, input_value):
 
     resp_info = requests.get(f'{model_url}/Info')
     assert resp_info.status_code == 200
@@ -153,17 +145,13 @@ def test_apply_hessian(model_url):
     outputSizesJSON = requests.get(f'{model_url}/GetOutputSizes').json()
 
     inputParams = {"input": [], "config": {}}
-    for i in range(0,len(inputSizesJSON["inputSizes"])):
-      inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
-
-    inputParams = {"input": [], "config": {}}
     inputParams["outWrt"] = 0
     inputParams["inWrt1"] = 0
     inputParams["inWrt2"] = 0
     inputParams["vec"] = [0] * inputSizesJSON["inputSizes"][0]
     inputParams["sens"] = [0] * outputSizesJSON["outputSizes"][0]
     for i in range(0,len(inputSizesJSON["inputSizes"])):
-      inputParams["input"].append([0] * inputSizesJSON["inputSizes"][i])
+      inputParams["input"].append([input_value] * inputSizesJSON["inputSizes"][i])
 
     resp = requests.post(f'{model_url}/ApplyHessian', headers={}, data=json.dumps(inputParams,indent=4))
 
