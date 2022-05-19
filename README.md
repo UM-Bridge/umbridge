@@ -1,20 +1,33 @@
 # UM-Bridge
 
-UM-Bridge provides a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods. The main benefits are:
+UM-Bridge provides a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods.
 
-* Faster development of advanced software stacks combining the state-of-the art of modelling with statistics / optimization due to a unified and simple interface
-* Easier collaboration due to portable models and separation of concerns between fields (specifically model and statistics experts)
-* Unified and black-box benchmark problems defined in software, particularly for the uncertainty quantification (UQ) community
+In many statistical / uncertainty quantification or optimization methods, the model only appears as a function mapping vectors onto vectors with some of the following:
+* Simple evaluation,
+* Gradient evaluation,
+* Jacobian action,
+* Hessian action.
+
+The key idea of UM-Bridge is to now provide this mathematical "interface" as an abstract interface in software as well. By using HTTP behind the scenes, a high degree of flexibility is achieved, allowing for:
+
+* Coupling of codes written in arbitrary languages and frameworks, accelerating development of advanced software stacks combining the state-of-the art of modelling with statistics / optimization.
+* Containarization of models, making collaboration easier due to portability of models and separation of concerns between fields (specifically model and statistics experts).
+* Unified, portable, fully reproducible and black-box benchmark problems defined software.
+
+Part of this project is a [library of pre-defined models and benchmarks](https://um-bridge-benchmarks.readthedocs.io/en/docs/).
 
 #### Content
-* [Models](#models)
-* [UQ Benchmarks](#uq-benchmarks)
+* [Models and benchmarks](#models-and-benchmarks)
 * [Howto](#howto)
 * [Protocol definition](#protocol-definition)
 
-# Models
+# Models and benchmarks
 
-There is a number of pre-defined models available from this repository in the form of ready-to-use docker containers.
+### Model and benchmark library
+
+A number of [pre-defined models and benchmarks is available here](https://um-bridge-benchmarks.readthedocs.io/en/docs/) in the form of ready-to-use docker containers.
+
+Additionally, simple test models and benchmarks are available from this repository.
 
 ### Test model
 [![build](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel.yml) [![build](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel-python.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel-python.yml)
@@ -31,22 +44,11 @@ docker run -p 4242:4242 linusseelinger/model-testmodel:latest
 docker run -p 4242:4242 linusseelinger/model-testmodel-python:latest
 ```
 
-### Poisson model
-
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/model-poisson-mi.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-poisson-mi.yml)
-
-Fast Poisson PDE model with multiindex support.
-```
-docker run -p 4242:4242 linusseelinger/model-poisson-mi:latest
-```
-
-# UQ Benchmarks
-
-Each of these benchmarks defines a (Bayesian) posterior to sample from. Dimensions of input parameters may be queried from the model; the output is always the evaluation of the posterior density function for the given input parameter.
-
 ### Test benchmark
 
 [![build](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-testbenchmark.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-testbenchmark.yml)
+
+A simple Gaussian posterior to sample from. Main purpose is demonstrating how to define UQ benchmarks.
 
 ```
 docker run -p 4243:4243 linusseelinger/benchmark-testbenchmark:latest
@@ -54,9 +56,9 @@ docker run -p 4243:4243 linusseelinger/benchmark-testbenchmark:latest
 
 # Howto
 
-Communication between client (UQ software) and server (model) is defined by a simple HTTP protocol, and therefore clients and servers can be written in any language or framework supporting HTTP.
+Communication between client (UQ software) and server (model) is defined by a simple HTTP protocol, and therefore clients and servers can be written in any language or framework supporting HTTP. They may be running on the same computer, or even communicate via internet.
 
-In addition, there are pre-built integrations available that make creating your own clients and servers a convenient and quick task.
+Pre-built integrations are available for Python, C++ and MUQ. By providing a simple interface and taking care of all HTTP communication in the background, they make creating your own clients and servers a quick task.
 
 ## Clients
 
@@ -153,7 +155,7 @@ Apart from the constructor, HTTPModPiece behaves like any ModPiece in MUQ. For e
 
 ## Servers
 
-Refer to the servers in this repository for working examples of the server integrations shown in the following.
+Refer to the models in this repository for working examples of the server integrations shown in the following.
 
 ### Verifying correctness
 
