@@ -14,10 +14,10 @@ model = umbridge.HTTPModel(args.url)
 print(model.get_input_sizes())
 print(model.get_output_sizes())
 
-param = [[1.0]]
+param = [[100.0, 50.0]]
 
 # Simple model evaluation
 print(model(param))
 
 # Model evaluation with configuration parameters
-print(model(param, {"level": [2,2]}))
+print(model(param, {"level": 1}))

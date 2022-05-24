@@ -28,4 +28,4 @@ jobs:
        -
         name: Build and run
         run: |
-          cd clients/python && python3 http-client.py http://model:4242
+          cd clients/python && python3 umbridge-client.py http://model:4242
