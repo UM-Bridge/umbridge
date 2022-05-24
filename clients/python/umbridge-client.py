@@ -20,4 +20,4 @@ param = [[100.0, 50.0]]
 print(model(param))
 
 # Model evaluation with configuration parameters
-print(model(param, {"level": 1}))
+print(model(param, {"vtk_output": True}))
