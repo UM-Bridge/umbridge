@@ -40,13 +40,14 @@ RUN cd /dependencies/ && git clone https://github.com/SeisSol/easi.git && \
 RUN cd / && git clone  https://github.com/annereinarz/ExaHyPE-Tsunami.git
 WORKDIR /ExaHyPE-Tsunami
 
-ENV COMPILER_LFLAGS="-DMPI2 -lmpi_cxx -lnuma -L/dependencies/ImpalaJIT/build/ -limpalajit -L/dependencies/netcdf-c-4.8.1/lib/lib -lnetcdf -L/usr/lib/x86_64-linux-gnu/ -lyaml-cpp -L/usr/local/lib -lasagi -L/dependencies/easi/build -leasi -lpthread"
+ENV COMPILER_LFLAGS="-DMPI2 -lmpi_cxx -lnuma -L/dependencies/ImpalaJIT/build/ -limpalajit -L/dependencies/netcdf-c-4.8.1/lib/lib -lnetcdf -L/usr/lib/x86_64-linux-gnu/ -lyaml-cpp -L/usr/local/lib -lasagi -L/dependencies/easi/build -leasi -lpthread -ltbb"
 ENV COMPILER_CFLAGS=" -I/dependencies/easi/include/"
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/usr/local/lib:/dependencies/easi/build"
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/dependencies/netcdf-c-4.8.1/lib/lib/"
 ENV COMPILER=GNU
-ENV TBB_INC=/usr/include/tbb
-ENV TBB_SHLIB=/usr/lib/x86_64-linux-gnu/libtbb.so
+ENV SHAREDMEM=TBB
+#ENV TBB_INC=/usr/include/tbb
+#ENV TBB_SHLIB=/usr/lib/x86_64-linux-gnu/libtbb.so
 ENV EXAHYPE_CC=mpicc
 ENV EXAHYPE_FC=mpicc++
 ENV PROJECT_CFLAGS="-DUSE_ASAGI"
