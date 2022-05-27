@@ -64,8 +64,12 @@ test_evaluate(){
 #2. deploy kubeflow's mpi operator
 #deploy_mpi_operator
 
-#3. setup disk, nfs server, pvc, pv
-#...
+#3a. setup disk, nfs server, pvc, pv
+#kubectl apply -f setup/nfs.yaml
+
+#3b. Update IP in pv/pvc yaml
+# MAKE SURE IP IS UP TO DATE IN YAML!
+#kubectl apply -f setup/nfs-pv-pvc.yaml
 
 #4. start mpi jobs
 #...
