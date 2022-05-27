@@ -15,6 +15,10 @@ delete_cluster(){
     gcloud container clusters delete testcluster --zone=europe-west2-c
 }
 
+scale_cluster(){
+    gcloud container clusters resize testcluster --region europe-west2-c --num-nodes 3
+}
+
 deploy_mpi_operator(){
     kubectl apply -f https://raw.githubusercontent.com/kubeflow/mpi-operator/master/deploy/v2beta1/mpi-operator.yaml
 }
