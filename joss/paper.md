@@ -7,22 +7,18 @@ tags:
 authors:
   - name: Linus Seelinger
     orcid: 0000-0001-8632-8493
-    equal-contrib: true
     affiliation: 1
 
   - name: Andrew Davis
     orcid: 0000-0002-6023-0989
-    equal-contrib: true
     affiliation: 2
 
   - name: Anne Reinarz
     orcid: 0000-0003-1787-7637
-    equal-contrib: true
     affiliation: 3
 
   - name: Matthew Parno
     orcid: 0000-0002-9419-2693
-    equal-contrib: true
     affiliation: 4
 
 affiliations:
@@ -45,14 +41,15 @@ aas-journal: Astrophysical Journal <- The name of the AAS journal.
 
 # Summary
 
-UM-Bridge (the Uncertainty quantification (UQ) and Modeling Bridge) provides a unified interface for numerical models that is accessible from any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods for uncertainty quantification.
+UM-Bridge (the uncertainty quantification (UQ) and Modeling Bridge) provides a unified interface for numerical models that is accessible from any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods for uncertainty quantification.
 
 In many statistical / uncertainty quantification or optimization methods, the model only appears as a function $f: \mathbb{R}^{n} \mapsto \mathbb{R}^{m}$ mapping vectors onto vectors with some of the following: (i) model evaluation $y = f(x)$, (ii) gradient evaluation, (iii) Jacobian action, and/or (iv) Hessian action. The UQ algorithms rarely require detailed knowledge of $f$ other than these abstracted functions and, thus, $f$ is referred to as a "black-box" model. Mathematically, this makes UQ algorithms apply to a wide range of applications. In practice, however, software limitations prevent general UQ algorithms to be used by model developers.
 
-
 # Statement of need
 
-UM-Bridge implements a software interface that mirrors the mathematical "interface" between models an UQ algorithms. Many UQ algorithms use a "black-box" model $f$, often a physics-based system of equations or a statistical model. UQ algorithms and models are often developed separately. Each implementation is typically done by experts in different fields that do not necessarily design compatible software. Implementing interfaces between these code bases is time consuming, tedious, and sometimes requires completely re-implementing either the UQ algorithm or the model. UM-Bridge addresses this challenge by providing a software framework that allows any model to be practically treated like a black-box.
+UM-Bridge implements a software interface that mirrors the mathematical "interface" between models an UQ algorithms. Many UQ algorithms use a "black-box" model $f$, often a physics-based system of equations or a statistical model. Examples include Markov chain Monte Carlo methods [@MHMCMC; @ParallelMLMCMC], polynomial chaos [@PCE], stochastic collocation [@Marzouk_StochasticCollocation], optimal transport [@SamplingTransportMaps], maximum likelihood estimation, and many more. UQ algorithms and models are often developed separately. Each implementation is typically done by experts in different fields that do not necessarily design compatible software. Implementing interfaces between these code bases is time consuming, tedious, and sometimes requires completely re-implementing either the UQ algorithm or the model. UM-Bridge addresses this challenge by providing a software framework that allows any model to be practically treated like a black-box.
+
+![UM-Bridge architecture.](umbridge-architecture.png){ width=80% }
 
 At its core, UM-Bridge consists of an HTTP protocol closely mimicking the mathematical interface, as well as helper libraries for (currently) C++ and Python for convenience. This approach implies a number of benefits:
 
@@ -60,10 +57,13 @@ At its core, UM-Bridge consists of an HTTP protocol closely mimicking the mathem
 - Separation of concerns between developers is achieved since proficiency in only one side is needed to implement the interface,
 - UM-Bridge is easy to integrate into many existing codes since they often (implicitly or explicitly) already implement a similar interface internally.
 
-Further, due to being based on HTTP, containerization of models becomes possible, leading to:
+Further, due to being based on HTTP, containerization ([@merkel2014docker; @singularity]) of models becomes possible, leading to:
+
 - Portability across operating systems and vastly reduced maintenance and setup cost when sharing models with collaborators,
 - Fully reproducible models and benchmarks,
-- Access to container based compute resources in the cloud.
+- Access to container based compute resources in the cloud (e.g. GCP, AWS).
+
+
 
 # Current applications and future work
 
@@ -71,52 +71,7 @@ UM-Bridge has been integrated with the [MIT Uncertainty Quantification](muq.mit.
 
 A library of UQ benchmarks based on UM-Bridge is currently being built [here](https://um-bridge-benchmarks.readthedocs.io/en/docs/). To the best of our knowledge, this is the first UQ benchmark library available.
 
-# Mathematics
-
-Single dollars ($) are required for inline mathematics e.g. $f(x) = e^{\pi/x}$
-
-Double dollars make self-standing equations:
-
-$$\Theta(x) = \left\{\begin{array}{l}
-0\textrm{ if } x < 0\cr
-1\textrm{ else}
-\end{array}\right.$$
-
-You can also use plain \LaTeX for equations
-\begin{equation}\label{eq:fourier}
-\hat f(\omega) = \int_{-\infty}^{\infty} f(x) e^{i\omega x} dx
-\end{equation}
-and refer to \autoref{eq:fourier} from text.
-
-# Citations
-
-Citations to entries in paper.bib should be in
-[rMarkdown](http://rmarkdown.rstudio.com/authoring_bibliographies_and_citations.html)
-format.
-
-If you want to cite a software repository URL (e.g. something on GitHub without a preferred
-citation) then you can do it with the example BibTeX entry below for @fidgit.
-
-For a quick reference, the following citation commands can be used:
-- `@author:2001`  ->  "Author et al. (2001)"
-- `[@author:2001]` -> "(Author et al., 2001)"
-- `[@author1:2001; @author2:2001]` -> "(Author1 et al., 2001; Author2 et al., 2002)"
-
-# Figures
-
-Figures can be included like this:
-![Caption for example figure.\label{fig:example}](figure.png)
-and referenced from text using \autoref{fig:example}.
-
-Figure sizes can be customized by adding an optional second parameter:
-![Caption for example figure.](figure.png){ width=20% }
-
 # Acknowledgements
 
-We acknowledge contributions from Brigitta Sipocz, Syrtis Major, and Semyeong
-Oh, and support from Kathryn Johnston during the genesis of this project.
-
 # References
-
-
 
