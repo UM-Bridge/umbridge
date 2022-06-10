@@ -79,3 +79,5 @@ kubectl exec --stdin --tty mpijob-1-worker-0 -- /bin/bash
 - kubectl describe ingress
 - watch kubectl get pods
 
+Attach kubectl to cluster (e.g. for newly created cluster):
+kubectl config set-cluster testcluster
