@@ -1,5 +1,5 @@
-#ifndef HTTPCOMM
-#define HTTPCOMM
+#ifndef UMBRIDGE
+#define UMBRIDGE
 
 // Ensure that we only have 1 handler running at once!
 // More might cause the model itself to run concurrently!
@@ -51,7 +51,7 @@ namespace umbridge {
 
     virtual void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
                           json config = json()) {
-      throw std::runtime_error("Gradient was called, but not implemented by model!");
+      throw std::runtime_error("Evaluate was called, but not implemented by model!");
     }
 
     virtual void Gradient(unsigned int outWrt,
@@ -98,7 +98,7 @@ namespace umbridge {
   class HTTPModel : public Model {
   public:
 
-    HTTPModel(std::string host, httplib::Headers headers)
+    HTTPModel(std::string host, httplib::Headers headers = httplib::Headers())
     : host(host), headers(headers), Model(read_input_size(host, headers), read_output_size(host, headers))
     {
       outputs.resize(outputSizes.size());
