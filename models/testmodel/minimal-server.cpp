@@ -24,7 +24,7 @@ public:
   }
 
   void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) override {
-    std::this_thread::sleep_for(std::chrono::seconds(test_delay));
+    std::this_thread::sleep_for(std::chrono::milliseconds(test_delay));
     outputs[0][0] = (inputs[0].get())[0] * 2;
   }
 
@@ -48,6 +48,7 @@ int main(){
   if ( delay_cstr != NULL ) {
     test_delay = atoi(delay_cstr);
   }
+  std::cout << "Evaluation delay set to " << test_delay << " ms." << std::endl;
 
 
 
