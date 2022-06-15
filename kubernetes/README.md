@@ -49,6 +49,17 @@ Once we've found the IP address update it in `setup/nfs-pv-pvc.yaml`.
 Then run:
 ``kubectl apply -f setup/nfs-pv-pvc.yaml``
 
+## Step 3 (alternative): Use an existing Cluster
+If the cluster is currently sized down to reduce resources, resize it:
+
+``gcloud container clusters resize testcluster --region europe-west2-c --num-nodes 3``
+
+Or trun `scale_cluster()` from the setup bash script.
+
+After finishing runs, you should remember to hibernate the cluster again:
+
+``gcloud container clusters resize testcluster --size 0``
+
 ## Step 4: Running
 
 To run the exahype example:
