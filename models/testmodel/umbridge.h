@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 #include <chrono>
-#include <Eigen/Core>
 
 
 #include "json.hpp"
@@ -18,50 +17,30 @@ using json = nlohmann::json;
 
 namespace umbridge {
 
-  std::vector<double> eigenvectord_to_stdvector(const Eigen::VectorXd& vector) {
-    std::vector<double> vec(vector.data(), vector.data() + vector.rows());
-    return vec;
-  }
-  Eigen::VectorXd stdvector_to_eigenvectord(std::vector<double>& vector) {
-    double* ptr_data = &vector[0];
-    Eigen::VectorXd vec = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptr_data, vector.size());
-    return vec;
-  }
-
-  std::vector<int> eigenvectori_to_stdvector(const Eigen::VectorXi& vector) {
-    std::vector<int> vec(vector.data(), vector.data() + vector.rows());
-    return vec;
-  }
-  Eigen::VectorXi stdvector_to_eigenvectori(std::vector<int>& vector) {
-    int* ptr_data = &vector[0];
-    Eigen::VectorXi vec = Eigen::Map<Eigen::VectorXi, Eigen::Unaligned>(ptr_data, vector.size());
-    return vec;
-  }
-
   class Model {
   public:
 
-    Model(const Eigen::VectorXi& inputSizes, const Eigen::VectorXi& outputSizes)
+    Model(const std::vector<int> inputSizes, const std::vector<int> outputSizes)
     : inputSizes(inputSizes), outputSizes(outputSizes)
     {}
 
-    virtual void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
+    virtual void Evaluate(const std::vector<std::vector<double>>& inputs,
                           json config = json()) {
       throw std::runtime_error("Evaluate was called, but not implemented by model!");
     }
 
     virtual void Gradient(unsigned int outWrt,
                           unsigned int inWrt,
-                          std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
-                          Eigen::VectorXd const& sens,
+                          const std::vector<std::vector<double>>& inputs,
+                          const std::vector<double>& sens,
                           json config = json()) {
       throw std::runtime_error("Gradient was called, but not implemented by model!");
     }
 
     virtual void ApplyJacobian(unsigned int outWrt,
                               unsigned int inWrt,
-                              std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
-                              Eigen::VectorXd const& vec,
+                              const std::vector<std::vector<double>>& inputs,
+                              const std::vector<double>& vec,
                               json config = json()) {
       throw std::runtime_error("ApplyJacobian was called, but not implemented by model!");
     }
@@ -69,9 +48,9 @@ namespace umbridge {
     virtual void ApplyHessian(unsigned int outWrt,
                               unsigned int inWrt1,
                               unsigned int inWrt2,
-                              std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
-                              Eigen::VectorXd const& sens,
-                              Eigen::VectorXd const& vec,
+                              const std::vector<std::vector<double>>& inputs,
+                              const std::vector<double>& sens,
+                              const std::vector<double>& vec,
                               json config = json()) {
       throw std::runtime_error("ApplyHessian was called, but not implemented by model!");
     }
@@ -81,13 +60,13 @@ namespace umbridge {
     virtual bool SupportsApplyJacobian() {return false;}
     virtual bool SupportsApplyHessian() {return false;}
 
-    const Eigen::VectorXi inputSizes;
-    const Eigen::VectorXi outputSizes;
+    const std::vector<int> inputSizes;
+    const std::vector<int> outputSizes;
 
-    std::vector<Eigen::VectorXd> outputs;
-    Eigen::VectorXd gradient;
-    Eigen::VectorXd jacobianAction;
-    Eigen::VectorXd hessAction;
+    std::vector<std::vector<double>> outputs;
+    std::vector<double> gradient;
+    std::vector<double> jacobianAction;
+    std::vector<double> hessAction;
   };
 
   // Client-side Model connecting to a server for the actual evaluations etc.
@@ -101,13 +80,13 @@ namespace umbridge {
       retrieveSupportedFeatures();
     }
 
-    void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config = json()) override {
+    void Evaluate(const std::vector<std::vector<double>>& inputs, json config = json()) override {
       httplib::Client cli(host.c_str());
 
       json request_body;
 
       for (int i = 0; i < this->inputSizes.size(); i++) {
-        request_body["input"][i] = eigenvectord_to_stdvector(inputs[i]);
+        request_body["input"][i] = inputs[i];
       }
       if (!config.empty())
         request_body["config"] = config;
@@ -119,7 +98,7 @@ namespace umbridge {
         json response_body = json::parse(res->body);
         for (int i = 0; i < this->outputSizes.size(); i++) {
           std::vector<double> outputvec = response_body["output"][i].get<std::vector<double>>();
-          outputs[i] = stdvector_to_eigenvectord(outputvec);
+          outputs[i] = outputvec;
         }
       } else {
         throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
@@ -128,8 +107,8 @@ namespace umbridge {
 
     void Gradient(unsigned int outWrt,
                   unsigned int inWrt,
-                  std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
-                  Eigen::VectorXd const& sens,
+                  const std::vector<std::vector<double>>& inputs,
+                  const std::vector<double>& sens,
                   json config = json()) override
     {
       httplib::Client cli(host.c_str());
@@ -138,16 +117,15 @@ namespace umbridge {
       request_body["outWrt"] = outWrt;
       request_body["inWrt"] = inWrt;
       for (int i = 0; i < this->inputSizes.size(); i++) {
-        request_body["input"][i] = eigenvectord_to_stdvector(inputs[i]);
+        request_body["input"][i] = inputs[i];
       }
-      request_body["sens"] = eigenvectord_to_stdvector(sens);
+      request_body["sens"] = sens;
       if (!config.empty())
         request_body["config"] = config;
 
       if (auto res = cli.Post("/Gradient", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
-        std::vector<double> outputvec = response_body.at("output");
-        gradient = stdvector_to_eigenvectord(outputvec);
+        gradient = (std::vector<double>)response_body.at("output");
       } else {
         throw std::runtime_error("POST Gradient failed with error type '" + to_string(res.error()) + "'");
       }
@@ -155,8 +133,8 @@ namespace umbridge {
 
     void ApplyJacobian(unsigned int outWrt,
                               unsigned int inWrt,
-                              std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
-                              Eigen::VectorXd const& vec,
+                              const std::vector<std::vector<double>>& inputs,
+                              const std::vector<double>& vec,
                               json config = json()) override {
       httplib::Client cli(host.c_str());
 
@@ -164,16 +142,15 @@ namespace umbridge {
       request_body["outWrt"] = outWrt;
       request_body["inWrt"] = inWrt;
       for (int i = 0; i < this->inputSizes.size(); i++) {
-        request_body["input"][i] = eigenvectord_to_stdvector(inputs[i]);
+        request_body["input"][i] = inputs[i];
       }
-      request_body["vec"] = eigenvectord_to_stdvector(vec);
+      request_body["vec"] = vec;
       if (!config.empty())
         request_body["config"] = config;
 
       if (auto res = cli.Post("/ApplyJacobian", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
-        std::vector<double> outputvec = response_body.at("output");
-        jacobianAction = stdvector_to_eigenvectord(outputvec);
+        jacobianAction = (std::vector<double>)response_body.at("output");
       } else {
         throw std::runtime_error("POST ApplyJacobian failed with error type '" + to_string(res.error()) + "'");
       }
@@ -182,9 +159,9 @@ namespace umbridge {
     void ApplyHessian(unsigned int outWrt,
                       unsigned int inWrt1,
                       unsigned int inWrt2,
-                      std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs,
-                      Eigen::VectorXd const& sens,
-                      Eigen::VectorXd const& vec,
+                      const std::vector<std::vector<double>>& inputs,
+                      const std::vector<double>& sens,
+                      const std::vector<double>& vec,
                       json config = json()) override {
       httplib::Client cli(host.c_str());
 
@@ -193,17 +170,16 @@ namespace umbridge {
       request_body["inWrt1"] = inWrt1;
       request_body["inWrt2"] = inWrt2;
       for (int i = 0; i < this->inputSizes.size(); i++) {
-        request_body["input"][i] = eigenvectord_to_stdvector(inputs[i]);
+        request_body["input"][i] = inputs[i];
       }
-      request_body["sens"] = eigenvectord_to_stdvector(sens);
-      request_body["vec"] = eigenvectord_to_stdvector(vec);
+      request_body["sens"] = sens;
+      request_body["vec"] = vec;
       if (!config.empty())
         request_body["config"] = config;
 
       if (auto res = cli.Post("/ApplyHessian", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
-        std::vector<double> outputvec = response_body.at("output");
-        hessAction = stdvector_to_eigenvectord(outputvec);
+        hessAction = (std::vector<double>)response_body.at("output");
       } else {
         throw std::runtime_error("POST ApplyHessian failed with error type '" + to_string(res.error()) + "'");
       }
@@ -250,7 +226,7 @@ namespace umbridge {
       }
     }
 
-    Eigen::VectorXi read_input_size(const std::string host, const httplib::Headers& headers){
+    std::vector<int> read_input_size(const std::string host, const httplib::Headers& headers){
       httplib::Client cli(host.c_str());
 
       std::cout << "GET GetInputSizes" << std::endl;
@@ -258,14 +234,14 @@ namespace umbridge {
         std::cout << "got GetInputSizes" << std::endl;
         json response_body = json::parse(res->body);
         std::vector<int> outputvec = response_body["inputSizes"].get<std::vector<int>>();
-        return stdvector_to_eigenvectori(outputvec);
+        return outputvec;
       } else {
         throw std::runtime_error("GET GetInputSizes failed with error type '" + to_string(res.error()) + "'");
-        return Eigen::VectorXi(0);
+        return std::vector<int>(0);
       }
     }
 
-    Eigen::VectorXi read_output_size(const std::string host, const httplib::Headers& headers){
+    std::vector<int> read_output_size(const std::string host, const httplib::Headers& headers){
       httplib::Client cli(host.c_str());
 
       std::cout << "GET GetOutputSizes" << std::endl;
@@ -273,10 +249,10 @@ namespace umbridge {
         std::cout << "got GetOutputSizes" << std::endl;
         json response_body = json::parse(res->body);
         std::vector<int> outputvec = response_body["outputSizes"].get<std::vector<int>>();
-        return stdvector_to_eigenvectori(outputvec);
+        return outputvec;
       } else {
         throw std::runtime_error("GET GetOutputSizes failed with error type '" + to_string(res.error()) + "'");
-        return Eigen::VectorXi(0);
+        return std::vector<int>(0);
       }
     }
   };
@@ -298,26 +274,21 @@ namespace umbridge {
 
       const std::lock_guard<std::mutex> model_lock(model_mutex);
 
-      //std::cout << "Received a Get with body " << req.body << std::endl;
       json request_body = json::parse(req.body);
 
-      std::vector<Eigen::VectorXd> inputs;
-      for (int i = 0; i < model.inputSizes.rows(); i++) {
+      std::vector<std::vector<double>> inputs;
+      for (int i = 0; i < model.inputSizes.size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
-        inputs.push_back(stdvector_to_eigenvectord(parameter));
+        inputs.push_back(parameter);
       }
-      std::vector<std::reference_wrapper<const Eigen::VectorXd>> inputs_refs;
-      for (auto& input : inputs)
-        inputs_refs.push_back(std::reference_wrapper<const Eigen::VectorXd>(input));
 
       json empty_default_config;
       json config = request_body.value("config", empty_default_config);
-      model.Evaluate(inputs_refs, config);
-
+      model.Evaluate(inputs, config);
 
       json response_body;
-      for (int i = 0; i < model.outputSizes.rows(); i++) {
-        response_body["output"][i] = eigenvectord_to_stdvector(model.outputs[i]);
+      for (int i = 0; i < model.outputSizes.size(); i++) {
+        response_body["output"][i] = model.outputs[i];
       }
 
       res.set_content(response_body.dump(), "text/plain");
@@ -339,24 +310,20 @@ namespace umbridge {
       unsigned int inWrt = request_body.at("inWrt");
       unsigned int outWrt = request_body.at("outWrt");
 
-      std::vector<Eigen::VectorXd> inputs;
-      for (int i = 0; i < model.inputSizes.rows(); i++) {
+      std::vector<std::vector<double>> inputs;
+      for (int i = 0; i < model.inputSizes.size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
-        inputs.push_back(stdvector_to_eigenvectord(parameter));
+        inputs.push_back(parameter);
       }
-      std::vector<std::reference_wrapper<const Eigen::VectorXd>> inputs_refs;
-      for (auto& input : inputs)
-        inputs_refs.push_back(std::reference_wrapper<const Eigen::VectorXd>(input));
 
-      std::vector<double> sens_raw = request_body.at("sens");
-      Eigen::VectorXd sens = stdvector_to_eigenvectord(sens_raw);
+      std::vector<double> sens = request_body.at("sens");
 
       json empty_default_config;
       json config = request_body.value("config", empty_default_config);
-      model.Gradient(outWrt, inWrt, inputs_refs, sens, config);
+      model.Gradient(outWrt, inWrt, inputs, sens, config);
 
       json response_body;
-      response_body["output"] = eigenvectord_to_stdvector(model.gradient);
+      response_body["output"] = model.gradient;
 
       res.set_content(response_body.dump(), "text/plain");
     });
@@ -377,24 +344,20 @@ namespace umbridge {
       unsigned int inWrt = request_body.at("inWrt");
       unsigned int outWrt = request_body.at("outWrt");
 
-      std::vector<Eigen::VectorXd> inputs;
-      for (int i = 0; i < model.inputSizes.rows(); i++) {
+      std::vector<std::vector<double>> inputs;
+      for (int i = 0; i < model.inputSizes.size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
-        inputs.push_back(stdvector_to_eigenvectord(parameter));
+        inputs.push_back(parameter);
       }
-      std::vector<std::reference_wrapper<const Eigen::VectorXd>> inputs_refs;
-      for (auto& input : inputs)
-        inputs_refs.push_back(std::reference_wrapper<const Eigen::VectorXd>(input));
 
-      std::vector<double> vec_raw = request_body.at("vec");
-      Eigen::VectorXd vec = stdvector_to_eigenvectord(vec_raw);
+      std::vector<double> vec = request_body.at("vec");
 
       json empty_default_config;
       json config = request_body.value("config", empty_default_config);
-      model.ApplyJacobian(outWrt, inWrt, inputs_refs, vec, config);
+      model.ApplyJacobian(outWrt, inWrt, inputs, vec, config);
 
       json response_body;
-      response_body["output"] = eigenvectord_to_stdvector(model.jacobianAction);
+      response_body["output"] = model.jacobianAction;
 
       res.set_content(response_body.dump(), "text/plain");
     });
@@ -416,26 +379,21 @@ namespace umbridge {
       unsigned int inWrt1 = request_body.at("inWrt1");
       unsigned int inWrt2 = request_body.at("inWrt2");
 
-      std::vector<Eigen::VectorXd> inputs;
-      for (int i = 0; i < model.inputSizes.rows(); i++) {
+      std::vector<std::vector<double>> inputs;
+      for (int i = 0; i < model.inputSizes.size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
-        inputs.push_back(stdvector_to_eigenvectord(parameter));
+        inputs.push_back(parameter);
       }
-      std::vector<std::reference_wrapper<const Eigen::VectorXd>> inputs_refs;
-      for (auto& input : inputs)
-        inputs_refs.push_back(std::reference_wrapper<const Eigen::VectorXd>(input));
 
-      std::vector<double> sens_raw = request_body.at("sens");
-      Eigen::VectorXd sens = stdvector_to_eigenvectord(sens_raw);
-      std::vector<double> vec_raw = request_body.at("vec");
-      Eigen::VectorXd vec = stdvector_to_eigenvectord(vec_raw);
+      std::vector<double> sens = request_body.at("sens");
+      std::vector<double> vec = request_body.at("vec");
 
       json empty_default_config;
       json config = request_body.value("config", empty_default_config);
-      model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs_refs, sens, vec, config);
+      model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config);
 
       json response_body;
-      response_body["output"] = eigenvectord_to_stdvector(model.hessAction);
+      response_body["output"] = model.hessAction;
 
       res.set_content(response_body.dump(), "text/plain");
     });
@@ -454,14 +412,14 @@ namespace umbridge {
 
     svr.Get("/GetInputSizes", [&](const httplib::Request &, httplib::Response &res) {
       json response_body;
-      response_body["inputSizes"] = eigenvectori_to_stdvector(model.inputSizes);
+      response_body["inputSizes"] = model.inputSizes;
 
       res.set_content(response_body.dump(), "text/plain");
     });
 
     svr.Get("/GetOutputSizes", [&](const httplib::Request &, httplib::Response &res) {
       json response_body;
-      response_body["outputSizes"] = eigenvectori_to_stdvector(model.outputSizes);
+      response_body["outputSizes"] = model.outputSizes;
 
       res.set_content(response_body.dump(), "text/plain");
     });

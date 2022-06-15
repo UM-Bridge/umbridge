@@ -12,29 +12,31 @@
 #include <chrono>
 #include <thread>
 
-int test_delay = 0;
-
 class ExampleModel : public umbridge::Model {
 public:
 
-  ExampleModel()
-   : umbridge::Model(Eigen::VectorXi::Ones(1)*1, Eigen::VectorXi::Ones(1))
+  ExampleModel(int test_delay)
+   : umbridge::Model({1}, {1}), test_delay(test_delay)
   {
-    outputs.push_back(Eigen::VectorXd::Ones(1));
+    outputs.push_back(std::vector<double>(1));
   }
 
-  void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) override {
+  void Evaluate(const std::vector<std::vector<double>>& inputs, json config) override {
     std::this_thread::sleep_for(std::chrono::milliseconds(test_delay));
-    outputs[0][0] = (inputs[0].get())[0] * 2;
+    outputs[0][0] = inputs[0][0] * 2;
   }
 
   bool SupportsEvaluate() override {
     return true;
   }
+
+private:
+  int test_delay;
 };
 
 int main(){
 
+  // Read environment variables for configuration
   char const* port_cstr = std::getenv("PORT");
   int port = 0;
   if ( port_cstr == NULL ) {
@@ -45,16 +47,17 @@ int main(){
   }
 
   char const* delay_cstr = std::getenv("TEST_DELAY");
+  int test_delay = 0;
   if ( delay_cstr != NULL ) {
     test_delay = atoi(delay_cstr);
   }
   std::cout << "Evaluation delay set to " << test_delay << " ms." << std::endl;
 
 
+  // Set up and serve model
+  ExampleModel model(test_delay);
 
-  ExampleModel modPiece;
-
-  umbridge::serveModel(modPiece, "0.0.0.0", port);
+  umbridge::serveModel(model, "0.0.0.0", port);
 
   return 0;
 }

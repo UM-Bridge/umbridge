@@ -14,10 +14,10 @@ model = umbridge.HTTPModel(args.url)
 print(model.get_input_sizes())
 print(model.get_output_sizes())
 
-param = [[100.0, 50.0]]
+param = [[200.0, 50.0]]
 
 # Simple model evaluation
 print(model(param))
 
 # Model evaluation with configuration parameters
-print(model(param, {"vtk_output": True}))
+print(model(param, {"vtk_output": True, "level": 1, "verbosity": False}))

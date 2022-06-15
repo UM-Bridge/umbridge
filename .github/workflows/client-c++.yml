@@ -24,7 +24,7 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update; DEBIAN_FRONTEND="noninteractive" apt install -y g++ libeigen3-dev libssl-dev
+          apt update; DEBIAN_FRONTEND="noninteractive" apt install -y g++ libssl-dev
        -
         name: Build and run
         run: |
