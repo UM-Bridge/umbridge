@@ -5,13 +5,13 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="umbridge",
-    version="0.0.0",
+    version="0.0.1",
     author="UM-Bridge",
     author_email="",
     description="UM-Bridge (the UQ and Model Bridge) provides a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=[],
+    install_requires=["aiohttp"],
     url="https://github.com/UM-Bridge/umbridge",  
     packages=setuptools.find_packages(),
     classifiers=(                                 # Classifiers help people find your 
