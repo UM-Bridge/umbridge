@@ -1,31 +1,31 @@
 #include <iostream>
-
 #include <string>
+#include <chrono>
+#include <thread>
 
-//#include <resolv.h> // Header included in httplib.h, causing potential issues with Eigen!
-
-// Needed for HTTPS
+// Needed for HTTPS, implies the need for openssl, may be omitted if HTTP suffices
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 
 #include "umbridge.h"
-
-#include <chrono>
-#include <thread>
 
 class ExampleModel : public umbridge::Model {
 public:
 
   ExampleModel(int test_delay)
-   : umbridge::Model({1}, {1}), test_delay(test_delay)
+   : umbridge::Model({1}, {1}), // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
+     test_delay(test_delay)
   {
     outputs.push_back(std::vector<double>(1));
   }
 
   void Evaluate(const std::vector<std::vector<double>>& inputs, json config) override {
+    // Do the actual model evaluation; here we just multiply the first entry of the first input vector by two, and store the result in the output.
+    // In addition, we support an artificial delay here, simulating actual work being done.
     std::this_thread::sleep_for(std::chrono::milliseconds(test_delay));
     outputs[0][0] = inputs[0][0] * 2;
   }
 
+  // Specify that our model supports evaluation. Jacobian support etc. may be indicated similarly.
   bool SupportsEvaluate() override {
     return true;
   }
