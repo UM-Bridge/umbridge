@@ -97,7 +97,7 @@ Each time, the output of the model evaluation is an array of arrays containing t
 
 ### C++ client
 
-The c++ client abstraction is part of the umbridge.h header-only library. Note that it has some header-only dependencies by itself in addition to the Eigen library.
+The c++ client abstraction is part of the umbridge.h header-only library. Note that it has some header-only dependencies by itself.
 
 Invoking it is mostly analogous to the above. Note that HTTP headers may optionally be used, for example to include access tokens.
 
@@ -108,15 +108,14 @@ umbridge::HTTPModel client("http://localhost:4242");
 As before, we can query input and output dimensions.
 
 ```
-std::cout << client.inputSizes << std::endl;
-std::cout << client.outputSizes << std::endl;
+client.inputSizes
+client.outputSizes
 ```
 
-In order to evaluate the model, we first define an input. Inputs consist of a std::vector of Eigen::VectorXd instances. The following example creates a single 2D vector in that structure.
+In order to evaluate the model, we first define an input. Input to a model may consist of multiple vectors, and is therefore of type std::vector<std::vector<double>>. The following example creates a single 2D vector in that structure.
 
 ```
-const Eigen::VectorXd zero = Eigen::VectorXd::Ones(2);
-std::vector input = {std::reference_wrapper(zero)};
+std::vector<std::vector<double>> inputs {{100.0, 18.0}};
 ```
 
 The input vector can then be passed into the model.
@@ -200,7 +199,7 @@ This server can be connected to by any client at port 4242.
 
 ### C++ server
 
-The c++ server abstraction is part of the HTTPComm.h header-only library. Note that it has some header-only dependencies by itself in addition to the Eigen library.
+The c++ server abstraction is part of the HTTPComm.h header-only library. Note that it has some header-only dependencies by itself.
 
 In order to provide a model via HTTP, it first needs to be defined by inheriting from ShallowModPiece. Input and output sizes are defined in the ShallowModPiece constructor, by means of vectors. Each of these size vectors define how many input/output vectors there will be, and the size vector entries define the dimension of each input/output vector. The actual model evaluation is then defined in the Evaluate method.
 
@@ -209,15 +208,17 @@ class ExampleModel : public umbridge::Model {
 public:
 
   ExampleModel()
-   : umbridge::Model(Eigen::VectorXi::Ones(1)*1, Eigen::VectorXi::Ones(1))
+   : umbridge::Model({1}, {1}) // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
   {
-    outputs.push_back(Eigen::VectorXd::Ones(1));
+    outputs.push_back(std::vector<double>(1));
   }
 
-  void Evaluate(std::vector<std::reference_wrapper<const Eigen::VectorXd>> const& inputs, json config) override {
-    outputs[0][0] = (inputs[0].get())[0] * 2;
+  void Evaluate(const std::vector<std::vector<double>>& inputs, json config) override {
+    // Do the actual model evaluation; here we just multiply the first entry of the first input vector by two, and store the result in the output.
+    outputs[0][0] = inputs[0][0] * 2;
   }
 
+  // Specify that our model supports evaluation. Jacobian support etc. may be indicated similarly.
   bool SupportsEvaluate() override {
     return true;
   }
