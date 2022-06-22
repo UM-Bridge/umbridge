@@ -125,7 +125,7 @@ namespace umbridge {
 
       if (auto res = cli.Post("/Gradient", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
-        gradient = (std::vector<double>)response_body.at("output");
+        gradient = response_body["output"].get<std::vector<double>>();
       } else {
         throw std::runtime_error("POST Gradient failed with error type '" + to_string(res.error()) + "'");
       }
@@ -150,7 +150,7 @@ namespace umbridge {
 
       if (auto res = cli.Post("/ApplyJacobian", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
-        jacobianAction = (std::vector<double>)response_body.at("output");
+        jacobianAction = response_body["output"].get<std::vector<double>>();
       } else {
         throw std::runtime_error("POST ApplyJacobian failed with error type '" + to_string(res.error()) + "'");
       }
@@ -179,7 +179,7 @@ namespace umbridge {
 
       if (auto res = cli.Post("/ApplyHessian", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
-        hessAction = (std::vector<double>)response_body.at("output");
+        hessAction = response_body["output"].get<std::vector<double>>();
       } else {
         throw std::runtime_error("POST ApplyHessian failed with error type '" + to_string(res.error()) + "'");
       }
