@@ -9,5 +9,5 @@ on:
 jobs:
   build:
     name: run make documentation
-    uses: UM-Bridge/benchmarks/.github/workflows/generate-documentation-shared.yaml@main
+    uses: UM-Bridge/benchmarks/.github/workflows/generate-documentation-shared.yml@main
 
