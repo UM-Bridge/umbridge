@@ -1,0 +1,12 @@
+name: generate-documentation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  call-workflow:
+    uses: UM-Bridge/benchmarks/.github/workflows/generate-documentation.yml@main
+
