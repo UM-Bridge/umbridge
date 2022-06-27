@@ -85,7 +85,7 @@ namespace umbridge {
 
       json request_body;
 
-      for (int i = 0; i < this->inputSizes.size(); i++) {
+      for (int i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
       if (!config.empty())
@@ -93,9 +93,9 @@ namespace umbridge {
 
       auto start_time = std::chrono::high_resolution_clock::now();
       if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "text/plain")) {
-        auto current_time = std::chrono::high_resolution_clock::now();
-
         json response_body = json::parse(res->body);
+        throw_if_error_in_response(response_body);
+
         for (int i = 0; i < this->outputSizes.size(); i++) {
           std::vector<double> outputvec = response_body["output"][i].get<std::vector<double>>();
           outputs[i] = outputvec;
@@ -116,7 +116,7 @@ namespace umbridge {
       json request_body;
       request_body["outWrt"] = outWrt;
       request_body["inWrt"] = inWrt;
-      for (int i = 0; i < this->inputSizes.size(); i++) {
+      for (int i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
       request_body["sens"] = sens;
@@ -125,6 +125,8 @@ namespace umbridge {
 
       if (auto res = cli.Post("/Gradient", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
+        throw_if_error_in_response(response_body);
+
         gradient = response_body["output"].get<std::vector<double>>();
       } else {
         throw std::runtime_error("POST Gradient failed with error type '" + to_string(res.error()) + "'");
@@ -141,7 +143,7 @@ namespace umbridge {
       json request_body;
       request_body["outWrt"] = outWrt;
       request_body["inWrt"] = inWrt;
-      for (int i = 0; i < this->inputSizes.size(); i++) {
+      for (int i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
       request_body["vec"] = vec;
@@ -150,6 +152,8 @@ namespace umbridge {
 
       if (auto res = cli.Post("/ApplyJacobian", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
+        throw_if_error_in_response(response_body);
+
         jacobianAction = response_body["output"].get<std::vector<double>>();
       } else {
         throw std::runtime_error("POST ApplyJacobian failed with error type '" + to_string(res.error()) + "'");
@@ -169,7 +173,7 @@ namespace umbridge {
       request_body["outWrt"] = outWrt;
       request_body["inWrt1"] = inWrt1;
       request_body["inWrt2"] = inWrt2;
-      for (int i = 0; i < this->inputSizes.size(); i++) {
+      for (int i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
       request_body["sens"] = sens;
@@ -179,6 +183,8 @@ namespace umbridge {
 
       if (auto res = cli.Post("/ApplyHessian", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
+        throw_if_error_in_response(response_body);
+
         hessAction = response_body["output"].get<std::vector<double>>();
       } else {
         throw std::runtime_error("POST ApplyHessian failed with error type '" + to_string(res.error()) + "'");
@@ -208,6 +214,13 @@ namespace umbridge {
     bool supportsApplyJacobian = false;
     bool supportsApplyHessian = false;
 
+    // Throw error if response contains error message
+    void throw_if_error_in_response(const json& response_body) {
+      if (response_body.find("error") != response_body.end()) {
+        throw std::runtime_error("Model server returned error of type " + response_body["error"]["type"].get<std::string>() + ", message: " + response_body["error"]["message"].get<std::string>());
+      }
+    }
+
     void retrieveSupportedFeatures() {
       httplib::Client cli(host.c_str());
 
@@ -229,9 +242,7 @@ namespace umbridge {
     std::vector<int> read_input_size(const std::string host, const httplib::Headers& headers){
       httplib::Client cli(host.c_str());
 
-      std::cout << "GET GetInputSizes" << std::endl;
       if (auto res = cli.Get("/GetInputSizes", headers)) {
-        std::cout << "got GetInputSizes" << std::endl;
         json response_body = json::parse(res->body);
         std::vector<int> outputvec = response_body["inputSizes"].get<std::vector<int>>();
         return outputvec;
@@ -244,9 +255,7 @@ namespace umbridge {
     std::vector<int> read_output_size(const std::string host, const httplib::Headers& headers){
       httplib::Client cli(host.c_str());
 
-      std::cout << "GET GetOutputSizes" << std::endl;
       if (auto res = cli.Get("/GetOutputSizes", headers)) {
-        std::cout << "got GetOutputSizes" << std::endl;
         json response_body = json::parse(res->body);
         std::vector<int> outputvec = response_body["outputSizes"].get<std::vector<int>>();
         return outputvec;
@@ -257,6 +266,87 @@ namespace umbridge {
     }
   };
 
+  // Check if inputs dimensions match model's expected input size and return error in httplib response
+  bool check_input_sizes(const std::vector<std::vector<double>>& inputs, const Model& model, httplib::Response& res) {
+    if (inputs.size() != model.inputSizes.size()) {
+      json response_body;
+      response_body["error"]["type"] = "InvalidInput";
+      response_body["error"]["message"] = "Number of inputs does not match number of model inputs. Expected " + std::to_string(model.inputSizes.size()) + " but got " + std::to_string(inputs.size());
+      res.set_content(response_body.dump(), "application/json");
+      res.status = 400;
+      return false;
+    }
+    for (int i = 0; i < inputs.size(); i++) {
+      if (inputs[i].size() != model.inputSizes[i]) {
+        json response_body;
+        response_body["error"]["type"] = "InvalidInput";
+        response_body["error"]["message"] = "Input size mismatch! In input " + std::to_string(i) + " model expected size " + std::to_string(model.inputSizes[i]) + " but got " + std::to_string(inputs[i].size());
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 400;
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Check if sensitivity vector's dimension matches correct model output size and return error in httplib response
+  bool check_sensitivity_size(const std::vector<double>& sens, int outWrt, const Model& model, httplib::Response& res) {
+    if (sens.size() != model.outputSizes[outWrt]) {
+      json response_body;
+      response_body["error"]["type"] = "InvalidInput";
+      response_body["error"]["message"] = "Sensitivity vector size mismatch! Expected " + std::to_string(model.outputSizes[outWrt]) + " but got " + std::to_string(sens.size());
+      res.set_content(response_body.dump(), "application/json");
+      res.status = 400;
+      return false;
+    }
+    return true;
+  }
+
+  // Check if vector's dimension matches correct model output size and return error in httplib response
+  bool check_vector_size(const std::vector<double>& vec, int inWrt, const Model& model, httplib::Response& res) {
+    if (vec.size() != model.inputSizes[inWrt]) {
+      json response_body;
+      response_body["error"]["type"] = "InvalidInput";
+      response_body["error"]["message"] = "Vector size mismatch! Expected " + std::to_string(model.inputSizes[inWrt]) + " but got " + std::to_string(vec.size());
+      res.set_content(response_body.dump(), "application/json");
+      res.status = 400;
+      return false;
+    }
+    return true;
+  }
+
+  // Check if outputs dimensions match model's expected output size and return error in httplib response
+  bool check_output_sizes(const std::vector<std::vector<double>>& outputs, const Model& model, httplib::Response& res) {
+    if (outputs.size() != model.outputSizes.size()) {
+      json response_body;
+      response_body["error"]["type"] = "InvalidOutput";
+      response_body["error"]["message"] = "Number of outputs declared by model does not match number of outputs returned by model. Model declared " + std::to_string(model.outputSizes.size()) + " but returned " + std::to_string(outputs.size());
+      res.set_content(response_body.dump(), "application/json");
+      res.status = 500;
+      return false;
+    }
+    for (int i = 0; i < outputs.size(); i++) {
+      if (outputs[i].size() != model.outputSizes[i]) {
+        json response_body;
+        response_body["error"]["type"] = "InvalidOutput";
+        response_body["error"]["message"] = "Output size mismatch! In output " + std::to_string(i) + " model declared size " + std::to_string(model.outputSizes[i]) + " but returned " + std::to_string(outputs[i].size());
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Construct response for unsupported feature
+  void write_unsupported_feature_response(httplib::Response& res, std::string feature) {
+    json response_body;
+    response_body["error"]["type"] = "UnsupportedFeature";
+    response_body["error"]["message"] = "Feature '" + feature + "' is not supported by this model";
+    res.set_content(response_body.dump(), "application/json");
+    res.status = 400;
+  }
+
   // Provides access to a model via network
   void serveModel(Model& model, std::string host, int port) {
 
@@ -265,10 +355,7 @@ namespace umbridge {
 
     svr.Post("/Evaluate", [&](const httplib::Request &req, httplib::Response &res) {
       if (!model.SupportsEvaluate()) {
-        json response_body;
-        response_body["error"]["type"] = "FeatureUnsupported";
-        response_body["error"]["message"] = "Evaluate requested by client, but not supported by model!";
-        res.set_content(response_body.dump(), "text/plain");
+        write_unsupported_feature_response(res, "Evaluate");
         return;
       }
 
@@ -277,29 +364,32 @@ namespace umbridge {
       json request_body = json::parse(req.body);
 
       std::vector<std::vector<double>> inputs;
-      for (int i = 0; i < model.inputSizes.size(); i++) {
+      for (int i = 0; i < request_body["input"].size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
         inputs.push_back(parameter);
       }
+
+      if (!check_input_sizes(inputs, model, res))
+        return;
 
       json empty_default_config;
       json config = request_body.value("config", empty_default_config);
       model.Evaluate(inputs, config);
 
+      if (!check_output_sizes(model.outputs, model, res))
+        return;
+
       json response_body;
-      for (int i = 0; i < model.outputSizes.size(); i++) {
+      for (int i = 0; i < model.outputs.size(); i++) {
         response_body["output"][i] = model.outputs[i];
       }
 
-      res.set_content(response_body.dump(), "text/plain");
+      res.set_content(response_body.dump(), "application/json");
     });
 
     svr.Post("/Gradient", [&](const httplib::Request &req, httplib::Response &res) {
       if (!model.SupportsGradient()) {
-        json response_body;
-        response_body["error"]["type"] = "FeatureUnsupported";
-        response_body["error"]["message"] = "Gradient requested by client, but not supported by model!";
-        res.set_content(response_body.dump(), "text/plain");
+        write_unsupported_feature_response(res, "Gradient");
         return;
       }
 
@@ -311,12 +401,17 @@ namespace umbridge {
       unsigned int outWrt = request_body.at("outWrt");
 
       std::vector<std::vector<double>> inputs;
-      for (int i = 0; i < model.inputSizes.size(); i++) {
+      for (int i = 0; i < request_body["input"].size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
         inputs.push_back(parameter);
       }
 
       std::vector<double> sens = request_body.at("sens");
+
+      if (!check_input_sizes(inputs, model, res))
+        return;
+      if (!check_sensitivity_size(sens, outWrt, model, res))
+        return;
 
       json empty_default_config;
       json config = request_body.value("config", empty_default_config);
@@ -325,15 +420,12 @@ namespace umbridge {
       json response_body;
       response_body["output"] = model.gradient;
 
-      res.set_content(response_body.dump(), "text/plain");
+      res.set_content(response_body.dump(), "application/json");
     });
 
     svr.Post("/ApplyJacobian", [&](const httplib::Request &req, httplib::Response &res) {
       if (!model.SupportsApplyJacobian()) {
-        json response_body;
-        response_body["error"]["type"] = "FeatureUnsupported";
-        response_body["error"]["message"] = "ApplyJacobian requested by client, but not supported by model!";
-        res.set_content(response_body.dump(), "text/plain");
+        write_unsupported_feature_response(res, "ApplyJacobian");
         return;
       }
 
@@ -345,12 +437,17 @@ namespace umbridge {
       unsigned int outWrt = request_body.at("outWrt");
 
       std::vector<std::vector<double>> inputs;
-      for (int i = 0; i < model.inputSizes.size(); i++) {
+      for (int i = 0; i < request_body["input"].size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
         inputs.push_back(parameter);
       }
 
       std::vector<double> vec = request_body.at("vec");
+
+      if (!check_input_sizes(inputs, model, res))
+        return;
+      if (!check_vector_size(vec, inWrt, model, res))
+        return;
 
       json empty_default_config;
       json config = request_body.value("config", empty_default_config);
@@ -359,15 +456,12 @@ namespace umbridge {
       json response_body;
       response_body["output"] = model.jacobianAction;
 
-      res.set_content(response_body.dump(), "text/plain");
+      res.set_content(response_body.dump(), "application/json");
     });
 
     svr.Post("/ApplyHessian", [&](const httplib::Request &req, httplib::Response &res) {
       if (!model.SupportsApplyHessian()) {
-        json response_body;
-        response_body["error"]["type"] = "FeatureUnsupported";
-        response_body["error"]["message"] = "ApplyHessian requested by client, but not supported by model!";
-        res.set_content(response_body.dump(), "text/plain");
+        write_unsupported_feature_response(res, "ApplyHessian");
         return;
       }
 
@@ -380,13 +474,18 @@ namespace umbridge {
       unsigned int inWrt2 = request_body.at("inWrt2");
 
       std::vector<std::vector<double>> inputs;
-      for (int i = 0; i < model.inputSizes.size(); i++) {
+      for (int i = 0; i < request_body["input"].size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
         inputs.push_back(parameter);
       }
 
       std::vector<double> sens = request_body.at("sens");
       std::vector<double> vec = request_body.at("vec");
+
+      if (!check_input_sizes(inputs, model, res))
+        return;
+      if (!check_sensitivity_size(sens, outWrt, model, res))
+        return;
 
       json empty_default_config;
       json config = request_body.value("config", empty_default_config);
@@ -395,7 +494,7 @@ namespace umbridge {
       json response_body;
       response_body["output"] = model.hessAction;
 
-      res.set_content(response_body.dump(), "text/plain");
+      res.set_content(response_body.dump(), "application/json");
     });
 
     svr.Get("/Info", [&](const httplib::Request &, httplib::Response &res) {
@@ -407,21 +506,21 @@ namespace umbridge {
 
       response_body["protocolVersion"] = 0.9;
 
-      res.set_content(response_body.dump(), "text/plain");
+      res.set_content(response_body.dump(), "application/json");
     });
 
     svr.Get("/GetInputSizes", [&](const httplib::Request &, httplib::Response &res) {
       json response_body;
       response_body["inputSizes"] = model.inputSizes;
 
-      res.set_content(response_body.dump(), "text/plain");
+      res.set_content(response_body.dump(), "application/json");
     });
 
     svr.Get("/GetOutputSizes", [&](const httplib::Request &, httplib::Response &res) {
       json response_body;
       response_body["outputSizes"] = model.outputSizes;
 
-      res.set_content(response_body.dump(), "text/plain");
+      res.set_content(response_body.dump(), "application/json");
     });
 
     std::cout << "Listening on port " << port << "..." << std::endl;
