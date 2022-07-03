@@ -338,6 +338,32 @@ namespace umbridge {
     return true;
   }
 
+  // Check if inWrt is between zero and model's input size inWrt and return error in httplib response
+  bool check_input_wrt(int inWrt, const Model& model, httplib::Response& res) {
+    if (inWrt < 0 || inWrt >= model.inputSizes.size()) {
+      json response_body;
+      response_body["error"]["type"] = "InvalidInput";
+      response_body["error"]["message"] = "Input inWrt out of range! Expected between 0 and " + std::to_string(model.inputSizes.size() - 1) + " but got " + std::to_string(inWrt);
+      res.set_content(response_body.dump(), "application/json");
+      res.status = 400;
+      return false;
+    }
+    return true;
+  }
+
+  // Check if outWrt is between zero and model's output size outWrt and return error in httplib response
+  bool check_output_wrt(int outWrt, const Model& model, httplib::Response& res) {
+    if (outWrt < 0 || outWrt >= model.outputSizes.size()) {
+      json response_body;
+      response_body["error"]["type"] = "InvalidInput";
+      response_body["error"]["message"] = "Input outWrt out of range! Expected between 0 and " + std::to_string(model.outputSizes.size() - 1) + " but got " + std::to_string(outWrt);
+      res.set_content(response_body.dump(), "application/json");
+      res.status = 400;
+      return false;
+    }
+    return true;
+  }
+
   // Construct response for unsupported feature
   void write_unsupported_feature_response(httplib::Response& res, std::string feature) {
     json response_body;
@@ -408,6 +434,10 @@ namespace umbridge {
 
       std::vector<double> sens = request_body.at("sens");
 
+      if (!check_input_wrt(inWrt, model, res))
+        return;
+      if (!check_output_wrt(outWrt, model, res))
+        return;
       if (!check_input_sizes(inputs, model, res))
         return;
       if (!check_sensitivity_size(sens, outWrt, model, res))
@@ -444,6 +474,10 @@ namespace umbridge {
 
       std::vector<double> vec = request_body.at("vec");
 
+      if (!check_input_wrt(inWrt, model, res))
+        return;
+      if (!check_output_wrt(outWrt, model, res))
+        return;
       if (!check_input_sizes(inputs, model, res))
         return;
       if (!check_vector_size(vec, inWrt, model, res))
@@ -482,6 +516,12 @@ namespace umbridge {
       std::vector<double> sens = request_body.at("sens");
       std::vector<double> vec = request_body.at("vec");
 
+      if (!check_input_wrt(inWrt1, model, res))
+        return;
+      if (!check_input_wrt(inWrt2, model, res))
+        return;
+      if (!check_output_wrt(outWrt, model, res))
+        return;
       if (!check_input_sizes(inputs, model, res))
         return;
       if (!check_sensitivity_size(sens, outWrt, model, res))
