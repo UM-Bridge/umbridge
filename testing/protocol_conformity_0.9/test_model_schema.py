@@ -149,8 +149,8 @@ def test_gradient(model_url, input_value):
 
     jsonschema.validate(instance=resp.json(), schema=schema)
 
-    # Check if output has dimension outWrt
-    assert len(resp.json()["output"]) == outputSizesJSON["outputSizes"][0]
+    # Check if output has dimension of input inWrt
+    assert len(resp.json()["output"]) == inputSizesJSON["inputSizes"][inputParams["inWrt"]]
 
 def test_gradient_with_wrong_input_dimensions(model_url, input_value):
     resp_info = requests.get(f'{model_url}/Info')
