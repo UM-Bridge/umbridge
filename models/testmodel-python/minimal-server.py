@@ -10,18 +10,20 @@ class TestModel(umbridge.Model):
         return [1]
 
     def __call__(self, parameters, config={}):
-        posterior = parameters[0][0] * 2
+        posterior = parameters[0][0]*2
         return [[posterior]]
 
     def supports_evaluate(self):
         return True
 
     def gradient(self,out_wrt, in_wrt, parameters, sens, config={}):
-        return [2.0 * sens[0]]
+        return [2.0*parameters[0][0]*sens[0]]
 
     def supports_gradient(self):
         return True
 
 testmodel = TestModel()
+
+print('hi!')
 
 umbridge.serve_model(testmodel, 4242)
