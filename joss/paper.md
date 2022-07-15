@@ -78,7 +78,7 @@ UM-Bridge has been integrated with the [MIT Uncertainty Quantification](muq.mit.
 A library of UQ benchmarks based on UM-Bridge is currently being built [here](https://um-bridge-benchmarks.readthedocs.io/en/docs/). To the best of our knowledge, this is the first UQ benchmark library available.
 
 # Acknowledgements
-We would like to acknowledge financial and technical support from Robert Scheichl and <who else?>.   Parno's effort was supported by  Office of Naval Research MURI grant N00014-20-1-2595.
+We would like to acknowledge support from Robert Scheichl and Christian Mezzanotte.   Parno's effort was supported by  Office of Naval Research MURI grant N00014-20-1-2595.
 
 
 
