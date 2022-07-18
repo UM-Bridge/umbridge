@@ -25,7 +25,7 @@ namespace umbridge {
     {}
 
     virtual void Evaluate(const std::vector<std::vector<double>>& inputs,
-                          json config = json()) {
+                          json config_json = json()) {
       throw std::runtime_error("Evaluate was called, but not implemented by model!");
     }
 
@@ -33,7 +33,7 @@ namespace umbridge {
                           unsigned int inWrt,
                           const std::vector<std::vector<double>>& inputs,
                           const std::vector<double>& sens,
-                          json config = json()) {
+                          json config_json = json()) {
       throw std::runtime_error("Gradient was called, but not implemented by model!");
     }
 
@@ -41,7 +41,7 @@ namespace umbridge {
                               unsigned int inWrt,
                               const std::vector<std::vector<double>>& inputs,
                               const std::vector<double>& vec,
-                              json config = json()) {
+                              json config_json = json()) {
       throw std::runtime_error("ApplyJacobian was called, but not implemented by model!");
     }
 
@@ -51,7 +51,7 @@ namespace umbridge {
                               const std::vector<std::vector<double>>& inputs,
                               const std::vector<double>& sens,
                               const std::vector<double>& vec,
-                              json config = json()) {
+                              json config_json = json()) {
       throw std::runtime_error("ApplyHessian was called, but not implemented by model!");
     }
 
@@ -80,7 +80,7 @@ namespace umbridge {
       retrieveSupportedFeatures();
     }
 
-    void Evaluate(const std::vector<std::vector<double>>& inputs, json config = json()) override {
+    void Evaluate(const std::vector<std::vector<double>>& inputs, json config_json = json()) override {
       httplib::Client cli(host.c_str());
 
       json request_body;
@@ -88,8 +88,8 @@ namespace umbridge {
       for (int i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
-      if (!config.empty())
-        request_body["config"] = config;
+      if (!config_json.empty())
+        request_body["config"] = config_json;
 
       auto start_time = std::chrono::high_resolution_clock::now();
       if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "text/plain")) {
@@ -109,7 +109,7 @@ namespace umbridge {
                   unsigned int inWrt,
                   const std::vector<std::vector<double>>& inputs,
                   const std::vector<double>& sens,
-                  json config = json()) override
+                  json config_json = json()) override
     {
       httplib::Client cli(host.c_str());
 
@@ -120,8 +120,8 @@ namespace umbridge {
         request_body["input"][i] = inputs[i];
       }
       request_body["sens"] = sens;
-      if (!config.empty())
-        request_body["config"] = config;
+      if (!config_json.empty())
+        request_body["config"] = config_json;
 
       if (auto res = cli.Post("/Gradient", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
@@ -137,7 +137,7 @@ namespace umbridge {
                               unsigned int inWrt,
                               const std::vector<std::vector<double>>& inputs,
                               const std::vector<double>& vec,
-                              json config = json()) override {
+                              json config_json = json()) override {
       httplib::Client cli(host.c_str());
 
       json request_body;
@@ -147,8 +147,8 @@ namespace umbridge {
         request_body["input"][i] = inputs[i];
       }
       request_body["vec"] = vec;
-      if (!config.empty())
-        request_body["config"] = config;
+      if (!config_json.empty())
+        request_body["config"] = config_json;
 
       if (auto res = cli.Post("/ApplyJacobian", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
@@ -166,7 +166,7 @@ namespace umbridge {
                       const std::vector<std::vector<double>>& inputs,
                       const std::vector<double>& sens,
                       const std::vector<double>& vec,
-                      json config = json()) override {
+                      json config_json = json()) override {
       httplib::Client cli(host.c_str());
 
       json request_body;
@@ -178,8 +178,8 @@ namespace umbridge {
       }
       request_body["sens"] = sens;
       request_body["vec"] = vec;
-      if (!config.empty())
-        request_body["config"] = config;
+      if (!config_json.empty())
+        request_body["config"] = config_json;
 
       if (auto res = cli.Post("/ApplyHessian", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
@@ -399,8 +399,8 @@ namespace umbridge {
         return;
 
       json empty_default_config;
-      json config = request_body.value("config", empty_default_config);
-      model.Evaluate(inputs, config);
+      json config_json = request_body.value("config", empty_default_config);
+      model.Evaluate(inputs, config_json);
 
       if (!check_output_sizes(model.outputs, model, res))
         return;
@@ -444,8 +444,8 @@ namespace umbridge {
         return;
 
       json empty_default_config;
-      json config = request_body.value("config", empty_default_config);
-      model.Gradient(outWrt, inWrt, inputs, sens, config);
+      json config_json = request_body.value("config", empty_default_config);
+      model.Gradient(outWrt, inWrt, inputs, sens, config_json);
 
       json response_body;
       response_body["output"] = model.gradient;
@@ -484,8 +484,8 @@ namespace umbridge {
         return;
 
       json empty_default_config;
-      json config = request_body.value("config", empty_default_config);
-      model.ApplyJacobian(outWrt, inWrt, inputs, vec, config);
+      json config_json = request_body.value("config", empty_default_config);
+      model.ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
 
       json response_body;
       response_body["output"] = model.jacobianAction;
@@ -528,8 +528,8 @@ namespace umbridge {
         return;
 
       json empty_default_config;
-      json config = request_body.value("config", empty_default_config);
-      model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config);
+      json config_json = request_body.value("config", empty_default_config);
+      model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
 
       json response_body;
       response_body["output"] = model.hessAction;
