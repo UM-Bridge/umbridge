@@ -61,6 +61,19 @@ def test_evaluate(model_url, input_value):
     for i in range(0,len(outputSizesJSON["outputSizes"])):
       assert len(resp.json()["output"][i]) == outputSizesJSON["outputSizes"][i]
 
+# Check if calling evaluate on a model that does not support it returns a FeatureUnsupported error
+def test_evaluate_unsupported(model_url):
+    resp_info = requests.get(f'{model_url}/Info')
+    assert resp_info.status_code == 200
+    if resp_info.json()["support"]["Evaluate"]:
+      return
+
+    resp = requests.post(f'{model_url}/Evaluate', headers={})
+
+    assert resp.status_code == 400
+
+    validate_feature_unsupported_json_schema(resp.json())
+
 def validate_invalid_input_error_json_schema(response_json):
     schema = {
       "type":"object",
@@ -71,6 +84,36 @@ def validate_invalid_input_error_json_schema(response_json):
             "type":{
               "type":"string",
               "enum":["InvalidInput"]
+            },
+            "message":{
+              "type":"string"
+            }
+          },
+          "required":[
+            "type",
+            "message"
+          ],
+          "additionalProperties":False
+        }
+      },
+      "required":[
+        "error"
+      ],
+      "additionalProperties":False
+    }
+
+    jsonschema.validate(instance=response_json, schema=schema)
+
+def validate_feature_unsupported_json_schema(response_json):
+    schema = {
+      "type":"object",
+      "properties":{
+        "error":{
+          "type":"object",
+          "properties":{
+            "type":{
+              "type":"string",
+              "enum":["UnsupportedFeature"]
             },
             "message":{
               "type":"string"
@@ -151,6 +194,18 @@ def test_gradient(model_url, input_value):
 
     # Check if output has dimension of input inWrt
     assert len(resp.json()["output"]) == inputSizesJSON["inputSizes"][inputParams["inWrt"]]
+
+def test_gradient_unsupported(model_url):
+    resp_info = requests.get(f'{model_url}/Info')
+    assert resp_info.status_code == 200
+    if resp_info.json()["support"]["Gradient"]:
+      return
+
+    resp = requests.post(f'{model_url}/Gradient', headers={})
+
+    assert resp.status_code == 400
+
+    validate_feature_unsupported_json_schema(resp.json())
 
 def test_gradient_with_wrong_input_dimensions(model_url, input_value):
     resp_info = requests.get(f'{model_url}/Info')
@@ -261,6 +316,18 @@ def test_apply_jacobian(model_url, input_value):
     outputSizesJSON = requests.get(f'{model_url}/GetOutputSizes').json()
     assert len(resp.json()["output"]) == outputSizesJSON["outputSizes"][0]
 
+def test_apply_jacobian_unsupported(model_url):
+    resp_info = requests.get(f'{model_url}/Info')
+    assert resp_info.status_code == 200
+    if resp_info.json()["support"]["ApplyJacobian"]:
+      return
+
+    resp = requests.post(f'{model_url}/ApplyJacobian', headers={})
+
+    assert resp.status_code == 400
+
+    validate_feature_unsupported_json_schema(resp.json())
+
 def test_apply_jacobian_with_wrong_input_dimensions(model_url, input_value):
     resp_info = requests.get(f'{model_url}/Info')
     assert resp_info.status_code == 200
@@ -326,6 +393,18 @@ def test_apply_hessian(model_url, input_value):
 
     # Check if output has dimension of output outWrt
     assert len(resp.json()["output"]) == outputSizesJSON["outputSizes"][0]
+
+def test_apply_hessian_unsupported(model_url):
+    resp_info = requests.get(f'{model_url}/Info')
+    assert resp_info.status_code == 200
+    if resp_info.json()["support"]["ApplyHessian"]:
+      return
+
+    resp = requests.post(f'{model_url}/ApplyHessian', headers={})
+
+    assert resp.status_code == 400
+
+    validate_feature_unsupported_json_schema(resp.json())
 
 def test_apply_hessian_with_wrong_input_dimensions(model_url, input_value):
     resp_info = requests.get(f'{model_url}/Info')
