@@ -1,0 +1,13 @@
+name: generate-documentation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  build:
+    name: run make documentation
+    uses: UM-Bridge/benchmarks/.github/workflows/generate-documentation-shared.yml@main
+

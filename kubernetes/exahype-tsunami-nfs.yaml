@@ -1,9 +1,9 @@
 apiVersion: kubeflow.org/v2beta1
 kind: MPIJob
 metadata:
-  generateName: pi
+  name: mpijob-${SHARED_FILE_PREFIX}
 spec:
-  slotsPerWorker: 1
+  slotsPerWorker: 2
   runPolicy:
     cleanPodPolicy: Running
   sshAuthMountPath: /home/mpiuser/.ssh
@@ -18,7 +18,7 @@ spec:
             persistentVolumeClaim:
               claimName: nfs
           containers:
-          - image: linusseelinger/model-exahype-tsunami:latest
+          - image: linusseelinger/benchmark-exahype-tsunami:latest
             name: mpi-launcher
             volumeMounts:
               # name must match the volume name below
@@ -28,15 +28,15 @@ spec:
               runAsUser: 1000
             env:
             - name: SHARED_DIR
-              value: "/shared/comm_test"
+              value: "/shared/comm_${SHARED_FILE_PREFIX}_"
             - name: RANKS
-              value: "2"
+              value: "4"
             command:
             - /server/server
             resources:
               limits:
                 cpu: 1
-                memory: 4Gi
+                memory: 2Gi
     Worker:
       replicas: 2
       template:
@@ -46,7 +46,7 @@ spec:
             persistentVolumeClaim:
               claimName: nfs
           containers:
-          - image: linusseelinger/model-exahype-tsunami:latest
+          - image: linusseelinger/benchmark-exahype-tsunami:latest
             name: mpi-worker
             volumeMounts:
               # name must match the volume name below
@@ -56,9 +56,7 @@ spec:
               runAsUser: 1000
             env:
             - name: SHARED_DIR
-              value: "/shared/comm_test"
-            - name: RANKS
-              value: "2"
+              value: "/shared/comm_${SHARED_FILE_PREFIX}_"
             command:
             - /usr/sbin/sshd
             args:
@@ -71,5 +69,5 @@ spec:
               initialDelaySeconds: 2
             resources:
               limits:
-                cpu: 1
-                memory: 4Gi
+                cpu: 2
+                memory: 2Gi
