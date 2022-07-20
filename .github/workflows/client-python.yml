@@ -24,7 +24,7 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install requests aiohttp
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install umbridge
        -
         name: Build and run
         run: |
