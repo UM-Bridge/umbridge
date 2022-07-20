@@ -24,6 +24,4 @@ class TestModel(umbridge.Model):
 
 testmodel = TestModel()
 
-print('hi!')
-
 umbridge.serve_model(testmodel, 4242)
