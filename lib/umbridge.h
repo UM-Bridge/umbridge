@@ -7,7 +7,6 @@
 
 #include <string>
 #include <vector>
-#include <chrono>
 
 
 #include "json.hpp"
@@ -20,7 +19,7 @@ namespace umbridge {
   class Model {
   public:
 
-    Model(const std::vector<int> inputSizes, const std::vector<int> outputSizes)
+    Model(const std::vector<std::size_t> inputSizes, const std::vector<std::size_t> outputSizes)
     : inputSizes(inputSizes), outputSizes(outputSizes)
     {}
 
@@ -60,8 +59,8 @@ namespace umbridge {
     virtual bool SupportsApplyJacobian() {return false;}
     virtual bool SupportsApplyHessian() {return false;}
 
-    const std::vector<int> inputSizes;
-    const std::vector<int> outputSizes;
+    const std::vector<std::size_t> inputSizes;
+    const std::vector<std::size_t> outputSizes;
 
     std::vector<std::vector<double>> outputs;
     std::vector<double> gradient;
@@ -74,7 +73,7 @@ namespace umbridge {
   public:
 
     HTTPModel(std::string host, httplib::Headers headers = httplib::Headers())
-    : host(host), headers(headers), Model(read_input_size(host, headers), read_output_size(host, headers))
+    : Model(read_input_size(host, headers), read_output_size(host, headers)), host(host), headers(headers)
     {
       outputs.resize(outputSizes.size());
       retrieveSupportedFeatures();
@@ -85,18 +84,17 @@ namespace umbridge {
 
       json request_body;
 
-      for (int i = 0; i < inputs.size(); i++) {
+      for (std::size_t i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
       if (!config_json.empty())
         request_body["config"] = config_json;
 
-      auto start_time = std::chrono::high_resolution_clock::now();
       if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "text/plain")) {
         json response_body = json::parse(res->body);
         throw_if_error_in_response(response_body);
 
-        for (int i = 0; i < this->outputSizes.size(); i++) {
+        for (std::size_t i = 0; i < this->outputSizes.size(); i++) {
           std::vector<double> outputvec = response_body["output"][i].get<std::vector<double>>();
           outputs[i] = outputvec;
         }
@@ -116,7 +114,7 @@ namespace umbridge {
       json request_body;
       request_body["outWrt"] = outWrt;
       request_body["inWrt"] = inWrt;
-      for (int i = 0; i < inputs.size(); i++) {
+      for (std::size_t i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
       request_body["sens"] = sens;
@@ -143,7 +141,7 @@ namespace umbridge {
       json request_body;
       request_body["outWrt"] = outWrt;
       request_body["inWrt"] = inWrt;
-      for (int i = 0; i < inputs.size(); i++) {
+      for (std::size_t i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
       request_body["vec"] = vec;
@@ -173,7 +171,7 @@ namespace umbridge {
       request_body["outWrt"] = outWrt;
       request_body["inWrt1"] = inWrt1;
       request_body["inWrt2"] = inWrt2;
-      for (int i = 0; i < inputs.size(); i++) {
+      for (std::size_t i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
       request_body["sens"] = sens;
@@ -239,29 +237,29 @@ namespace umbridge {
       }
     }
 
-    std::vector<int> read_input_size(const std::string host, const httplib::Headers& headers){
+    std::vector<std::size_t> read_input_size(const std::string host, const httplib::Headers& headers){
       httplib::Client cli(host.c_str());
 
       if (auto res = cli.Get("/GetInputSizes", headers)) {
         json response_body = json::parse(res->body);
-        std::vector<int> outputvec = response_body["inputSizes"].get<std::vector<int>>();
+        std::vector<std::size_t> outputvec = response_body["inputSizes"].get<std::vector<std::size_t>>();
         return outputvec;
       } else {
         throw std::runtime_error("GET GetInputSizes failed with error type '" + to_string(res.error()) + "'");
-        return std::vector<int>(0);
+        return std::vector<std::size_t>(0);
       }
     }
 
-    std::vector<int> read_output_size(const std::string host, const httplib::Headers& headers){
+    std::vector<std::size_t> read_output_size(const std::string host, const httplib::Headers& headers){
       httplib::Client cli(host.c_str());
 
       if (auto res = cli.Get("/GetOutputSizes", headers)) {
         json response_body = json::parse(res->body);
-        std::vector<int> outputvec = response_body["outputSizes"].get<std::vector<int>>();
+        std::vector<std::size_t> outputvec = response_body["outputSizes"].get<std::vector<std::size_t>>();
         return outputvec;
       } else {
         throw std::runtime_error("GET GetOutputSizes failed with error type '" + to_string(res.error()) + "'");
-        return std::vector<int>(0);
+        return std::vector<std::size_t>(0);
       }
     }
   };
@@ -276,7 +274,7 @@ namespace umbridge {
       res.status = 400;
       return false;
     }
-    for (int i = 0; i < inputs.size(); i++) {
+    for (std::size_t i = 0; i < inputs.size(); i++) {
       if (inputs[i].size() != model.inputSizes[i]) {
         json response_body;
         response_body["error"]["type"] = "InvalidInput";
@@ -325,7 +323,7 @@ namespace umbridge {
       res.status = 500;
       return false;
     }
-    for (int i = 0; i < outputs.size(); i++) {
+    for (std::size_t i = 0; i < outputs.size(); i++) {
       if (outputs[i].size() != model.outputSizes[i]) {
         json response_body;
         response_body["error"]["type"] = "InvalidOutput";
@@ -340,7 +338,7 @@ namespace umbridge {
 
   // Check if inWrt is between zero and model's input size inWrt and return error in httplib response
   bool check_input_wrt(int inWrt, const Model& model, httplib::Response& res) {
-    if (inWrt < 0 || inWrt >= model.inputSizes.size()) {
+    if (inWrt < 0 || inWrt >= (int)model.inputSizes.size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
       response_body["error"]["message"] = "Input inWrt out of range! Expected between 0 and " + std::to_string(model.inputSizes.size() - 1) + " but got " + std::to_string(inWrt);
@@ -353,7 +351,7 @@ namespace umbridge {
 
   // Check if outWrt is between zero and model's output size outWrt and return error in httplib response
   bool check_output_wrt(int outWrt, const Model& model, httplib::Response& res) {
-    if (outWrt < 0 || outWrt >= model.outputSizes.size()) {
+    if (outWrt < 0 || outWrt >= (int)model.outputSizes.size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
       response_body["error"]["message"] = "Input outWrt out of range! Expected between 0 and " + std::to_string(model.outputSizes.size() - 1) + " but got " + std::to_string(outWrt);
@@ -390,7 +388,7 @@ namespace umbridge {
       json request_body = json::parse(req.body);
 
       std::vector<std::vector<double>> inputs;
-      for (int i = 0; i < request_body["input"].size(); i++) {
+      for (std::size_t i = 0; i < request_body["input"].size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
         inputs.push_back(parameter);
       }
@@ -406,7 +404,7 @@ namespace umbridge {
         return;
 
       json response_body;
-      for (int i = 0; i < model.outputs.size(); i++) {
+      for (std::size_t i = 0; i < model.outputs.size(); i++) {
         response_body["output"][i] = model.outputs[i];
       }
 
@@ -427,7 +425,7 @@ namespace umbridge {
       unsigned int outWrt = request_body.at("outWrt");
 
       std::vector<std::vector<double>> inputs;
-      for (int i = 0; i < request_body["input"].size(); i++) {
+      for (std::size_t i = 0; i < request_body["input"].size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
         inputs.push_back(parameter);
       }
@@ -467,7 +465,7 @@ namespace umbridge {
       unsigned int outWrt = request_body.at("outWrt");
 
       std::vector<std::vector<double>> inputs;
-      for (int i = 0; i < request_body["input"].size(); i++) {
+      for (std::size_t i = 0; i < request_body["input"].size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
         inputs.push_back(parameter);
       }
@@ -508,7 +506,7 @@ namespace umbridge {
       unsigned int inWrt2 = request_body.at("inWrt2");
 
       std::vector<std::vector<double>> inputs;
-      for (int i = 0; i < request_body["input"].size(); i++) {
+      for (std::size_t i = 0; i < request_body["input"].size(); i++) {
         std::vector<double> parameter = request_body["input"][i].get<std::vector<double>>();
         inputs.push_back(parameter);
       }
