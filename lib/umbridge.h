@@ -25,6 +25,7 @@ namespace umbridge {
 
     virtual void Evaluate(const std::vector<std::vector<double>>& inputs,
                           json config_json = json()) {
+      (void)inputs; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("Evaluate was called, but not implemented by model!");
     }
 
@@ -33,6 +34,7 @@ namespace umbridge {
                           const std::vector<std::vector<double>>& inputs,
                           const std::vector<double>& sens,
                           json config_json = json()) {
+      (void)outWrt; (void)inWrt; (void)inputs; (void)sens; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("Gradient was called, but not implemented by model!");
     }
 
@@ -41,6 +43,7 @@ namespace umbridge {
                               const std::vector<std::vector<double>>& inputs,
                               const std::vector<double>& vec,
                               json config_json = json()) {
+      (void)outWrt; (void)inWrt; (void)inputs; (void)vec; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("ApplyJacobian was called, but not implemented by model!");
     }
 
@@ -51,6 +54,7 @@ namespace umbridge {
                               const std::vector<double>& sens,
                               const std::vector<double>& vec,
                               json config_json = json()) {
+      (void)outWrt; (void)inWrt1; (void)inWrt2; (void)inputs; (void)sens; (void)vec; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("ApplyHessian was called, but not implemented by model!");
     }
 
