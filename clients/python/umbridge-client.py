@@ -18,7 +18,6 @@ param = [[200.0, 50.0]]
 
 # Simple model evaluation
 print(model(param))
-print(model.gradient(0, 0, param, [1.0]))
 
 # Model evaluation with configuration parameters
 print(model(param, {"vtk_output": True, "level": 1, "verbosity": False}))
