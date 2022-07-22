@@ -194,7 +194,7 @@ def serve_model(model, port=4242):
         output = model.gradient(out_wrt, in_wrt, parameters, sens, config)
 
         # Check if output dimension matches model ipuut size inWrt
-        if len(output) != len(model.get_input_sizes()[in_wrt]):
+        if len(output) != model.get_input_sizes()[in_wrt]:
             return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_input_sizes()[in_wrt]} but returned {len(output)}.", 500)
 
         return web.Response(text=f"{{\"output\": {output} }}")
