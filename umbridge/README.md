@@ -6,9 +6,9 @@ Inspired by the MIT Uncertainty Quantification library (MUQ), each model may hav
 
 Inputs and outputs to each HTTP endpoint are in JSON format as defined below.
 
-# Protocol
+## Protocol
 
-## Verifying correctness
+### Verifying correctness
 
 You can verify that your own model server fulfills the protocol definition by running the following test, adjusting the URL to where your model is running.
 
@@ -16,7 +16,7 @@ You can verify that your own model server fulfills the protocol definition by ru
 docker run -it --network=host -e model_host=http://localhost:4242 linusseelinger/testing-protocol-conformity-0.9
 ```
 
-## Required endpoints
+### Required endpoints
 The model server offers the following endpoints:
 
 Endpoint         | Purpose
@@ -25,7 +25,7 @@ Endpoint         | Purpose
 /GetOutputSizes  | Model output dimensions
 /Info            | Technical information about the model, in particular defines what optional endpoints are supported
 
-## Optional endpoints
+### Optional endpoints
 The model server may offer the following optional endpoints, depending on the model's capabilities. Whether an optional endpoint is supported or not is indicated in the output of the Info endpoint.
 
 Endpoint         | Purpose
@@ -35,7 +35,7 @@ Endpoint         | Purpose
 /ApplyJacobian   | Action of model Jacobian to given vector
 /ApplyHessian    | Action of model Hessian
 
-## GET /GetInputSizes
+### GET /GetInputSizes
 
 Output key       | Value type       | Purpose
 -----------------|------------------|-------------
@@ -49,7 +49,7 @@ Output example:
 }
 ```
 
-## GET /GetOutputSizes
+### GET /GetOutputSizes
 
 Output key       | Value type       | Purpose
 -----------------|------------------|-------------
@@ -63,7 +63,7 @@ Output example:
 }
 ```
 
-## GET /Info
+### GET /Info
 
 Output key       | Value type       | Purpose
 -----------------|------------------|-------------
@@ -86,7 +86,7 @@ Output example:
 }
 ```
 
-## POST /Evaluate
+### POST /Evaluate
 
 Input key        | Value type       | Purpose
 -----------------|------------------|-------------
@@ -112,7 +112,7 @@ Output example:
 }
 ```
 
-## POST /Gradient
+### POST /Gradient
 
 Input key        | Value type       | Purpose
 -----------------|------------------|-------------
@@ -126,7 +126,7 @@ Output key       | Value type       | Purpose
 -----------------|------------------|-------------
 output           | Array of numbers | Gradient of objective
 
-## POST /ApplyJacobian
+### POST /ApplyJacobian
 
 Input key        | Value type       | Purpose
 -----------------|------------------|-------------
@@ -140,7 +140,7 @@ Output key       | Value type       | Purpose
 -----------------|------------------|-------------
 output           | Array of numbers | Jacobian of output `outWrt` with respect to input parameter `inWrt` applied to vector `vec`
 
-## POST /ApplyHessian
+### POST /ApplyHessian
 
 Input key        | Value type       | Purpose
 -----------------|------------------|-------------
