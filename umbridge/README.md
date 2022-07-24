@@ -1,6 +1,12 @@
-# Protocol
+# Interface
 
-Communication between model server and client is based on a simple HTTP protocol. Inputs and outputs are in JSON format as defined below.
+Communication between model server and client is based on a simple HTTP protocol. It is closely modeled after the a mathematical function taking parameter vectors to model outputs, optionally providing derivatives like Jacobian action etc.
+
+Inspired by the MIT Uncertainty Quantification library (MUQ), each model may have multiple input vectors and multiple output vectors. This allows for a cleaner separation between parameters of different purpors, but especially allows coupling multiple models in a graph structure (see MUQ's model graphs), where the output of one model can serve as the input of another. Derivatives can then be traced through the entire graph of coupled models by applying the chain rule. The UM-Bridge protocol and integrations therefore always consider derivatives with respect to a specific input and a specific output.
+
+Inputs and outputs to each HTTP endpoint are in JSON format as defined below.
+
+# Protocol
 
 ## Verifying correctness
 
