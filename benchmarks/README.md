@@ -1,4 +1,4 @@
-# Models and benchmarks
+# Benchmarks
 
 Uncertainty quantification benchmarks are identical to models regarding implementation of both server and client. They only differ in that they fully define a UQ problem rather than just a forward model.
 
@@ -8,33 +8,9 @@ When defining your own benchmarks, it is recommended to separate forward model a
 
 Refer to benchmarks defined in this repository for working examples.
 
+## Test benchmark
 
-## Model and benchmark library
-
-A number of pre-defined models and benchmarks is available [here](https://github.com/UM-Bridge/benchmarks) in the form of ready-to-use docker containers.
-
-Additionally, simple test models and benchmarks are available from the main UM-Bridge repository.
-
-### Test model
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel.yml) [![build](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel-python.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/model-testmodel-python.yml)
-
-A simple one-dimensional model shifting the input parameter.
-
-For demonstration purposes, there is both a c++ and a Python implementation of the model available. To the client, they appear entirely identical.
-
-```
-docker run -p 4242:4242 linusseelinger/model-testmodel:latest
-```
-
-```
-docker run -p 4242:4242 linusseelinger/model-testmodel-python:latest
-```
-
-### Test benchmark
-
-[![build](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-testbenchmark.yml/badge.svg)](https://github.com/UQ-Containers/testing/actions/workflows/benchmark-testbenchmark.yml)
-
-A simple Gaussian posterior to sample from. Main purpose is demonstrating how to define UQ benchmarks.
+A simple Gaussian posterior to sample from is available from the UM-Bridge repository. Its main purpose is demonstrating how to define UQ benchmarks.
 
 ```
 docker run -p 4243:4243 linusseelinger/benchmark-testbenchmark:latest

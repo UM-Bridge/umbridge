@@ -1,10 +1,14 @@
 # Clients
 
+Clients (i.e. uncertainty quantification / statistical / optimization software) can connect to any UM-Bridge model via HTTP, regardless of how the model is implemented.
+
+Integrations are available that take care of the HTTP communication transparently. They provide convenient interfaces, making implementing a client a quick and easy task.
+
 Refer to the clients in this repository for working examples of the client integrations shown in the following.
 
 ## Python client
 
-Using the umbridge.py module, connecting to a server is as easy as
+Using the umbridge.py module, connecting to a model server is as easy as
 
 ```
 import umbridge
