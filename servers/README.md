@@ -2,14 +2,6 @@
 
 Refer to the models in this repository for working examples of the server integrations shown in the following.
 
-## Verifying correctness
-
-You can verify that your own model server fulfills the protocol definition by running the following test, adjusting the URL to where your model is running.
-
-```
-docker run -it --network=host -e model_host=http://localhost:4242 linusseelinger/testing-protocol-conformity-0.9
-```
-
 ## Python server
 
 In order to provide a model server, again the umbridge.py module can be used.
