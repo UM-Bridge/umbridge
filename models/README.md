@@ -95,3 +95,12 @@ ExampleModel model;
 umbridge::serveModel(model, "0.0.0.0", 4242);
 ```
 
+## MUQ server
+
+The [MIT Uncertainty Quantification library (MUQ)](https://mituq.bitbucket.io), internally represents models as graphs of individual ModPiece instances each mapping input vectors to output vectors (supporting advanced handling of derivaties). Such a ModPiece, or a ModPiece representing the entire model graph, can easily be exposed via UM-Bridge.
+
+```
+muq::Modeling::serveModPiece(mod_piece, "0.0.0.0", 4242);
+```
+
+See MUQ's documentation for more in-depth documentation on model graphs and UM-Bridge integration.

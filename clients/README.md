@@ -29,13 +29,20 @@ Evaluating a model that expects an input consisting of a single 2D vector then c
 print(model([[0.0, 10.0]]))
 ```
 
-Finally, additional configuration options may be passed to the model in a JSON-compatible Python structure.
+Additional configuration options may be passed to the model in a JSON-compatible Python structure.
 
 ```
 print(model([[0.0, 10.0]], {"level": 0}))
 ```
 
 Each time, the output of the model evaluation is an array of arrays containing the output defined by the model.
+
+Models indicate whether they support further features, e.g. Jacobian actions. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
+
+```
+if model.supports_apply_jacobian():
+  print(model.apply_jacobian(0, 0, [[0.0, 10.0]], [1.0, 4.0]))
+```
 
 ## C++ client
 
@@ -64,6 +71,7 @@ The input vector can then be passed into the model.
 
 ```
 client.Evaluate(input);
+std::cout << "Output: " << to_string(client.outputs[0]) << std::endl;
 ```
 
 Optionally, configuration options may be passed to the model using a JSON structure.
@@ -75,6 +83,15 @@ client.Evaluate(input, config);
 ```
 
 Each time, the output of the model evaluation is an vector of vectors containing the output defined by the model.
+
+Models indicate whether they support further features, e.g. Jacobian actions. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
+
+```
+if (client.SupportsApplyJacobian()) {
+  client.ApplyJacobian(0, 0, inputs, {1.0, 4.0});
+  std::cout << "Jacobian action: " << to_string(client.jacobianAction) << std::endl;
+}
+```
 
 ## MUQ client
 
@@ -94,4 +111,4 @@ auto modpiece = std::make_shared<HTTPModPiece>("http://localhost:4242", config);
 
 Apart from the constructor, HTTPModPiece behaves like any ModPiece in MUQ. For example, models or benchmarks outputting a posterior density may be directly passed into a SamplingProblem, to which Markov Chain Monte Carlo methods provided by MUQ may then be applied for sampling.
 
-
+See MUQ's documentation for more in-depth documentation on model graphs and UM-Bridge integration.

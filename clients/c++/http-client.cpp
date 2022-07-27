@@ -37,4 +37,11 @@ int main(int argc, char** argv) {
   json config;
   config["level"] = 0;
   client.Evaluate(inputs, config);
+
+  // If model supports Jacobian action,
+  // apply Jacobian of output zero with respect to input zero to a vector
+  if (client.SupportsApplyJacobian()) {
+    client.ApplyJacobian(0, 0, inputs, {1.0, 4.0});
+    std::cout << "Jacobian action: " << to_string(client.jacobianAction) << std::endl;
+  }
 }

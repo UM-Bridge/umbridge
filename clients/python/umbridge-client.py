@@ -14,10 +14,15 @@ model = umbridge.HTTPModel(args.url)
 print(model.get_input_sizes())
 print(model.get_output_sizes())
 
-param = [[200.0, 50.0]]
+param = [[100.0, 18.0]]
 
 # Simple model evaluation
 print(model(param))
 
 # Model evaluation with configuration parameters
 print(model(param, {"vtk_output": True, "level": 1, "verbosity": False}))
+
+# If model supports Jacobian action,
+# apply Jacobian of output zero with respect to input zero to a vector
+if model.supports_apply_jacobian():
+  print(model.apply_jacobian(0, 0, param, [1.0, 4.0]))
