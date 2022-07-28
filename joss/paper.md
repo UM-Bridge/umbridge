@@ -36,13 +36,9 @@ affiliations:
    index: 4
  - name: Independent researcher
    index: 5
-date: June 2020
+date: July 2022
 bibliography: paper.bib
 
-# Optional fields if submitting to a AAS journal too, see this blog post:
-# https://blog.joss.theoj.org/2018/12/a-new-collaboration-with-aas-publishing
-aas-doi: 10.3847/xxxxx <- update this with the DOI from AAS once you know it.
-aas-journal: Astrophysical Journal <- The name of the AAS journal.
 ---
 
 # Summary
@@ -63,7 +59,7 @@ At its core, UM-Bridge consists of an HTTP protocol closely mimicking the mathem
 - Separation of concerns between developers is achieved since proficiency in only one side is needed to implement the interface,
 - UM-Bridge is easy to integrate into many existing codes since they often (implicitly or explicitly) already implement a similar interface internally.
 
-Further, due to being based on HTTP, containerization ([@merkel2014docker; @singularity]) of models becomes possible, leading to:
+Further, due to being based on HTTP, containerization [@merkel2014docker; @singularity] of models becomes possible, leading to:
 
 - Portability across operating systems and vastly reduced maintenance and setup cost when sharing models with collaborators,
 - Fully reproducible models and benchmarks,
