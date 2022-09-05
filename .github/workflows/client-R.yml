@@ -28,7 +28,7 @@ jobs:
        -
         name: R Dependencies
         run: |
-          R -e 'install.packages(devtools)'
+          R -e 'install.packages("devtools")'
        -
         name: Build and install R package
         run: |
