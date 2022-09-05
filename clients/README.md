@@ -8,7 +8,13 @@ Refer to the clients in this repository for working examples of the client integ
 
 ## Python client
 
-Using the umbridge.py module, connecting to a model server is as easy as
+The Python integration can either be found in the git repository or simply be installed from pip via
+
+```
+pip install umbridge
+```
+
+Connecting to a model server is as easy as
 
 ```
 import umbridge
@@ -90,6 +96,44 @@ Models indicate whether they support further features, e.g. Jacobian actions. Th
 if (client.SupportsApplyJacobian()) {
   client.ApplyJacobian(0, 0, inputs, {1.0, 4.0});
   std::cout << "Jacobian action: " << to_string(client.jacobianAction) << std::endl;
+}
+```
+
+## R client
+
+An R package is available from the UM-Bridge git repository. Once installed, it can loaded as usual.
+
+```
+library(umbridge)
+```
+
+We first define the URL of the model we want to connect to, and make sure our R client supports the UM-Bridge version of the model.
+
+```
+url <- "http://localhost:4242"
+
+# Ensure model protocol version is supported by client
+stopifnot(protocol_version_supported(url))
+```
+
+Next, define a list of parameter vectors and evaluate the model for that parameter.
+
+```
+# Define parameter
+param <- list()
+param[[1]] <- c(100.0, 18.0)
+
+# Evaluate model for parameter
+output <- evaluate(url, param)
+print(output)
+```
+
+To be sure, we first check if the model supports Jacobian actions. If so, we may apply the Jacobian at the parameter above to a vector.
+
+```
+if (supports_apply_jacobian(url)) {
+  output <- apply_jacobian(url, 0, 0, param, c(1.0, 4.0))
+  print(output[[1]][[1]])
 }
 ```
 
