@@ -1,0 +1,15 @@
+Package: umbridge
+Title: R integration for the UM-Bridge protocol
+Version: 0.9.0.0000
+Authors@R:
+    person("Linus", "Seelinger", , "mail@linusseelinger.de", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-8632-8493"))
+Description: This package provides a convenient wrapper for the UM-Bridge protocol. UM-Bridge is a protocol designed for coupling uncertainty quantification (or statistical / optimization) software to numerical models. A model is represented as a mathematical function with optional support for derivatives via Jacobian actions etc.
+License: `use_mit_license()`
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.1
+Imports:
+    dplyr,
+	httr2,
+	jsonlite
