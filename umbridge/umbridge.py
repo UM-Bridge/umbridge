@@ -29,12 +29,12 @@ class HTTPModel(Model):
     def __init__(self, url):
         self.url = url
         response = requests.get(f"{self.url}/Info").json()
+        if (response["protocolVersion"] != 0.9):
+            raise RuntimeWarning("Model has unsupported protocol version!")
         self.__supports_evaluate = response["support"]["Evaluate"]
         self.__supports_gradient = response["support"]["Gradient"]
         self.__supports_apply_jacobian = response["support"]["ApplyJacobian"]
         self.__supports_apply_hessian = response["support"]["ApplyHessian"]
-        if (response["protocolVersion"] != 0.9):
-            raise RuntimeWarning("Model has unsupported protocol version!")
 
     def get_input_sizes(self):
         response = requests.get(f"{self.url}/GetInputSizes").json()

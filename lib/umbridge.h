@@ -228,14 +228,15 @@ namespace umbridge {
 
       if (auto res = cli.Get("/Info", headers)) {
         json response = json::parse(res->body);
+
+        if (response.value<double>("protocolVersion",0) != 0.9)
+          throw std::runtime_error("Model protocol version not supported!");
+
         json supported_features = response.at("support");
         supportsEvaluate = supported_features.value("Evaluate", false);
         supportsGradient = supported_features.value("Gradient", false);
         supportsApplyJacobian = supported_features.value("ApplyJacobian", false);
         supportsApplyHessian = supported_features.value("ApplyHessian", false);
-
-        if (response.value<double>("protocolVersion",0) != 0.9)
-          throw std::runtime_error("Model protocol version not supported!");
       } else {
         throw std::runtime_error("GET Info failed with error type '" + to_string(res.error()) + "'");
       }
