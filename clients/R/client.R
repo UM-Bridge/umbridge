@@ -21,12 +21,21 @@ supports_apply_jacobian(url)
 print("Hessian support")
 supports_apply_hessian(url)
 
+print("Input dimensions")
+model_input_sizes(url)
+print("Output dimensions")
+model_output_sizes(url)
+
 # Define a parameter
 param <- list()
 param[[1]] <- c(100.0, 18.0)
 
 # Evaluate model for parameter
 output <- evaluate(url, param)
+print(output[[1]][[1]])
+
+config = list(scale = jsonlite::unbox(2.0))
+output <- evaluate(url, param, config)
 print(output[[1]][[1]])
 
 # If model supports Jacobian actions, apply Jacobian at param to a vector

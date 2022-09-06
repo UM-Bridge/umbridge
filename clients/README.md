@@ -116,6 +116,13 @@ url <- "http://localhost:4242"
 stopifnot(protocol_version_supported(url))
 ```
 
+The following retrieves the model's input and output dimensions.
+
+```
+model_input_sizes(url)
+model_output_sizes(url)
+```
+
 Next, define a list of parameter vectors and evaluate the model for that parameter.
 
 ```
@@ -128,12 +135,20 @@ output <- evaluate(url, param)
 print(output)
 ```
 
+Optionally, configuration options may be passed to the model using a JSON compatible structure. Note that, since R treats scalars as 1D vectors and converts them to JSON as such, jsonlite::unbox must be used when defining true scalars in config options.
+
+```
+config = list(level = jsonlite::unbox(0))
+output <- evaluate(url, param, config)
+print(output)
+```
+
 To be sure, we first check if the model supports Jacobian actions. If so, we may apply the Jacobian at the parameter above to a vector.
 
 ```
 if (supports_apply_jacobian(url)) {
   output <- apply_jacobian(url, 0, 0, param, c(1.0, 4.0))
-  print(output[[1]][[1]])
+  print(output)
 }
 ```
 
