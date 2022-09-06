@@ -30,6 +30,10 @@ jobs:
         run: |
           R -e 'install.packages("devtools")'
        -
+        name: Test R package
+        run: |
+          cd R && R -e 'devtools::test()'
+       -
         name: Build and install R package
         run: |
           cd R && R -e 'devtools::install()'
