@@ -17,7 +17,7 @@ class TestModel(umbridge.Model):
         return True
 
     def gradient(self,out_wrt, in_wrt, parameters, sens, config={}):
-        return [2.0*parameters[0][0]*sens[0]]
+        return [2.0*sens[0]]
 
     def supports_gradient(self):
         return True
