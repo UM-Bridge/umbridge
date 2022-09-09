@@ -53,7 +53,7 @@ UM-Bridge implements a software interface that mirrors the mathematical "interfa
 
 ![UM-Bridge architecture.](umbridge-architecture.png){ width=80% }
 
-At its core, UM-Bridge consists of an HTTP protocol closely mimicking the mathematical interface, as well as helper libraries for (currently) C++, R, Python, MUQ and PyMC. This approach has a number of benefits:
+At its core, UM-Bridge consists of an HTTP protocol closely mimicking the mathematical interface, as well as integrations for (currently) C++, R, Python, MUQ [@MUQ:2021] and PyMC [@PyMC]. This approach has a number of benefits:
 
 - Codes can be coupled across programming languages,
 - Separation of concerns between developers is achieved since proficiency in only one side is needed to implement the interface,
@@ -69,9 +69,9 @@ Further, due to being based on HTTP, containerization [@merkel2014docker; @singu
 
 # Current applications and future work
 
-UM-Bridge has been integrated with the [MIT Uncertainty Quantification](muq.mit.edu) (MUQ) library [@MUQ:2021]. MUQ implements many state-of-the-art UQ algorithms given abstract implementations of black-box models. The UM-Bridge-MUQ interface allows arbtrary models to be compatible with the MUQ interface through the HTTP protocol. This is done by creating an "HTTP model" that is compatible with MUQ's interface and evaluates the model itself by querying the UM-Bridge HTTP protocol.
+A library of UQ benchmarks and models based on UM-Bridge is currently being built [here](https://um-bridge-benchmarks.readthedocs.io/en/docs/). To the best of our knowledge, this is the first UQ benchmark library available.
 
-A library of UQ benchmarks based on UM-Bridge is currently being built [here](https://um-bridge-benchmarks.readthedocs.io/en/docs/). To the best of our knowledge, this is the first UQ benchmark library available.
+Further, support for running UM-Bridge models in cloud environments at large scale is being developed.
 
 # Acknowledgements
 We would like to acknowledge support from Robert Scheichl and Christian Mezzanotte.   Parno's effort was supported by  Office of Naval Research MURI grant N00014-20-1-2595.

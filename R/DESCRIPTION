@@ -1,6 +1,6 @@
 Package: umbridge
 Title: R Integration for the UM-Bridge Protocol
-Version: 0.9.0.0000
+Version: 0.9
 Maintainer: Linus Seelinger <mail@linusseelinger.de>
 Authors@R:
     person("Linus", "Seelinger", , "mail@linusseelinger.de", role = c("aut", "cre"),
