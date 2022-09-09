@@ -12,11 +12,14 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     install_requires=["aiohttp", "requests"],
-    url="https://github.com/UM-Bridge/umbridge",  
+    extras_require = {
+        'pymc':  ["aesara"]
+    },
+    url="https://github.com/UM-Bridge/umbridge",
     packages=setuptools.find_packages(),
-    classifiers=(                                 # Classifiers help people find your 
-        "Programming Language :: Python :: 3",    # projects. See all possible classifiers 
+    classifiers=(                                 # Classifiers help people find your
+        "Programming Language :: Python :: 3",    # projects. See all possible classifiers
         "License :: OSI Approved :: MIT License", # in https://pypi.org/classifiers/
-        "Operating System :: OS Independent",   
+        "Operating System :: OS Independent",
     ),
 )

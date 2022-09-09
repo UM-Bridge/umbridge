@@ -171,3 +171,54 @@ auto modpiece = std::make_shared<HTTPModPiece>("http://localhost:4242", config);
 Apart from the constructor, HTTPModPiece behaves like any ModPiece in MUQ. For example, models or benchmarks outputting a posterior density may be directly passed into a SamplingProblem, to which Markov Chain Monte Carlo methods provided by MUQ may then be applied for sampling.
 
 See MUQ's documentation for more in-depth documentation on model graphs and UM-Bridge integration.
+
+## PyMC client
+
+The PyMC integration is part of the UM-Bridge Python module and can be installed from the UM-Bridge git repository or via pip. Note that we add the PyMC option when installing UM-Bridge in order to install PyMC specific dependencies as well.
+
+```
+pip install umbridge[pymc]
+```
+
+UM-Bridge provides models as an aesara op that may be integrated in any PyMC model.
+
+```
+from umbridge.pymc import UmbridgeOp
+import numpy as np
+import pymc as pm
+import aesara.tensor as at
+import arviz as az
+import matplotlib.pyplot as plt
+
+op = UmbridgeOp("http://localhost:4242")
+```
+
+Optionally, if the model supports it, a JSON compatible configuration may be passed.
+
+```
+op = UmbridgeOp("http://localhost:4242", {"level": 0}))
+```
+
+As usual, the op may be evaluated directly.
+
+```
+input_dim = 2
+input_val = [0.0, 10.0]
+
+op_application = op(at.as_tensor_variable(input_val))
+print(f"Model output: {op_application.eval()}")
+```
+
+If the UM-Bridge model implements a PDF, the op may be used as a PyMC distribution and sampled from. Note that large parts of PyMC's functionality require gradient support from the model.
+
+```
+with pm.Model() as model:
+    posterior = pm.DensityDist('posterior',logp=op,shape=input_dim)
+
+    map_estimate = pm.find_MAP()
+    print(f"MAP estimate of posterior is {map_estimate['posterior']}")
+
+    inferencedata = pm.sample(draws=50)
+    az.plot_pair(inferencedata);
+    plt.show()
+```
