@@ -24,7 +24,7 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install numpy arviz umbridge[pymc]
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install numpy arviz pymc umbridge[pymc]
        -
         name: Build and run
         run: |
