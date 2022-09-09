@@ -53,7 +53,7 @@ UM-Bridge implements a software interface that mirrors the mathematical "interfa
 
 ![UM-Bridge architecture.](umbridge-architecture.png){ width=80% }
 
-At its core, UM-Bridge consists of an HTTP protocol closely mimicking the mathematical interface, as well as helper libraries for (currently) C++ and Python. This approach has a number of benefits:
+At its core, UM-Bridge consists of an HTTP protocol closely mimicking the mathematical interface, as well as helper libraries for (currently) C++, R, Python, MUQ and PyMC. This approach has a number of benefits:
 
 - Codes can be coupled across programming languages,
 - Separation of concerns between developers is achieved since proficiency in only one side is needed to implement the interface,
