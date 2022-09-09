@@ -74,7 +74,7 @@ A library of UQ benchmarks and models based on UM-Bridge is currently being buil
 Further, support for running UM-Bridge models in cloud environments at large scale is being developed.
 
 # Acknowledgements
-We would like to acknowledge support from Robert Scheichl and Christian Mezzanotte.   Parno's effort was supported by  Office of Naval Research MURI grant N00014-20-1-2595.
+We would like to acknowledge support from Robert Scheichl and Cristian Mezzanotte.   Parno's effort was supported by  Office of Naval Research MURI grant N00014-20-1-2595.
 
 
 
