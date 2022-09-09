@@ -34,12 +34,22 @@ year = {1953},
 doi = {10.1063/1.1699114},
 }
 
-@article{ParallelMLMCMC,
+@inproceedings{ParallelMLMCMC,
 author = {Seelinger, Linus and Reinarz, Anne and Rannabauer, Leonhard and Bader, Michael and Bastian, Peter and Scheichl, Robert},
 title = {High Performance Uncertainty Quantification with Parallelized Multilevel Markov Chain Monte Carlo},
 year = {2021},
-number = {to appear},
-journal = {Supercomputing 21},
+isbn = {9781450384421},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3458817.3476150},
+doi = {10.1145/3458817.3476150},
+abstract = {Numerical models of complex real-world phenomena often necessitate High Performance Computing (HPC). Uncertainties increase problem dimensionality further and pose even greater challenges.We present a parallelization strategy for multilevel Markov chain Monte Carlo, a state-of-the-art, algorithmically scalable Uncertainty Quantification (UQ) algorithm for Bayesian inverse problems, and a new software framework allowing for large-scale parallelism across forward model evaluations and the UQ algorithms themselves. The main scalability challenge presents itself in the form of strong data dependencies introduced by the MLMCMC method, prohibiting trivial parallelization.Our software is released as part of the modular and open-source MIT Uncertainty Quantification Library (MUQ), and can easily be coupled with arbitrary user codes. We demonstrate it using the Distributed and Unified Numerics Environment (DUNE) and the ExaHyPE Engine. The latter provides a realistic, large-scale tsunami model in which we identify the source of a tsunami from buoy-elevation data.},
+booktitle = {Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis},
+articleno = {75},
+numpages = {15},
+keywords = {ADER-DG, bayesian inverse problems, tsunami simulation, multilevel methods},
+location = {St. Louis, Missouri},
+series = {SC '21}
 }
 
 @article{singularity,
