@@ -1,5 +1,5 @@
 Package: umbridge
-Title: R Integration for the UM-Bridge Protocol
+Title: Integration for the UM-Bridge Protocol
 Version: 0.9
 Maintainer: Linus Seelinger <mail@linusseelinger.de>
 Authors@R:

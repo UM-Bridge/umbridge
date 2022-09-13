@@ -19,20 +19,12 @@ error = function(x){
 }
 )
 
-# Print what features the model supports
-print("Evaluation support")
 expect_equal(supports_evaluate(url), TRUE)
-print("Gradient support")
 expect_equal(supports_gradient(url), FALSE)
-print("Jacobian support")
 expect_equal(supports_apply_jacobian(url), FALSE)
-print("Hessian support")
 expect_equal(supports_apply_hessian(url), FALSE)
 
-# Print input and output dimensions
-print("Input dimensions")
 expect_equal(model_input_sizes(url), list(2))
-print("Output dimensions")
 expect_equal(model_output_sizes(url), list(1))
 
 # Define a parameter
