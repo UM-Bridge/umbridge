@@ -1,0 +1,43 @@
+name: client-R-git-package
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    container: ubuntu:latest
+
+    services:
+      model:
+        image: linusseelinger/benchmark-analytic-banana:latest
+        ports:
+        - 4243:4243
+
+    steps:
+       -
+        name: Checkout
+        uses: actions/checkout@v2
+       -
+        name: APT Dependencies
+        run: |
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y r-base libcurl4-gnutls-dev libxml2-dev libfontconfig1-dev libfreetype6 libharfbuzz-dev libfribidi-dev libtiff-dev libssl-dev
+       -
+        name: R Dependencies
+        run: |
+          R -e 'install.packages("devtools")'
+       -
+        name: Build and install R package
+        run: |
+          cd R && R -e 'devtools::install()'
+       -
+        name: Test R package
+        run: |
+          cd R && R -e 'devtools::test()'
+       -
+        name: Run client
+        run: |
+          cd clients/R && Rscript client.R http://model:4243

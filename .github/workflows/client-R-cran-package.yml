@@ -1,4 +1,4 @@
-name: client-R
+name: client-R-cran-package
 
 on:
   push:
@@ -28,15 +28,7 @@ jobs:
        -
         name: R Dependencies
         run: |
-          R -e 'install.packages("devtools")'
-       -
-        name: Build and install R package
-        run: |
-          cd R && R -e 'devtools::install()'
-       -
-        name: Test R package
-        run: |
-          cd R && R -e 'devtools::test()'
+          R -e 'install.packages("umbridge")'
        -
         name: Run client
         run: |
