@@ -101,7 +101,13 @@ if (client.SupportsApplyJacobian()) {
 
 ## R client
 
-An R package is available from the UM-Bridge git repository. Once installed, it can loaded as usual.
+An R package is available from the UM-Bridge git repository or from CRAN via the following command.
+
+```
+install.packages("umbridge")
+```
+
+Once installed, the package can loaded as usual.
 
 ```
 library(umbridge)
