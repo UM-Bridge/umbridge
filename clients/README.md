@@ -14,12 +14,12 @@ The Python integration can either be found in the git repository or simply be in
 pip install umbridge
 ```
 
-Connecting to a model server is as easy as
+Connecting to a model server and accessing its model called "forward" is as easy as
 
 ```
 import umbridge
 
-model = umbridge.HTTPModel("http://localhost:4242")
+model = umbridge.HTTPModel("http://localhost:4242", "forward")
 ```
 
 Now that we have connected to a model, we can query its input and output dimensions.
@@ -57,14 +57,14 @@ The c++ client abstraction is part of the umbridge.h header-only library. Note t
 Invoking it is mostly analogous to the above. Note that HTTP headers may optionally be used, for example to include access tokens.
 
 ```
-umbridge::HTTPModel client("http://localhost:4242");
+umbridge::HTTPModel client("http://localhost:4242", "forward");
 ```
 
 As before, we can query input and output dimensions.
 
 ```
-client.inputSizes
-client.outputSizes
+client.GetInputSizes()
+client.GetOutputSizes()
 ```
 
 In order to evaluate the model, we first define an input. Input to a model may consist of multiple vectors, and is therefore of type std::vector<std::vector<double>>. The following example creates a single 2D vector in that structure.
@@ -76,8 +76,7 @@ std::vector<std::vector<double>> inputs {{100.0, 18.0}};
 The input vector can then be passed into the model.
 
 ```
-client.Evaluate(input);
-std::cout << "Output: " << to_string(client.outputs[0]) << std::endl;
+std::vector<std::vector<double>> outputs = client.Evaluate(input);
 ```
 
 Optionally, configuration options may be passed to the model using a JSON structure.
@@ -122,11 +121,18 @@ url <- "http://localhost:4242"
 stopifnot(protocol_version_supported(url))
 ```
 
+Get the list of model names available on the server.
+
+```
+models <- get_models(url)
+name <- models[[1]]
+```
+
 The following retrieves the model's input and output dimensions.
 
 ```
-model_input_sizes(url)
-model_output_sizes(url)
+model_input_sizes(url, name)
+model_output_sizes(url, name)
 ```
 
 Next, define a list of parameter vectors and evaluate the model for that parameter.
@@ -137,7 +143,7 @@ param <- list()
 param[[1]] <- c(100.0, 18.0)
 
 # Evaluate model for parameter
-output <- evaluate(url, param)
+output <- evaluate(url, name, param)
 print(output)
 ```
 
@@ -145,15 +151,15 @@ Optionally, configuration options may be passed to the model using a JSON compat
 
 ```
 config = list(level = jsonlite::unbox(0))
-output <- evaluate(url, param, config)
+output <- evaluate(url, name, param, config)
 print(output)
 ```
 
 To be sure, we first check if the model supports Jacobian actions. If so, we may apply the Jacobian at the parameter above to a vector.
 
 ```
-if (supports_apply_jacobian(url)) {
-  output <- apply_jacobian(url, 0, 0, param, c(1.0, 4.0))
+if (supports_apply_jacobian(url, name)) {
+  output <- apply_jacobian(url, name, 0, 0, param, c(1.0, 4.0))
   print(output)
 }
 ```
@@ -196,13 +202,14 @@ import aesara.tensor as at
 import arviz as az
 import matplotlib.pyplot as plt
 
-op = UmbridgeOp("http://localhost:4242")
+# Connect to model specifying model's URL and name
+op = UmbridgeOp("http://localhost:4242", "posterior")
 ```
 
 Optionally, if the model supports it, a JSON compatible configuration may be passed.
 
 ```
-op = UmbridgeOp("http://localhost:4242", {"level": 0}))
+op = UmbridgeOp("http://localhost:4242", "posterior" {"level": 0}))
 ```
 
 As usual, the op may be evaluated directly.

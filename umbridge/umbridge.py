@@ -3,6 +3,9 @@ import requests
 
 class Model(object):
 
+    def __init__(self, name):
+        self.name = name
+
     def get_input_sizes(self):
         raise NotImplementedError(f'You need to implement this method in {self.__class__.__name__}.')
     def get_output_sizes(self):
@@ -26,22 +29,38 @@ class Model(object):
         return False
 
 class HTTPModel(Model):
-    def __init__(self, url):
+    def __init__(self, url, name):
+        super().__init__(name)
         self.url = url
-        response = requests.get(f"{self.url}/Info").json()
-        if (response["protocolVersion"] != 0.9):
-            raise RuntimeWarning("Model has unsupported protocol version!")
-        self.__supports_evaluate = response["support"]["Evaluate"]
-        self.__supports_gradient = response["support"]["Gradient"]
-        self.__supports_apply_jacobian = response["support"]["ApplyJacobian"]
-        self.__supports_apply_hessian = response["support"]["ApplyHessian"]
 
-    def get_input_sizes(self):
-        response = requests.get(f"{self.url}/GetInputSizes").json()
+        response = requests.get(f"{self.url}/Info").json()
+        if (response["protocolVersion"] != 1.0):
+            raise RuntimeWarning("Model has unsupported protocol version!")
+
+        # Raise error if model not supported by server
+        if (name not in response["models"]):
+            raise Exception(f'Model {name} not supported by server! Supported models are: {response["models"]}')
+
+        input = {}
+        input["name"] = name
+        response = requests.post(f"{self.url}/ModelInfo", json=input).json()
+        self.__supports_evaluate = response["support"].get("Evaluate", False)
+        self.__supports_gradient = response["support"].get("Gradient", False)
+        self.__supports_apply_jacobian = response["support"].get("ApplyJacobian", False)
+        self.__supports_apply_hessian = response["support"].get("ApplyHessian", False)
+
+    def get_input_sizes(self, config={}):
+        input = {}
+        input["name"] = self.name
+        input["config"] = config
+        response = requests.post(f"{self.url}/InputSizes", json=input).json()
         return response["inputSizes"]
 
-    def get_output_sizes(self):
-        response = requests.get(f"{self.url}/GetOutputSizes").json()
+    def get_output_sizes(self, config={}):
+        input = {}
+        input["name"] = self.name
+        input["config"] = config
+        response = requests.post(f"{self.url}/OutputSizes", json=input).json()
         return response["outputSizes"]
 
     def supports_evaluate(self):
@@ -61,6 +80,7 @@ class HTTPModel(Model):
             raise Exception('Evaluation not supported by model!')
 
         inputParams = {}
+        inputParams["name"] = self.name
         inputParams["input"] = parameters
         inputParams["config"] = config
         response = requests.post(f"{self.url}/Evaluate", json=inputParams).json()
@@ -74,6 +94,7 @@ class HTTPModel(Model):
             raise Exception('Gradient not supported by model!')
 
         inputParams = {}
+        inputParams["name"] = self.name
         inputParams["outWrt"] = out_wrt
         inputParams["inWrt"] = in_wrt
         inputParams["input"] = parameters
@@ -90,6 +111,7 @@ class HTTPModel(Model):
             raise Exception('ApplyJacobian not supported by model!')
 
         inputParams = {}
+        inputParams["name"] = self.name
         inputParams["outWrt"] = out_wrt
         inputParams["inWrt"] = in_wrt
         inputParams["input"] = parameters
@@ -106,6 +128,7 @@ class HTTPModel(Model):
             raise Exception('ApplyHessian not supported by model!')
 
         inputParams = {}
+        inputParams["name"] = self.name
         inputParams["outWrt"] = out_wrt
         inputParams["inWrt1"] = in_wrt1
         inputParams["inWrt2"] = in_wrt2
@@ -119,7 +142,7 @@ class HTTPModel(Model):
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
         return response["output"]
 
-def serve_model(model, port=4242):
+def serve_models(models, port=4242):
 
     def error_response(type, message, status):
         response_body = {
@@ -130,43 +153,63 @@ def serve_model(model, port=4242):
         }
         return web.json_response(response_body, status=status)
 
+    def model_not_found_response(model_name):
+        return error_response("ModelNotFound", f"Model {model_name} not found! The following are available: {[model.name for model in models]}.", 400)
+
+    # Get model with given name
+    def get_model_from_name(name):
+        for model in models:
+            if model.name == name:
+                return model
+        return None
+
     routes = web.RouteTableDef()
 
     @routes.post('/Evaluate')
     async def evaluate(request):
+
+        req_json = await request.json()
+        model_name = req_json["name"]
+        model = get_model_from_name(model_name)
+        if model is None:
+            return model_not_found_response(req_json["name"])
         if not model.supports_evaluate():
             return error_response("UnsupportedFeature", "Evaluate not supported by model!", 400)
 
-        req_json = await request.json()
         parameters = req_json["input"]
         config = {}
         if "config" in req_json:
             config = req_json["config"]
 
         # Check if parameter dimensions match model input sizes
-        if len(parameters) != len(model.get_input_sizes()):
+        if len(parameters) != len(model.get_input_sizes(config)):
             return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
         for i in range(len(parameters)):
-            if len(parameters[i]) != model.get_input_sizes()[i]:
-                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes()[i]} but got {len(parameters[i])}.", 400)
+            if len(parameters[i]) != model.get_input_sizes(config)[i]:
+                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes(config)[i]} but got {len(parameters[i])}.", 400)
 
         output = model(parameters, config)
 
         # Check if output dimensions match model output sizes
-        if len(output) != len(model.get_output_sizes()):
+        if len(output) != len(model.get_output_sizes(config)):
             return error_response("InvalidOutput", "Number of output vectors returned by model does not match number of model outputs declared by model!", 500)
         for i in range(len(output)):
-            if len(output[i]) != model.get_output_sizes()[i]:
-                return error_response("InvalidOutput", f"Output vector {i} has invalid length! Model declared {model.get_output_sizes()[i]} but returned {len(output[i])}.", 500)
+            if len(output[i]) != model.get_output_sizes(config)[i]:
+                return error_response("InvalidOutput", f"Output vector {i} has invalid length! Model declared {model.get_output_sizes(config)[i]} but returned {len(output[i])}.", 500)
 
         return web.Response(text=f"{{\"output\": {output} }}")
 
     @routes.post('/Gradient')
     async def gradient(request):
+
+        req_json = await request.json()
+        model_name = req_json["name"]
+        model = get_model_from_name(model_name)
+        if model is None:
+            return model_not_found_response(req_json["name"])
         if not model.supports_gradient():
             return error_response("UnsupportedFeature", "Gradient not supported by model!", 400)
 
-        req_json = await request.json()
         out_wrt = req_json["outWrt"]
         in_wrt = req_json["inWrt"]
         parameters = req_json["input"]
@@ -176,35 +219,40 @@ def serve_model(model, port=4242):
             config = req_json["config"]
 
         # Check if parameter dimensions match model input sizes
-        if len(parameters) != len(model.get_input_sizes()):
+        if len(parameters) != len(model.get_input_sizes(config)):
             return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
         for i in range(len(parameters)):
-            if len(parameters[i]) != model.get_input_sizes()[i]:
-                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes()[i]} but got {len(parameters[i])}.", 400)
+            if len(parameters[i]) != model.get_input_sizes(config)[i]:
+                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes(config)[i]} but got {len(parameters[i])}.", 400)
         # Check if outWrt is not between zero and number of outputs
-        if out_wrt < 0 or out_wrt >= len(model.get_output_sizes()):
+        if out_wrt < 0 or out_wrt >= len(model.get_output_sizes(config)):
             return error_response("InvalidInput", "Invalid outWrt index! Expected between 0 and number of outputs minus one, but got " + str(out_wrt), 400)
         # Check if inWrt is between zero and number of inputs
-        if in_wrt < 0 or in_wrt >= len(model.get_input_sizes()):
+        if in_wrt < 0 or in_wrt >= len(model.get_input_sizes(config)):
             return error_response("InvalidInput", "Invalid inWrt index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt), 400)
         # Check if sensitivity vector length matches model output outWrt
-        if len(sens) != model.get_output_sizes()[out_wrt]:
-            return error_response("InvalidInput", f"Sensitivity vector sens has invalid length! Expected {model.get_output_sizes()[out_wrt]} but got {len(sens)}.", 400)
+        if len(sens) != model.get_output_sizes(config)[out_wrt]:
+            return error_response("InvalidInput", f"Sensitivity vector sens has invalid length! Expected {model.get_output_sizes(config)[out_wrt]} but got {len(sens)}.", 400)
 
         output = model.gradient(out_wrt, in_wrt, parameters, sens, config)
 
         # Check if output dimension matches model ipuut size inWrt
-        if len(output) != model.get_input_sizes()[in_wrt]:
-            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_input_sizes()[in_wrt]} but returned {len(output)}.", 500)
+        if len(output) != model.get_input_sizes(config)[in_wrt]:
+            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_input_sizes(config)[in_wrt]} but returned {len(output)}.", 500)
 
         return web.Response(text=f"{{\"output\": {output} }}")
 
     @routes.post('/ApplyJacobian')
     async def applyjacobian(request):
+
+        req_json = await request.json()
+        model_name = req_json["name"]
+        model = get_model_from_name(model_name)
+        if model is None:
+            return model_not_found_response(req_json["name"])
         if not model.supports_apply_jacobian():
             return error_response("UnsupportedFeature", "ApplyJacobian not supported by model!", 400)
 
-        req_json = await request.json()
         out_wrt = req_json["outWrt"]
         in_wrt = req_json["inWrt"]
         parameters = req_json["input"]
@@ -214,35 +262,40 @@ def serve_model(model, port=4242):
             config = req_json["config"]
 
         # Check if parameter dimensions match model input sizes
-        if len(parameters) != len(model.get_input_sizes()):
+        if len(parameters) != len(model.get_input_sizes(config)):
             return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
         for i in range(len(parameters)):
-            if len(parameters[i]) != model.get_input_sizes()[i]:
-                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes()[i]} but got {len(parameters[i])}.", 400)
+            if len(parameters[i]) != model.get_input_sizes(config)[i]:
+                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes(config)[i]} but got {len(parameters[i])}.", 400)
         # Check if outWrt is not between zero and number of outputs
-        if out_wrt < 0 or out_wrt >= len(model.get_output_sizes()):
+        if out_wrt < 0 or out_wrt >= len(model.get_output_sizes(config)):
             return error_response("InvalidInput", "Invalid outWrt index! Expected between 0 and number of outputs minus one, but got " + str(out_wrt), 400)
         # Check if inWrt is between zero and number of inputs
-        if in_wrt < 0 or in_wrt >= len(model.get_input_sizes()):
+        if in_wrt < 0 or in_wrt >= len(model.get_input_sizes(config)):
             return error_response("InvalidInput", "Invalid inWrt index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt), 400)
         # Check if vector length matches model input inWrt
-        if len(vec) != model.get_input_sizes()[in_wrt]:
-            return error_response("InvalidInput", f"Vector vec has invalid length! Expected {model.get_input_sizes()[in_wrt]} but got {len(vec)}.", 400)
+        if len(vec) != model.get_input_sizes(config)[in_wrt]:
+            return error_response("InvalidInput", f"Vector vec has invalid length! Expected {model.get_input_sizes(config)[in_wrt]} but got {len(vec)}.", 400)
 
         output = model.apply_jacobian(out_wrt, in_wrt, parameters, vec, config)
 
         # Check if output dimension matches model output size outWrt
-        if len(output) != model.get_output_sizes()[out_wrt]:
-            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_output_sizes()[out_wrt]} but returned {len(output)}.", 500)
+        if len(output) != model.get_output_sizes(config)[out_wrt]:
+            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_output_sizes(config)[out_wrt]} but returned {len(output)}.", 500)
 
         return web.Response(text=f"{{\"output\": {output} }}")
 
     @routes.post('/ApplyHessian')
     async def applyhessian(request):
+
+        req_json = await request.json()
+        model_name = req_json["name"]
+        model = get_model_from_name(model_name)
+        if model is None:
+            return model_not_found_response(req_json["name"])
         if not model.supports_apply_hessian():
             return error_response("UnsupportedFeature", "ApplyHessian not supported by model!", 400)
 
-        req_json = await request.json()
         out_wrt = req_json["outWrt"]
         in_wrt1 = req_json["inWrt1"]
         in_wrt2 = req_json["inWrt2"]
@@ -254,48 +307,77 @@ def serve_model(model, port=4242):
             config = req_json["config"]
 
         # Check if parameter dimensions match model input sizes
-        if len(parameters) != len(model.get_input_sizes()):
+        if len(parameters) != len(model.get_input_sizes(config)):
             return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
         for i in range(len(parameters)):
-            if len(parameters[i]) != model.get_input_sizes()[i]:
-                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes()[i]} but got {len(parameters[i])}.", 400)
+            if len(parameters[i]) != model.get_input_sizes(config)[i]:
+                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes(config)[i]} but got {len(parameters[i])}.", 400)
         # Check if outWrt is not between zero and number of outputs
-        if out_wrt < 0 or out_wrt >= len(model.get_output_sizes()):
+        if out_wrt < 0 or out_wrt >= len(model.get_output_sizes(config)):
             return error_response("InvalidInput", "Invalid outWrt index! Expected between 0 and number of outputs minus one, but got " + str(out_wrt), 400)
         # Check if inWrt is between zero and number of inputs
-        if in_wrt1 < 0 or in_wrt1 >= len(model.get_input_sizes()):
+        if in_wrt1 < 0 or in_wrt1 >= len(model.get_input_sizes(config)):
             return error_response("InvalidInput", "Invalid inWrt1 index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt1), 400)
         # Check if inWrt is between zero and number of inputs
-        if in_wrt2 < 0 or in_wrt2 >= len(model.get_input_sizes()):
+        if in_wrt2 < 0 or in_wrt2 >= len(model.get_input_sizes(config)):
             return error_response("InvalidInput", "Invalid inWrt2 index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt2), 400)
 
         output = model.apply_hessian(out_wrt, in_wrt1, in_wrt2, parameters, sens, vec, config)
 
         # Check if output dimension matches model output size outWrt
-        if len(output) != model.get_output_sizes()[out_wrt]:
-            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_output_sizes()[out_wrt]} but returned {len(output)}.", 500)
+        if len(output) != model.get_output_sizes(config)[out_wrt]:
+            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_output_sizes(config)[out_wrt]} but returned {len(output)}.", 500)
 
         return web.Response(text=f"{{\"output\": {output} }}")
 
-    @routes.get('/GetInputSizes')
+    @routes.post('/InputSizes')
     async def git_input_sizes(request):
-        return web.Response(text=f"{{\"inputSizes\": {model.get_input_sizes()} }}")
+        req_json = await request.json()
+        model_name = req_json["name"]
+        config = {}
+        if "config" in req_json:
+            config = req_json["config"]
 
-    @routes.get('/GetOutputSizes')
+        model = get_model_from_name(model_name)
+        if model is None:
+            return model_not_found_response(req_json["name"])
+        return web.Response(text=f"{{\"inputSizes\": {model.get_input_sizes(config)} }}")
+
+    @routes.post('/OutputSizes')
     async def get_output_sizes(request):
-        return web.Response(text=f"{{\"outputSizes\": {model.get_output_sizes()} }}")
+        req_json = await request.json()
+        model_name = req_json["name"]
+        config = {}
+        if "config" in req_json:
+            config = req_json["config"]
 
-    @routes.get('/Info')
-    async def info(request):
+        model = get_model_from_name(model_name)
+        if model is None:
+            return model_not_found_response(req_json["name"])
+        return web.Response(text=f"{{\"outputSizes\": {model.get_output_sizes(config)} }}")
+
+    @routes.post('/ModelInfo')
+    async def modelinfo(request):
+        req_json = await request.json()
+        model_name = req_json["name"]
+        model = get_model_from_name(model_name)
+        if model is None:
+            return model_not_found_response(req_json["name"])
         response_body = {"support": {}}
         response_body["support"]["Evaluate"] = model.supports_evaluate()
         response_body["support"]["Gradient"] = model.supports_gradient()
         response_body["support"]["ApplyJacobian"] = model.supports_apply_jacobian()
         response_body["support"]["ApplyHessian"] = model.supports_apply_hessian()
 
-        response_body["protocolVersion"] = 0.9;
-
         return web.json_response(response_body)
+
+    @routes.get('/Info')
+    async def info(request):
+        response_body = {}
+        response_body["protocolVersion"] = 1.0;
+        response_body["models"] = [model.name for model in models]
+        return web.json_response(response_body)
+
 
     app = web.Application()
     app.add_routes(routes)

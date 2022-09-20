@@ -12,17 +12,24 @@ class ExampleModel : public umbridge::Model {
 public:
 
   ExampleModel(int test_delay)
-   : umbridge::Model({1}, {1}), // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
+   : umbridge::Model("TestModel"), // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
      test_delay(test_delay)
-  {
-    outputs.push_back(std::vector<double>(1));
+  {}
+
+  std::vector<std::size_t> GetInputSizes(const json& config_json) const override {
+    return {1};
   }
 
-  void Evaluate(const std::vector<std::vector<double>>& inputs, json config) override {
+  std::vector<std::size_t> GetOutputSizes(const json& config_json) const override {
+    return {1};
+  }
+
+  std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config) override {
     // Do the actual model evaluation; here we just multiply the first entry of the first input vector by two, and store the result in the output.
     // In addition, we support an artificial delay here, simulating actual work being done.
     std::this_thread::sleep_for(std::chrono::milliseconds(test_delay));
-    outputs[0][0] = inputs[0][0] * 2;
+
+    return {{inputs[0][0] * 2.0}};
   }
 
   // Specify that our model supports evaluation. Jacobian support etc. may be indicated similarly.
@@ -56,8 +63,8 @@ int main(){
 
   // Set up and serve model
   ExampleModel model(test_delay);
-
-  umbridge::serveModel(model, "0.0.0.0", port);
+  std::vector<umbridge::Model*> models {&model};
+  umbridge::serveModels(models, "0.0.0.0", port);
 
   return 0;
 }

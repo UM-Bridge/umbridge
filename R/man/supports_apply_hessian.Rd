@@ -4,10 +4,12 @@
 \alias{supports_apply_hessian}
 \title{Check if model supports Hessian action.}
 \usage{
-supports_apply_hessian(url)
+supports_apply_hessian(url, name)
 }
 \arguments{
 \item{url}{URL the model is running at.}
+
+\item{name}{Name of the desired model.}
 }
 \value{
 TRUE if model supports Hessian action, FALSE otherwise.

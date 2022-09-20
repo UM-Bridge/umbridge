@@ -6,6 +6,7 @@
 \usage{
 apply_jacobian(
   url,
+  name,
   out_wrt,
   in_wrt,
   parameters,
@@ -15,6 +16,8 @@ apply_jacobian(
 }
 \arguments{
 \item{url}{URL the model is running at.}
+
+\item{name}{Name of the desired model.}
 
 \item{out_wrt}{Output variable to take Jacobian with respect to.}
 

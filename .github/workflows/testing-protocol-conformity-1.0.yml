@@ -1,4 +1,4 @@
-name: testing-protocol-conformity-0.9
+name: testing-protocol-conformity-1.0
 
 on:
   push:
@@ -28,6 +28,6 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v2
         with:
-          context: testing/protocol_conformity_0.9/
+          context: testing/protocol_conformity_1.0/
           push: true
-          tags: linusseelinger/testing-protocol-conformity-current:latest
+          tags: linusseelinger/testing-protocol-conformity-current:latest,linusseelinger/testing-protocol-conformity-current:latest

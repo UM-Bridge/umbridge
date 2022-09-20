@@ -15,7 +15,7 @@ args = parser.parse_args()
 print(f"Connecting to host URL {args.url}")
 
 # Set up an aesara op connecting to UM-Bridge model
-op = UmbridgeOp(args.url)
+op = UmbridgeOp(args.url, "posterior")
 
 # Define input parameter
 input_dim = 2

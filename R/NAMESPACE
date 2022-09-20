@@ -3,6 +3,7 @@
 export(apply_hessian)
 export(apply_jacobian)
 export(evaluate)
+export(get_models)
 export(gradient)
 export(model_input_sizes)
 export(model_output_sizes)

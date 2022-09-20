@@ -6,6 +6,7 @@
 \usage{
 apply_hessian(
   url,
+  name,
   out_wrt,
   in_wrt1,
   in_wrt2,
@@ -17,6 +18,8 @@ apply_hessian(
 }
 \arguments{
 \item{url}{URL the model is running at.}
+
+\item{name}{Name of the desired model.}
 
 \item{out_wrt}{Output variable to take Hessian with respect to.}
 

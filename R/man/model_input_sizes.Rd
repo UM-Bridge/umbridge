@@ -4,10 +4,14 @@
 \alias{model_input_sizes}
 \title{Retrieve model's input dimensions.}
 \usage{
-model_input_sizes(url)
+model_input_sizes(url, name, config = jsonlite::fromJSON("{}"))
 }
 \arguments{
 \item{url}{URL the model is running at.}
+
+\item{name}{Name of the desired model.}
+
+\item{config}{Model-specific configuration options.}
 }
 \value{
 List of input dimensions.

@@ -4,10 +4,12 @@
 \alias{supports_gradient}
 \title{Check if model supports gradient evaluation.}
 \usage{
-supports_gradient(url)
+supports_gradient(url, name)
 }
 \arguments{
 \item{url}{URL the model is running at.}
+
+\item{name}{Name of the desired model.}
 }
 \value{
 TRUE if model supports gradient evaluation, FALSE otherwise.

@@ -4,10 +4,14 @@
 \alias{model_output_sizes}
 \title{Retrieve model's output dimensions.}
 \usage{
-model_output_sizes(url)
+model_output_sizes(url, name, config = jsonlite::fromJSON("{}"))
 }
 \arguments{
 \item{url}{URL the model is running at.}
+
+\item{name}{Name of the desired model}
+
+\item{config}{Model-specific configuration options.}
 }
 \value{
 List of output dimensions.

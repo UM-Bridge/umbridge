@@ -4,10 +4,12 @@
 \alias{supports_apply_jacobian}
 \title{Check if model supports Jacobian action.}
 \usage{
-supports_apply_jacobian(url)
+supports_apply_jacobian(url, name)
 }
 \arguments{
 \item{url}{URL the model is running at.}
+
+\item{name}{Name of the desired model.}
 }
 \value{
 TRUE if model supports Jacobian action, FALSE otherwise.

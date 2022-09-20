@@ -4,10 +4,12 @@
 \alias{evaluate}
 \title{Evaluate model.}
 \usage{
-evaluate(url, parameters, config = jsonlite::fromJSON("{}"))
+evaluate(url, name, parameters, config = jsonlite::fromJSON("{}"))
 }
 \arguments{
 \item{url}{URL the model is running at.}
+
+\item{name}{Name of the desired model.}
 
 \item{parameters}{Model input parameter (a list of vectors).}
 

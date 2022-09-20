@@ -10,18 +10,20 @@ args = parser.parse_args()
 print(f"Connecting to host URL {args.url}")
 
 # Set up a model by connecting to URL
-model = umbridge.HTTPModel(args.url)
+model = umbridge.HTTPModel(args.url, "forward")
 
-print(model.get_input_sizes())
-print(model.get_output_sizes())
+config={"a":2}
+print(model.get_input_sizes(config))
+print(model.get_output_sizes(config))
 
-param = [[100.0, 18.0]]
+#param = [[100.0, 18.0]]
+param = [[18.0]]
 
 # Simple model evaluation
 print(model(param))
 
 # Model evaluation with configuration parameters
-print(model(param, {"vtk_output": True, "level": 1, "verbosity": False}))
+print(model(param, config))
 
 # If model supports Jacobian action,
 # apply Jacobian of output zero with respect to input zero to a vector

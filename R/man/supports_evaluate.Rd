@@ -4,10 +4,12 @@
 \alias{supports_evaluate}
 \title{Check if model supports evaluation.}
 \usage{
-supports_evaluate(url)
+supports_evaluate(url, name)
 }
 \arguments{
 \item{url}{URL the model is running at.}
+
+\item{name}{Name of the desired model.}
 }
 \value{
 TRUE if model supports evaluation, FALSE otherwise.

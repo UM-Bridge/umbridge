@@ -22,14 +22,14 @@ class UmbridgeOp(at.Op):
     otypes = [at.dvector]
 
     # Take model URL in constructor
-    def __init__(self, model_url, config = {}):
-        self.umbridge_model = umbridge.HTTPModel(model_url)
+    def __init__(self, url, name, config = {}):
+        self.umbridge_model = umbridge.HTTPModel(url, name)
         self.config = config
         # For now, make sure model takes a single input vector and returns a single output vector.
         # More could be supported, but needs improved aesara op.
         # (i.e. adjust input/output types according to UM-Bridge model, pass through multiple vectors etc.)
-        assert len(self.umbridge_model.get_input_sizes()) == 1
-        assert len(self.umbridge_model.get_output_sizes()) == 1
+        assert len(self.umbridge_model.get_input_sizes(config)) == 1
+        assert len(self.umbridge_model.get_output_sizes(config)) == 1
 
         self.grad_op = UmbridgeGradOp(self.umbridge_model, config)
 

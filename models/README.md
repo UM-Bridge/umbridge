@@ -34,18 +34,26 @@ First the model needs to be defined by specifying its input and output sizes as 
 
 ```
 class TestModel(umbridge.Model):
+    def __init__(self):
+        super().__init__("forward") # Give a name to the model
 
-    def get_input_sizes(self):
+    def get_input_sizes(self, config):
         return [1]
 
-    def get_output_sizes(self):
+    def get_output_sizes(self, config):
         return [1]
 
-    def __call__(self, parameters, config={}):
+    def __call__(self, parameters, config):
         output = parameters[0][0] * 2 # Simply multiply the first input entry by two.
         return [[output]]
 
     def supports_evaluate(self):
+        return True
+
+    def gradient(self, out_wrt, in_wrt, parameters, sens, config):
+        return [2*sens[0]]
+
+    def supports_gradient(self):
         return True
 ```
 
@@ -54,7 +62,7 @@ An instance of this model may then be provided as a server in the following way.
 ```
 testmodel = TestModel()
 
-umbridge.serve_model(testmodel, 4242)
+umbridge.serve_models([testmodel], 4242)
 ```
 
 This server can be connected to by any client at port 4242.
@@ -70,14 +78,21 @@ class ExampleModel : public umbridge::Model {
 public:
 
   ExampleModel()
-   : umbridge::Model({1}, {1}) // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
-  {
-    outputs.push_back(std::vector<double>(1));
+   : umbridge::Model("forward") // Give a name to the model
+  {}
+
+  // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
+  std::vector<std::size_t> GetInputSizes(const json& config_json) const override {
+    return {1};
   }
 
-  void Evaluate(const std::vector<std::vector<double>>& inputs, json config) override {
-    // Do the actual model evaluation; here we just multiply the first entry of the first input vector by two, and store the result in the output.
-    outputs[0][0] = inputs[0][0] * 2;
+  std::vector<std::size_t> GetOutputSizes(const json& config_json) const override {
+    return {1};
+  }
+
+  // Define model evaluation; here we simply multiply the first input entry by two.
+  std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config) override {
+    return {{inputs[0][0] * 2.0}};
   }
 
   // Specify that our model supports evaluation. Jacobian support etc. may be indicated similarly.
@@ -91,8 +106,8 @@ Making the model available to clients is then as simple as:
 
 ```
 ExampleModel model;
-
-umbridge::serveModel(model, "0.0.0.0", 4242);
+std::vector<umbridge::Model*> models {&model};
+umbridge::serveModels(models, "0.0.0.0", 4242);
 ```
 
 ## MUQ server
