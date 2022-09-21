@@ -75,9 +75,16 @@ class HTTPModel(Model):
     def supports_apply_hessian(self):
         return self.__supports_apply_hessian
 
+    def __check_input_is_list_of_lists(self,parameters):
+        if not isinstance(parameters, list):
+            raise Exception("Parameters must be a list of lists!")
+        if not all(isinstance(x, list) for x in parameters):
+            raise Exception("Parameters must be a list of lists!")
+
     def __call__(self, parameters, config={}):
         if not self.supports_evaluate():
             raise Exception('Evaluation not supported by model!')
+        self.__check_input_is_list_of_lists(parameters)
 
         inputParams = {}
         inputParams["name"] = self.name
@@ -92,6 +99,7 @@ class HTTPModel(Model):
     def gradient(self, out_wrt, in_wrt, parameters, sens, config={}):
         if not self.supports_gradient():
             raise Exception('Gradient not supported by model!')
+        self.__check_input_is_list_of_lists(parameters)
 
         inputParams = {}
         inputParams["name"] = self.name
@@ -109,6 +117,7 @@ class HTTPModel(Model):
     def apply_jacobian(self, out_wrt, in_wrt, parameters, vec, config={}):
         if not self.supports_apply_jacobian():
             raise Exception('ApplyJacobian not supported by model!')
+        self.__check_input_is_list_of_lists(parameters)
 
         inputParams = {}
         inputParams["name"] = self.name
@@ -126,6 +135,7 @@ class HTTPModel(Model):
     def apply_hessian(self, out_wrt, in_wrt1, in_wrt2, parameters, sens, vec, config={}):
         if not self.supports_apply_hessian():
             raise Exception('ApplyHessian not supported by model!')
+        self.__check_input_is_list_of_lists(parameters)
 
         inputParams = {}
         inputParams["name"] = self.name
@@ -190,6 +200,12 @@ def serve_models(models, port=4242):
 
         output = model(parameters, config)
 
+        # Check if output is a list of lists
+        if not isinstance(output, list):
+            return error_response("InvalidOutput", "Model output is not a list of lists!", 500)
+        if not all (isinstance(x, list) for x in output):
+            return error_response("InvalidOutput", "Model output is not a list of lists!", 500)
+
         # Check if output dimensions match model output sizes
         if len(output) != len(model.get_output_sizes(config)):
             return error_response("InvalidOutput", "Number of output vectors returned by model does not match number of model outputs declared by model!", 500)
@@ -236,6 +252,10 @@ def serve_models(models, port=4242):
 
         output = model.gradient(out_wrt, in_wrt, parameters, sens, config)
 
+        # Check if output is a list
+        if not isinstance(output, list):
+            return error_response("InvalidOutput", "Model output is not a list!", 500)
+
         # Check if output dimension matches model ipuut size inWrt
         if len(output) != model.get_input_sizes(config)[in_wrt]:
             return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_input_sizes(config)[in_wrt]} but returned {len(output)}.", 500)
@@ -278,6 +298,10 @@ def serve_models(models, port=4242):
             return error_response("InvalidInput", f"Vector vec has invalid length! Expected {model.get_input_sizes(config)[in_wrt]} but got {len(vec)}.", 400)
 
         output = model.apply_jacobian(out_wrt, in_wrt, parameters, vec, config)
+
+        # Check if output is a list
+        if not isinstance(output, list):
+            return error_response("InvalidOutput", "Model output is not a list!", 500)
 
         # Check if output dimension matches model output size outWrt
         if len(output) != model.get_output_sizes(config)[out_wrt]:
@@ -324,6 +348,10 @@ def serve_models(models, port=4242):
 
         output = model.apply_hessian(out_wrt, in_wrt1, in_wrt2, parameters, sens, vec, config)
 
+        # Check if output is a list
+        if not isinstance(output, list):
+            return error_response("InvalidOutput", "Model output is not a list!", 500)
+
         # Check if output dimension matches model output size outWrt
         if len(output) != model.get_output_sizes(config)[out_wrt]:
             return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_output_sizes(config)[out_wrt]} but returned {len(output)}.", 500)
@@ -331,7 +359,7 @@ def serve_models(models, port=4242):
         return web.Response(text=f"{{\"output\": {output} }}")
 
     @routes.post('/InputSizes')
-    async def git_input_sizes(request):
+    async def get_input_sizes(request):
         req_json = await request.json()
         model_name = req_json["name"]
         config = {}
