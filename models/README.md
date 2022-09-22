@@ -106,8 +106,7 @@ Making the model available to clients is then as simple as:
 
 ```
 ExampleModel model;
-std::vector<umbridge::Model*> models {&model};
-umbridge::serveModels(models, "0.0.0.0", 4242);
+umbridge::serveModels({&model}, "0.0.0.0", 4242);
 ```
 
 ## MUQ server

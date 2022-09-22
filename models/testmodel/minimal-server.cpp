@@ -63,8 +63,7 @@ int main(){
 
   // Set up and serve model
   ExampleModel model(test_delay);
-  std::vector<umbridge::Model*> models {&model};
-  umbridge::serveModels(models, "0.0.0.0", port);
+  umbridge::serveModels({&model}, "0.0.0.0", port);
 
   return 0;
 }
