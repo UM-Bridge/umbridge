@@ -10,14 +10,13 @@ args = parser.parse_args()
 print(f"Connecting to host URL {args.url}")
 
 # Set up a model by connecting to URL
-model = umbridge.HTTPModel(args.url, "forward")
+model = umbridge.HTTPModel(args.url, "posterior")
 
 config={"a":2}
 print(model.get_input_sizes(config))
 print(model.get_output_sizes(config))
 
-#param = [[100.0, 18.0]]
-param = [[18.0]]
+param = [[100.0, 18.0]]
 
 # Simple model evaluation
 print(model(param))
