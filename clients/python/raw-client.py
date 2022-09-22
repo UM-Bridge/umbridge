@@ -15,13 +15,13 @@ print(f"Connecting to host URL {args.url}")
 
 
 print("Requesting input sizes...")
-r = requests.post(f"{args.url}/InputSizes", json={"name": "posterior"})
+r = requests.post(f"{args.url}/InputSizes", json={"name": "TestModel"})
 rInputSizes = r.json()
 print(rInputSizes)
 
 
 print("Requesting output sizes...")
-r = requests.post(f"{args.url}/OutputSizes", json={"name": "posterior"})
+r = requests.post(f"{args.url}/OutputSizes", json={"name": "TestModel"})
 print(r.text)
 
 
@@ -32,7 +32,7 @@ print(r.text)
 print("Requesting evaluation")
 
 # Build input parameter vectors of dimensions expected by model, fill with zeros for testing
-inputParams = {"name": "posterior", "input": [], "config": {}}
+inputParams = {"name": "TestModel", "input": [], "config": {}}
 for i in range(0,len(rInputSizes["inputSizes"])):
   inputParams["input"].append([0] * rInputSizes["inputSizes"][i])
 print(inputParams)
