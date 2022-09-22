@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+# This is a simple example of how to connect to an UM-Bridge server with raw HTTP calls.
+# It is not meant to be a complete client, but rather a starting point for your own client.
+# If you just want to use UM-Bridge, you should use the official Python module 'umbridge' instead.
+
 import argparse
 import requests
 
@@ -10,13 +15,13 @@ print(f"Connecting to host URL {args.url}")
 
 
 print("Requesting input sizes...")
-r = requests.get(f"{args.url}/GetInputSizes")
+r = requests.post(f"{args.url}/InputSizes", json={"name": "posterior"})
 rInputSizes = r.json()
 print(rInputSizes)
 
 
 print("Requesting output sizes...")
-r = requests.get(f"{args.url}/GetOutputSizes")
+r = requests.post(f"{args.url}/OutputSizes", json={"name": "posterior"})
 print(r.text)
 
 
@@ -27,7 +32,7 @@ print(r.text)
 print("Requesting evaluation")
 
 # Build input parameter vectors of dimensions expected by model, fill with zeros for testing
-inputParams = {"input": [], "config": {}}
+inputParams = {"name": "posterior", "input": [], "config": {}}
 for i in range(0,len(rInputSizes["inputSizes"])):
   inputParams["input"].append([0] * rInputSizes["inputSizes"][i])
 print(inputParams)
