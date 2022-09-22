@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
   std::string host = argv[1];
   std::cout << "Connecting to host " << host << std::endl;
 
-  umbridge::HTTPModel client(host, "forward");
+  umbridge::HTTPModel client(host, "posterior");
 
   // Print out input and output sizes
   std::cout << to_string(client.GetInputSizes()) << std::endl;
