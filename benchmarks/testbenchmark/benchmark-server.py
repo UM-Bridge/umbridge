@@ -13,7 +13,7 @@ class Benchmark(umbridge.Model):
         return [1]
 
     def __call__(self, parameters, config):
-        model = umbridge.HTTPModel(self.model_url, "forward")
+        model = umbridge.HTTPModel(self.model_url, "TestModel")
         posterior = scipy.stats.norm.logpdf(model(parameters)[0][0], 2.0, 1)  # logpdf args: x, loc, scale
         return [[posterior]]
 
