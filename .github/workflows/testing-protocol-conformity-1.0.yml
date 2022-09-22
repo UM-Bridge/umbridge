@@ -30,4 +30,4 @@ jobs:
         with:
           context: testing/protocol_conformity_1.0/
           push: true
-          tags: linusseelinger/testing-protocol-conformity-current:latest,linusseelinger/testing-protocol-conformity-current:latest
+          tags: linusseelinger/testing-protocol-conformity-1.0:latest,linusseelinger/testing-protocol-conformity-current:latest
