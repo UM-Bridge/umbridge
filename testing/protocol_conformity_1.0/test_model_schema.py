@@ -407,7 +407,7 @@ def test_apply_jacobian_unsupported(model_url):
 
     resp_info = requests.post(f'{model_url}/ModelInfo', json=input_model_name)
     assert resp_info.status_code == 200
-    if not resp_info.json()["support"]["ApplyJacobian"]:
+    if resp_info.json()["support"]["ApplyJacobian"]:
       return
 
     resp = requests.post(f'{model_url}/ApplyJacobian', json=input_model_name, headers={})
