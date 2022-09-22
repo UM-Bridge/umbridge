@@ -169,18 +169,18 @@ if (supports_apply_jacobian(url, name)) {
 Within the [MIT Uncertainty Quantification library (MUQ)](https://mituq.bitbucket.io), there is a ModPiece available that allows embedding an HTTP model in MUQ's model graph framework.
 
 ```
-auto modpiece = std::make_shared<HTTPModPiece>("http://localhost:4242");
+auto modpiece = std::make_shared<UMBridgeModPiece>("http://localhost:4242", "forward");
 ```
 
-The HTTPModPiece optionally allows passing a configuration to the model as in the c++ case.
+The UMBridgeModPiece optionally allows passing a configuration to the model as in the c++ case.
 
 ```
 json config;
 config["level"] = 0;
-auto modpiece = std::make_shared<HTTPModPiece>("http://localhost:4242", config);
+auto modpiece = std::make_shared<UMBridgeModPiece>("http://localhost:4242", "forward", config);
 ```
 
-Apart from the constructor, HTTPModPiece behaves like any ModPiece in MUQ. For example, models or benchmarks outputting a posterior density may be directly passed into a SamplingProblem, to which Markov Chain Monte Carlo methods provided by MUQ may then be applied for sampling.
+Apart from the constructor, UMBridgeModPiece behaves like any ModPiece in MUQ. For example, models or benchmarks outputting a posterior density may be directly passed into a SamplingProblem, to which Markov Chain Monte Carlo methods provided by MUQ may then be applied for sampling.
 
 See MUQ's documentation for more in-depth documentation on model graphs and UM-Bridge integration.
 
