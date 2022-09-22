@@ -19,7 +19,7 @@ evaluate <- function(url, name, parameters, config = jsonlite::fromJSON("{}")) {
     stopifnot(typeof(name) == "character")
     stopifnot(typeof(parameters) == "list")
 
-    req_json <- jsonlite::toJSON(list(name = name, input = parameters, config = config))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name), input = parameters, config = config))
 
     resp_json <- httr2::request(url) %>%
             httr2::req_url_path_append("Evaluate") %>%
@@ -46,7 +46,7 @@ gradient <- function(url, name, out_wrt, in_wrt, parameters, sens, config = json
     stopifnot(typeof(parameters) == "list")
 
     # Have to jsonlite::unbox in order to interpret values as scalars and not lists
-    req_json <- jsonlite::toJSON(list(name = name, outWrt = jsonlite::unbox(out_wrt), inWrt = jsonlite::unbox(in_wrt), input = parameters, sens = sens, config = config))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name), outWrt = jsonlite::unbox(out_wrt), inWrt = jsonlite::unbox(in_wrt), input = parameters, sens = sens, config = config))
     resp_json <- httr2::request(url) %>%
             httr2::req_url_path_append("Gradient") %>%
             httr2::req_body_raw(req_json) %>%
@@ -72,7 +72,7 @@ apply_jacobian <- function(url, name, out_wrt, in_wrt, parameters, vec, config =
     stopifnot(typeof(parameters) == "list")
 
     # Have to jsonlite::unbox in order to interpret values as scalars and not lists
-    req_json <- jsonlite::toJSON(list(name = name, outWrt = jsonlite::unbox(out_wrt), inWrt = jsonlite::unbox(in_wrt), input = parameters, vec = vec, config = config))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name), outWrt = jsonlite::unbox(out_wrt), inWrt = jsonlite::unbox(in_wrt), input = parameters, vec = vec, config = config))
     resp_json <- httr2::request(url) %>%
             httr2::req_url_path_append("ApplyJacobian") %>%
             httr2::req_body_raw(req_json) %>%
@@ -100,7 +100,7 @@ apply_hessian <- function(url, name, out_wrt, in_wrt1, in_wrt2, parameters, sens
     stopifnot(typeof(parameters) == "list")
 
     # Have to jsonlite::unbox in order to interpret values as scalars and not lists
-    req_json <- jsonlite::toJSON(list(name = name, outWrt = jsonlite::unbox(out_wrt), inWrt1 = jsonlite::unbox(in_wrt1), inWrt2 = jsonlite::unbox(in_wrt2), input = parameters, sens = sens , vec = vec, config = config))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name), outWrt = jsonlite::unbox(out_wrt), inWrt1 = jsonlite::unbox(in_wrt1), inWrt2 = jsonlite::unbox(in_wrt2), input = parameters, sens = sens , vec = vec, config = config))
     resp_json <- httr2::request(url) %>%
             httr2::req_url_path_append("ApplyHessian") %>%
             httr2::req_body_raw(req_json) %>%
@@ -120,7 +120,7 @@ supports_evaluate <- function(url, name) {
     stopifnot(typeof(url) == "character")
     stopifnot(typeof(name) == "character")
 
-    req_json <- jsonlite::toJSON(list(name = name))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name)))
     resp_json <- httr2::request(url) %>%
                  httr2::req_url_path_append("ModelInfo") %>%
                  httr2::req_body_raw(req_json) %>%
@@ -140,7 +140,7 @@ supports_gradient <- function(url, name) {
     stopifnot(typeof(url) == "character")
     stopifnot(typeof(name) == "character")
 
-    req_json <- jsonlite::toJSON(list(name = name))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name)))
     resp_json <- httr2::request(url) %>%
                  httr2::req_url_path_append("ModelInfo") %>%
                  httr2::req_body_raw(req_json) %>%
@@ -160,7 +160,7 @@ supports_apply_jacobian <- function(url, name) {
     stopifnot(typeof(url) == "character")
     stopifnot(typeof(name) == "character")
 
-    req_json <- jsonlite::toJSON(list(name = name))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name)))
     resp_json <- httr2::request(url) %>%
                  httr2::req_url_path_append("ModelInfo") %>%
                  httr2::req_body_raw(req_json) %>%
@@ -180,7 +180,7 @@ supports_apply_hessian <- function(url, name) {
     stopifnot(typeof(url) == "character")
     stopifnot(typeof(name) == "character")
 
-    req_json <- jsonlite::toJSON(list(name = name))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name)))
     resp_json <- httr2::request(url) %>%
                  httr2::req_url_path_append("ModelInfo") %>%
                  httr2::req_body_raw(req_json) %>%
@@ -231,7 +231,7 @@ model_input_sizes <- function(url, name, config = jsonlite::fromJSON("{}")) {
     stopifnot(typeof(url) == "character")
     stopifnot(typeof(name) == "character")
 
-    req_json <- jsonlite::toJSON(list(name = name, config = config))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name), config = config))
     resp_json <- httr2::request(url) %>%
                  httr2::req_url_path_append("InputSizes") %>%
                  httr2::req_body_raw(req_json) %>%
@@ -252,7 +252,7 @@ model_output_sizes <- function(url, name, config = jsonlite::fromJSON("{}")) {
     stopifnot(typeof(url) == "character")
     stopifnot(typeof(name) == "character")
 
-    req_json <- jsonlite::toJSON(list(name = name, config = config))
+    req_json <- jsonlite::toJSON(list(name = jsonlite::unbox(name), config = config))
     resp_json <- httr2::request(url) %>%
                  httr2::req_url_path_append("OutputSizes") %>%
                  httr2::req_body_raw(req_json) %>%
