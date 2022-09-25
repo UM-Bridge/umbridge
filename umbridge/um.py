@@ -28,19 +28,18 @@ class Model(object):
     def supports_apply_hessian(self):
         return False
 
-
+def supported_models(url):
+  response = requests.get(f"{url}/Info").json()
+  if (response["protocolVersion"] != 1.0):
+      raise RuntimeWarning("Model has unsupported protocol version!")
+  return response["models"]
 
 class HTTPModel(Model):
     def __init__(self, url, name):
         super().__init__(name)
         self.url = url
 
-        response = requests.get(f"{self.url}/Info").json()
-        if (response["protocolVersion"] != 1.0):
-            raise RuntimeWarning("Model has unsupported protocol version!")
-
-        # Raise error if model not supported by server
-        if (name not in response["models"]):
+        if (name not in supported_models(url)):
             raise Exception(f'Model {name} not supported by server! Supported models are: {response["models"]}')
 
         input = {}

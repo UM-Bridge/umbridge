@@ -69,6 +69,21 @@ namespace umbridge {
     std::string name;
   };
 
+  std::vector<std::string> SupportedModels(std::string host, httplib::Headers headers = httplib::Headers()) {
+    httplib::Client cli(host.c_str());
+    if (auto res = cli.Get("/Info", headers)) {
+      json response = json::parse(res->body);
+
+      if (response.value<double>("protocolVersion",0) != 1.0)
+        throw std::runtime_error("Model protocol version not supported!");
+
+      return response["models"];
+
+    } else {
+      throw std::runtime_error("GET Info failed with error type '" + to_string(res.error()) + "'");
+    }
+  }
+
   // Client-side Model connecting to a server for the actual evaluations etc.
   class HTTPModel : public Model {
   public:
@@ -79,11 +94,8 @@ namespace umbridge {
       if (auto res = cli.Get("/Info", headers)) {
         json response = json::parse(res->body);
 
-        if (response.value<double>("protocolVersion",0) != 1.0)
-          throw std::runtime_error("Model protocol version not supported!");
-
         // Check if requested model is available on server
-        std::vector<std::string> models = response["models"];
+        std::vector<std::string> models = SupportedModels(host, headers);
         if (std::find(models.begin(), models.end(), name) == models.end()) {
           std::string model_names = "";
           for (auto& m : models) {

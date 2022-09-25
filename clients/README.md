@@ -14,10 +14,12 @@ The Python integration can either be found in the git repository or simply be in
 pip install umbridge
 ```
 
-Connecting to a model server and accessing its model called "forward" is as easy as
+Connecting to a model server, listing models availabel on it and accessing a model called "forward" is as easy as
 
 ```
 import umbridge
+
+print(umbridge.supported_models("http://localhost:4242"))
 
 model = umbridge.HTTPModel("http://localhost:4242", "forward")
 ```
@@ -54,7 +56,13 @@ if model.supports_apply_jacobian():
 
 The c++ client abstraction is part of the umbridge.h header-only library. Note that it has some header-only dependencies by itself.
 
-Invoking it is mostly analogous to the above. Note that HTTP headers may optionally be used, for example to include access tokens.
+We can obtain a list of the available models on a server.
+
+```
+umbridge::SupportedModels("http://localhost:4242");
+```
+
+Invoking a model is mostly analogous to the above. Note that HTTP headers may optionally be used, for example to include access tokens.
 
 ```
 umbridge::HTTPModel client("http://localhost:4242", "forward");

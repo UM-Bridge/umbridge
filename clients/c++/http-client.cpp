@@ -20,6 +20,14 @@ int main(int argc, char** argv) {
   std::string host = argv[1];
   std::cout << "Connecting to host " << host << std::endl;
 
+  // List supported models
+  std::vector<std::string> models = umbridge::SupportedModels(host);
+  std::cout << "Supported models: " << std::endl;
+  for (auto model : models) {
+    std::cout << "  " << model << std::endl;
+  }
+
+  // Connect to a model
   umbridge::HTTPModel client(host, "posterior");
 
   // Print out input and output sizes
