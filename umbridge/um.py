@@ -28,6 +28,8 @@ class Model(object):
     def supports_apply_hessian(self):
         return False
 
+
+
 class HTTPModel(Model):
     def __init__(self, url, name):
         super().__init__(name)
