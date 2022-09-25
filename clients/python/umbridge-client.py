@@ -16,7 +16,7 @@ config={"a":2}
 print(model.get_input_sizes(config))
 print(model.get_output_sizes(config))
 
-param = [[100.0, 18.0]]
+param = [[100.0]]
 
 # Simple model evaluation
 print(model(param))

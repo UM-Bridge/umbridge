@@ -12,7 +12,7 @@ class ExampleModel : public umbridge::Model {
 public:
 
   ExampleModel(int test_delay)
-   : umbridge::Model("TestModel"), // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
+   : umbridge::Model("forward"), // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
      test_delay(test_delay)
   {}
 

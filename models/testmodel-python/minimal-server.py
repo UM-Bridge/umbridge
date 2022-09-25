@@ -13,7 +13,7 @@ class TestModel(umbridge.Model):
         return [1]
 
     def __call__(self, parameters, config):
-        posterior = parameters[0][0]
+        posterior = 2*parameters[0][0]
         return [[posterior]]
 
     def supports_evaluate(self):
