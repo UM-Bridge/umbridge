@@ -40,7 +40,7 @@ class HTTPModel(Model):
         self.url = url
 
         if (name not in supported_models(url)):
-            raise Exception(f'Model {name} not supported by server! Supported models are: {response["models"]}')
+            raise Exception(f'Model {name} not supported by server! Supported models are: {supported_models(url)}')
 
         input = {}
         input["name"] = name
