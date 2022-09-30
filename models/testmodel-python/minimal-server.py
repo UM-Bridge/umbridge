@@ -1,5 +1,4 @@
 import umbridge
-import scipy.stats
 
 class TestModel(umbridge.Model):
 
