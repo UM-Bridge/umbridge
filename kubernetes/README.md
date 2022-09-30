@@ -99,7 +99,7 @@ Use
 ``kubectl describe ingress``
 to get the IP address and then run:
 
-``curl [IP-goes-here]/Evaluate -X POST -d '{"input": [[100.0, 50.0]], "config":{"vtk_output": false}}'``
+``curl [IP-goes-here]/Evaluate -X POST -d '{"name": "posterior", "input": [[100.0, 50.0]], "config":{"vtk_output": false}}'``
 to run the ExaHyPE example.
 
 To run an interactive job:

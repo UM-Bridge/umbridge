@@ -55,7 +55,7 @@ test_evaluate(){
     curl $url/Evaluate \
     -H "Content-Type: application/json" \
     -H "Authorization: Basic $user_pw" \
-    -X POST -d '{"input": [[-20.0, 0.0]], "config": {}}'
+    -X POST -d '{"name": "posterior", "input": [[-20.0, 0.0]], "config": {}}'
 }
 
 #1. create mpi cluster on GCP
