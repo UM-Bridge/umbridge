@@ -1,5 +1,7 @@
 from aiohttp import web
 import requests
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 class Model(object):
 
@@ -155,6 +157,8 @@ class HTTPModel(Model):
 
 def serve_models(models, port=4242):
 
+    model_executor = ThreadPoolExecutor(max_workers=1)
+
     def error_response(type, message, status):
         response_body = {
             "error": {
@@ -199,7 +203,8 @@ def serve_models(models, port=4242):
             if len(parameters[i]) != model.get_input_sizes(config)[i]:
                 return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes(config)[i]} but got {len(parameters[i])}.", 400)
 
-        output = model(parameters, config)
+        output_future = model_executor.submit(model.__call__, parameters, config)
+        output = await asyncio.wrap_future(output_future)
 
         # Check if output is a list of lists
         if not isinstance(output, list):
@@ -251,7 +256,8 @@ def serve_models(models, port=4242):
         if len(sens) != model.get_output_sizes(config)[out_wrt]:
             return error_response("InvalidInput", f"Sensitivity vector sens has invalid length! Expected {model.get_output_sizes(config)[out_wrt]} but got {len(sens)}.", 400)
 
-        output = model.gradient(out_wrt, in_wrt, parameters, sens, config)
+        output_future = model_executor.submit(model.gradient, out_wrt, in_wrt, parameters, sens, config)
+        output = await asyncio.wrap_future(output_future)
 
         # Check if output is a list
         if not isinstance(output, list):
@@ -298,7 +304,8 @@ def serve_models(models, port=4242):
         if len(vec) != model.get_input_sizes(config)[in_wrt]:
             return error_response("InvalidInput", f"Vector vec has invalid length! Expected {model.get_input_sizes(config)[in_wrt]} but got {len(vec)}.", 400)
 
-        output = model.apply_jacobian(out_wrt, in_wrt, parameters, vec, config)
+        output_future = model_executor.submit(model.apply_jacobian, out_wrt, in_wrt, parameters, vec, config)
+        output = await asyncio.wrap_future(output_future)
 
         # Check if output is a list
         if not isinstance(output, list):
@@ -347,7 +354,8 @@ def serve_models(models, port=4242):
         if in_wrt2 < 0 or in_wrt2 >= len(model.get_input_sizes(config)):
             return error_response("InvalidInput", "Invalid inWrt2 index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt2), 400)
 
-        output = model.apply_hessian(out_wrt, in_wrt1, in_wrt2, parameters, sens, vec, config)
+        output_future = model_executor.submit(model.apply_hessian, out_wrt, in_wrt1, in_wrt2, parameters, sens, vec, config)
+        output = await asyncio.wrap_future(output_future)
 
         # Check if output is a list
         if not isinstance(output, list):

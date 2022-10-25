@@ -11,7 +11,7 @@ setuptools.setup(
     description="UM-Bridge (the UQ and Model Bridge) provides a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=["aiohttp", "requests"],
+    install_requires=["aiohttp", "requests", "asyncio"],
     extras_require = {
         'pymc':  ["aesara"]
     },
