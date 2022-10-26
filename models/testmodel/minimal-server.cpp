@@ -12,10 +12,11 @@ class ExampleModel : public umbridge::Model {
 public:
 
   ExampleModel(int test_delay)
-   : umbridge::Model("forward"), // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
+   : umbridge::Model("forward"),
      test_delay(test_delay)
   {}
 
+   // Define input and output dimensions of model (here we have a single vector of length 1 for input; same for output)
   std::vector<std::size_t> GetInputSizes(const json& config_json) const override {
     return {1};
   }
