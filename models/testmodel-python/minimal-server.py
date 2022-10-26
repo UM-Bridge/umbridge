@@ -1,4 +1,6 @@
 import umbridge
+import time
+import os
 
 class TestModel(umbridge.Model):
 
@@ -12,6 +14,9 @@ class TestModel(umbridge.Model):
         return [1]
 
     def __call__(self, parameters, config):
+        # Sleep for number of milliseconds defined in env var
+        time.sleep(int(os.getenv("TEST_DELAY", 0)) / 1000)
+
         posterior = 2*parameters[0][0]
         return [[posterior]]
 
