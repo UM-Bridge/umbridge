@@ -20,11 +20,11 @@ namespace umbridge {
   public:
     Model(std::string name) : name(name) {}
 
-    virtual std::vector<std::size_t> GetInputSizes(const json& config_json = json()) const = 0;
-    virtual std::vector<std::size_t> GetOutputSizes(const json& config_json = json()) const = 0;
+    virtual std::vector<std::size_t> GetInputSizes(const json& config_json = json::parse("{}")) const = 0;
+    virtual std::vector<std::size_t> GetOutputSizes(const json& config_json = json::parse("{}")) const = 0;
 
     virtual std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs,
-                          json config_json = json()) {
+                          json config_json = json::parse("{}")) {
       (void)inputs; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("Evaluate was called, but not implemented by model!");
     }
@@ -33,7 +33,7 @@ namespace umbridge {
                           unsigned int inWrt,
                           const std::vector<std::vector<double>>& inputs,
                           const std::vector<double>& sens,
-                          json config_json = json()) {
+                          json config_json = json::parse("{}")) {
       (void)outWrt; (void)inWrt; (void)inputs; (void)sens; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("Gradient was called, but not implemented by model!");
     }
@@ -42,7 +42,7 @@ namespace umbridge {
                               unsigned int inWrt,
                               const std::vector<std::vector<double>>& inputs,
                               const std::vector<double>& vec,
-                              json config_json = json()) {
+                              json config_json = json::parse("{}")) {
       (void)outWrt; (void)inWrt; (void)inputs; (void)vec; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("ApplyJacobian was called, but not implemented by model!");
     }
@@ -53,7 +53,7 @@ namespace umbridge {
                               const std::vector<std::vector<double>>& inputs,
                               const std::vector<double>& sens,
                               const std::vector<double>& vec,
-                              json config_json = json()) {
+                              json config_json = json::parse("{}")) {
       (void)outWrt; (void)inWrt1; (void)inWrt2; (void)inputs; (void)sens; (void)vec; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("ApplyHessian was called, but not implemented by model!");
     }
@@ -91,21 +91,14 @@ namespace umbridge {
     HTTPModel(std::string host, std::string name, httplib::Headers headers = httplib::Headers())
     : Model(name), cli(host.c_str()), headers(headers)
     {
-      if (auto res = cli.Get("/Info", headers)) {
-        json response = json::parse(res->body);
-
-        // Check if requested model is available on server
-        std::vector<std::string> models = SupportedModels(host, headers);
-        if (std::find(models.begin(), models.end(), name) == models.end()) {
-          std::string model_names = "";
-          for (auto& m : models) {
-            model_names += "'" + m + "' ";
-          }
-          throw std::runtime_error("Model " + name + " not found on server! Available models: " + model_names + ".");
+      // Check if requested model is available on server
+      std::vector<std::string> models = SupportedModels(host, headers);
+      if (std::find(models.begin(), models.end(), name) == models.end()) {
+        std::string model_names = "";
+        for (auto& m : models) {
+          model_names += "'" + m + "' ";
         }
-
-      } else {
-        throw std::runtime_error("GET Info failed with error type '" + to_string(res.error()) + "'");
+        throw std::runtime_error("Model " + name + " not found on server! Available models: " + model_names + ".");
       }
 
       json request_body;
@@ -124,7 +117,7 @@ namespace umbridge {
       }
     }
 
-    std::vector<std::size_t> GetInputSizes(const json& config_json = json()) const override {
+    std::vector<std::size_t> GetInputSizes(const json& config_json = json::parse("{}")) const override {
 
       json request_body;
       request_body["name"] = name;
@@ -132,7 +125,7 @@ namespace umbridge {
         request_body["config"] = config_json;
 
       if (auto res = cli.Post("/InputSizes", headers, request_body.dump(), "application/json")) {
-        json response_body = json::parse(res->body);
+        json response_body = parse_result_with_error_handling(res);
         std::vector<std::size_t> outputvec = response_body["inputSizes"].get<std::vector<std::size_t>>();
         return outputvec;
       } else {
@@ -141,7 +134,7 @@ namespace umbridge {
       }
     }
 
-    std::vector<std::size_t> GetOutputSizes(const json& config_json = json()) const override {
+    std::vector<std::size_t> GetOutputSizes(const json& config_json = json::parse("{}")) const override {
 
       json request_body;
       request_body["name"] = name;
@@ -149,7 +142,7 @@ namespace umbridge {
         request_body["config"] = config_json;
 
       if (auto res = cli.Post("/OutputSizes", headers, request_body.dump(), "application/json")) {
-        json response_body = json::parse(res->body);
+        json response_body = parse_result_with_error_handling(res);
         std::vector<std::size_t> outputvec = response_body["outputSizes"].get<std::vector<std::size_t>>();
         return outputvec;
       } else {
@@ -158,7 +151,7 @@ namespace umbridge {
       }
     }
 
-    std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config_json = json()) override {
+    std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config_json = json::parse("{}")) override {
 
       json request_body;
       request_body["name"] = name;
@@ -166,12 +159,10 @@ namespace umbridge {
       for (std::size_t i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
-      if (!config_json.empty())
-        request_body["config"] = config_json;
+      request_body["config"] = config_json;
 
       if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "application/json")) {
-        json response_body = json::parse(res->body);
-        throw_if_error_in_response(response_body);
+        json response_body = parse_result_with_error_handling(res);
 
         std::vector<std::vector<double>> outputs(response_body["output"].size());
         for (std::size_t i = 0; i < response_body["output"].size(); i++) {
@@ -187,7 +178,7 @@ namespace umbridge {
                   unsigned int inWrt,
                   const std::vector<std::vector<double>>& inputs,
                   const std::vector<double>& sens,
-                  json config_json = json()) override
+                  json config_json = json::parse("{}")) override
     {
 
       json request_body;
@@ -198,12 +189,10 @@ namespace umbridge {
         request_body["input"][i] = inputs[i];
       }
       request_body["sens"] = sens;
-      if (!config_json.empty())
-        request_body["config"] = config_json;
+      request_body["config"] = config_json;
 
       if (auto res = cli.Post("/Gradient", headers, request_body.dump(), "application/json")) {
-        json response_body = json::parse(res->body);
-        throw_if_error_in_response(response_body);
+        json response_body = parse_result_with_error_handling(res);
 
         return response_body["output"].get<std::vector<double>>();
       } else {
@@ -215,7 +204,7 @@ namespace umbridge {
                               unsigned int inWrt,
                               const std::vector<std::vector<double>>& inputs,
                               const std::vector<double>& vec,
-                              json config_json = json()) override {
+                              json config_json = json::parse("{}")) override {
 
       json request_body;
       request_body["name"] = name;
@@ -225,12 +214,10 @@ namespace umbridge {
         request_body["input"][i] = inputs[i];
       }
       request_body["vec"] = vec;
-      if (!config_json.empty())
-        request_body["config"] = config_json;
+      request_body["config"] = config_json;
 
       if (auto res = cli.Post("/ApplyJacobian", headers, request_body.dump(), "application/json")) {
-        json response_body = json::parse(res->body);
-        throw_if_error_in_response(response_body);
+        json response_body = parse_result_with_error_handling(res);
 
         return response_body["output"].get<std::vector<double>>();
       } else {
@@ -244,7 +231,7 @@ namespace umbridge {
                       const std::vector<std::vector<double>>& inputs,
                       const std::vector<double>& sens,
                       const std::vector<double>& vec,
-                      json config_json = json()) override {
+                      json config_json = json::parse("{}")) override {
 
       json request_body;
       request_body["name"] = name;
@@ -256,12 +243,10 @@ namespace umbridge {
       }
       request_body["sens"] = sens;
       request_body["vec"] = vec;
-      if (!config_json.empty())
-        request_body["config"] = config_json;
+      request_body["config"] = config_json;
 
       if (auto res = cli.Post("/ApplyHessian", headers, request_body.dump(), "application/json")) {
-        json response_body = json::parse(res->body);
-        throw_if_error_in_response(response_body);
+        json response_body = parse_result_with_error_handling(res);
 
         return response_body["output"].get<std::vector<double>>();
       } else {
@@ -292,11 +277,17 @@ namespace umbridge {
     bool supportsApplyJacobian = false;
     bool supportsApplyHessian = false;
 
-    // Throw error if response contains error message
-    void throw_if_error_in_response(const json& response_body) {
+    json parse_result_with_error_handling(const httplib::Result& res) const {
+      json response_body;
+      try {
+        response_body = json::parse(res->body);
+      } catch (json::parse_error& e) {
+        throw std::runtime_error("Response JSON could not be parsed. Response body: '" + res->body + "'");
+      }
       if (response_body.find("error") != response_body.end()) {
         throw std::runtime_error("Model server returned error of type " + response_body["error"]["type"].get<std::string>() + ", message: " + response_body["error"]["message"].get<std::string>());
       }
+      return response_body;
     }
 
   };
