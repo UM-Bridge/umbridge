@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
   }
 
   // Connect to a model
-  umbridge::HTTPModel client(host, "posterior");
+  umbridge::HTTPModel client(host, "forward");
 
   // Print out input and output sizes
   std::cout << to_string(client.GetInputSizes()) << std::endl;
@@ -43,7 +43,8 @@ int main(int argc, char** argv) {
 
   // And evaluate again, this time specifying config parameters
   json config;
-  config["level"] = 0;
+  config["level"] = 1;
+  config["vtk_output"] = true;
   client.Evaluate(inputs, config);
 
   // If model supports Jacobian action,

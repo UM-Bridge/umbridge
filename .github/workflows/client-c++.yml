@@ -13,9 +13,9 @@ jobs:
 
     services:
       model:
-        image: linusseelinger/benchmark-analytic-banana:latest
+        image: linusseelinger/model-exahype-tsunami
         ports:
-        - 4243:4243
+        - 4242:4242
 
     steps:
        -
@@ -28,4 +28,4 @@ jobs:
        -
         name: Build and run
         run: |
-          cd clients/c++ && ./build.sh && ./http-client model:4243
+          cd clients/c++ && ./build.sh && ./http-client model:4242

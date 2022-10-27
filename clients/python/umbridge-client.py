@@ -9,19 +9,23 @@ parser.add_argument('url', metavar='url', type=str,
 args = parser.parse_args()
 print(f"Connecting to host URL {args.url}")
 
-# Set up a model by connecting to URL
-model = umbridge.HTTPModel(args.url, "posterior")
+# Print models supported by server
+print(f"Supported models: {umbridge.supported_models(args.url)}")
 
-config={"a":2}
-print(model.get_input_sizes(config))
-print(model.get_output_sizes(config))
+# Set up a model by connecting to URL and selecting the "forward" model
+model = umbridge.HTTPModel(args.url, "forward")
+
+
+print(model.get_input_sizes())
+print(model.get_output_sizes())
 
 param = [[100.0, 18.0]]
 
-# Simple model evaluation
+# Simple model evaluation without config
 print(model(param))
 
 # Model evaluation with configuration parameters
+config={"vtk_output": True, "level": 1}
 print(model(param, config))
 
 # If model supports Jacobian action,

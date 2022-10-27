@@ -13,9 +13,9 @@ jobs:
 
     services:
       model:
-        image: linusseelinger/benchmark-analytic-banana:latest
+        image: linusseelinger/model-exahype-tsunami:latest
         ports:
-        - 4243:4243
+        - 4242:4242
 
     steps:
        -
@@ -28,4 +28,4 @@ jobs:
        -
         name: Build and run
         run: |
-          cd clients/python && python3 umbridge-client.py http://model:4243
+          cd clients/python && python3 umbridge-client.py http://model:4242
