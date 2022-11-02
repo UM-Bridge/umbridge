@@ -9,9 +9,11 @@ parser.add_argument('url', metavar='url', type=str,
 args = parser.parse_args()
 print(f"Connecting to host URL {args.url}")
 
+# Print modelssupported by server
+print(umbridge.supported_models(args.url))
+
 # Set up a model by connecting to URL and selecting the "forward" model
 model = umbridge.HTTPModel(args.url, "forward")
-
 
 print(model.get_input_sizes())
 print(model.get_output_sizes())
