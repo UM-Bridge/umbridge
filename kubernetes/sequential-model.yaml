@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-deployment
+spec:
+  selector:
+    matchLabels:
+      app: model
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: model
+    spec:
+      containers:
+      - name: model
+        image: linusseelinger/model-l2-sea:latest
+        env:
+        - name: OMP_NUM_THREADS
+          value: "1"
+        resources:
+          requests:
+            cpu: 1
+            memory: 1Gi
+          limits:
+            cpu: 1
+            memory: 1Gi

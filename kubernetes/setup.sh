@@ -1,10 +1,18 @@
 #!/bin/bash
+
+# Update kubectl to new cluster:
+# gcloud container clusters get-credentials testcluster --zone europe-west2-c --project platinum-chain-308019
+
+# List of machine types: https://cloud.google.com/compute/docs/compute-optimized-machines
+
 create_mpi_cluster(){
     gcloud beta container clusters create testcluster \
+    --system-config-from-file=kubeletconfig.yaml \
     --machine-type c2-standard-4 \
     --placement-type COMPACT \
     --num-nodes=3 \
-    --zone=europe-west2-c
+    --zone=europe-west2-c \
+    --threads-per-core=1 # Disable SMT by allowing only 1 thread per physical core (optional, but helpful for consistent performance in typical HPC workloads)
 }
 
 hibernate_cluster(){
@@ -82,6 +90,8 @@ test_evaluate(){
 
 #7. deploy service and ingress
 #deploy_service_ingress
+#Find IP for clients to connect to:
+#kubectl describe ingress
 
 #8. test endpoint
 #test_evaluate

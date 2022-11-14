@@ -4,15 +4,16 @@ metadata:
   name: my-svc
   namespace: default
   annotations:
-    haproxy.org/pod-maxconn: "1"
     haproxy.org/load-balance: "leastconn"
+
 spec:
   ports:
   - port: 80
     protocol: TCP
     targetPort: 4242
   selector:
-    training.kubeflow.org/job-role: launcher
+    #training.kubeflow.org/job-role: launcher
+    app: model
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
