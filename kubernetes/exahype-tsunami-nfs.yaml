@@ -34,6 +34,9 @@ spec:
             command:
             - /server/server
             resources:
+              requests:
+                cpu: 1
+                memory: 2Gi
               limits:
                 cpu: 1
                 memory: 2Gi
@@ -68,6 +71,9 @@ spec:
                 port: 22
               initialDelaySeconds: 2
             resources:
+              requests:
+                cpu: 2
+                memory: 2Gi
               limits:
                 cpu: 2
                 memory: 2Gi
