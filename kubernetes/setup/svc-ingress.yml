@@ -43,5 +43,5 @@ data:
   timeout-queue: 1h
   timeout-http-request: 1m
   syslog-server: "address:stdout, format:raw, facility:daemon"
-  auth-type: basic-auth
-  auth-secret: haproxy-controller/haproxy-credentials
+  #auth-type: basic-auth
+  #auth-secret: haproxy-controller/haproxy-credentials
