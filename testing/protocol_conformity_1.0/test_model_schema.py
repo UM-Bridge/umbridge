@@ -29,8 +29,14 @@ def test_evaluate(model_url, input_value):
     inputSizesJSON = requests.post(f'{model_url}/InputSizes', json=input_model_name).json()
 
     inputParams = {"input": [], "name": model_name, "config": {}}
+    input_value_len = getattr(input_value, '__len__', lambda:1)()
     for i in range(0,len(inputSizesJSON["inputSizes"])):
-      inputParams["input"].append([input_value] * inputSizesJSON["inputSizes"][i])
+      assert input_value_len == 1 or input_value_len == inputSizesJSON["inputSizes"][i]
+      if input_value_len == 1:
+        inputParams["input"].append([input_value] * inputSizesJSON["inputSizes"][i])
+      else:
+        inputParams["input"].append(input_value)
+
 
     resp = requests.post(f'{model_url}/Evaluate', headers={}, data=json.dumps(inputParams,indent=4))
 
