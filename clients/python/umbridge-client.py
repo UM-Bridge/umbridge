@@ -5,7 +5,7 @@ import umbridge
 # Read URL from command line argument
 parser = argparse.ArgumentParser(description='Minimal HTTP model demo.')
 parser.add_argument('url', metavar='url', type=str,
-                    help='the ULR on which the model is running, for example http://localhost:4242')
+                    help='the URL at which the model is running, for example http://localhost:4242')
 args = parser.parse_args()
 print(f"Connecting to host URL {args.url}")
 
