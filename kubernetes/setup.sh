@@ -76,7 +76,9 @@ test_evaluate(){
 #kubectl apply -f setup/nfs.yaml
 
 #3b. Update IP in pv/pvc yaml
-# MAKE SURE IP IS UP TO DATE IN YAML!
+#Get IP of NFS server:
+#kubectl describe pod nfs-server | grep IP
+# Set this IP in setup/nfs-pv-pvc.yaml
 #kubectl apply -f setup/nfs-pv-pvc.yaml
 
 #4. start mpi jobs
