@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # This is a simple example of how to connect to an UM-Bridge server with raw HTTP calls.
-# It is not meant to be a complete client, but rather a starting point for your own client.
+# It is not meant to be a complete client, but rather a starting point for your own client implementations.
 # If you just want to use UM-Bridge, you should use the official Python module 'umbridge' instead.
 
 import argparse
@@ -9,7 +9,7 @@ import requests
 
 parser = argparse.ArgumentParser(description='Minimal HTTP model demo.')
 parser.add_argument('url', metavar='url', type=str,
-                    help='the ULR on which the model is running, for example http://localhost:4242')
+                    help='the URL at which the model is running, for example http://localhost:4242')
 args = parser.parse_args()
 print(f"Connecting to host URL {args.url}")
 

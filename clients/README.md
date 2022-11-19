@@ -243,3 +243,42 @@ with pm.Model() as model:
     az.plot_pair(inferencedata);
     plt.show()
 ```
+
+## QMCPy client
+
+QMCPy supports UM-Bridge models as integrands. QMCPy and UM-Bridge can be installed from pip.
+
+```
+pip install umbridge qmcpy
+```
+
+NOTE: At the time of writing (November 2022) the UM-Bridge integration is not yet part of QMCPy's package on PyPI. It can however be installed from QMCPy's develop branch using pip.
+
+A basic QMCPy example using an UM-Bridge model is shown below.
+
+```
+import argparse
+import qmcpy as qp
+from qmcpy.integrand.um_bridge_wrapper import UMBridgeWrapper
+import numpy as np
+import umbridge
+
+# Set up umbridge model and (optional) model config
+model = umbridge.HTTPModel("http://localhost:4242", "forward")
+config = {}
+
+# Get input dimension from model
+d = model.get_input_sizes(config)[0]
+
+# Choose a distribution of suitable dimension to sample via QMC
+dnb2 = qp.DigitalNetB2(d)
+gauss_sobol = qp.Uniform(dnb2, lower_bound=[1]*d, upper_bound=[1.05]*d)
+
+# Create integrand based on umbridge model
+integrand = UMBridgeWrapper(gauss_sobol, model, config, parallel=False)
+
+# Run QMC integration to some accuracy and print results
+qmc_sobol_algorithm = qp.CubQMCSobolG(integrand, abs_tol=1e-1)
+solution,data = qmc_sobol_algorithm.integrate()
+print(data)
+```

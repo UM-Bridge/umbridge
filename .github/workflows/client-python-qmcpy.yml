@@ -1,0 +1,35 @@
+name: client-python-qmcpy
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    container: ubuntu:latest
+
+    services:
+      model:
+        image: linusseelinger/benchmark-muq-beam-propagation:latest
+        ports:
+        - 4243:4243
+
+    steps:
+       -
+        name: Checkout
+        uses: actions/checkout@v2
+       -
+        name: Dependencies
+        run: |
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y git python3-pip && pip3 install umbridge
+       -
+        name: Clone QMCPy develop branch and install # To be replaced by pip install qmcpy once umbridge support propagates to QMCPy on pip
+        run: |
+          git clone https://github.com/QMCSoftware/QMCSoftware.git && cd QMCSoftware && git checkout develop && pip3 install .
+       -
+        name: Build and run
+        run: |
+          cd clients/python && python3 qmcpy-client.py http://model:4243
