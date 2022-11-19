@@ -3,7 +3,7 @@ kind: MPIJob
 metadata:
   name: mpijob-${SHARED_FILE_PREFIX}
 spec:
-  slotsPerWorker: 2
+  slotsPerWorker: 1
   runPolicy:
     cleanPodPolicy: Running
   sshAuthMountPath: /home/mpiuser/.ssh
@@ -18,7 +18,7 @@ spec:
             persistentVolumeClaim:
               claimName: nfs
           containers:
-          - image: linusseelinger/benchmark-exahype-tsunami:latest
+          - image: linusseelinger/model-exahype-tsunami:latest
             name: mpi-launcher
             volumeMounts:
               # name must match the volume name below
@@ -30,7 +30,7 @@ spec:
             - name: SHARED_DIR
               value: "/shared/comm_${SHARED_FILE_PREFIX}_"
             - name: RANKS
-              value: "4"
+              value: "2"
             command:
             - /server/server
             resources:
@@ -49,7 +49,7 @@ spec:
             persistentVolumeClaim:
               claimName: nfs
           containers:
-          - image: linusseelinger/benchmark-exahype-tsunami:latest
+          - image: linusseelinger/model-exahype-tsunami:latest
             name: mpi-worker
             volumeMounts:
               # name must match the volume name below
@@ -72,8 +72,8 @@ spec:
               initialDelaySeconds: 2
             resources:
               requests:
-                cpu: 2
-                memory: 2Gi
+                cpu: 12
+                memory: 30Gi
               limits:
-                cpu: 2
-                memory: 2Gi
+                cpu: 12
+                memory: 30Gi
