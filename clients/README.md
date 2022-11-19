@@ -252,8 +252,6 @@ QMCPy supports UM-Bridge models as integrands. QMCPy and UM-Bridge can be instal
 pip install umbridge qmcpy
 ```
 
-NOTE: At the time of writing (November 2022) the UM-Bridge integration is not yet part of QMCPy's package on PyPI. It can however be installed from QMCPy's develop branch using pip.
-
 A basic QMCPy example using an UM-Bridge model is shown below.
 
 ```
