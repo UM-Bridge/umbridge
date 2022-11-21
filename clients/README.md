@@ -52,6 +52,8 @@ if model.supports_apply_jacobian():
   print(model.apply_jacobian(0, 0, [[0.0, 10.0]], [1.0, 4.0]))
 ```
 
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/python/umbridge-client.py)
+
 ## C++ client
 
 The c++ client abstraction is part of the umbridge.h header-only library. Note that it has some header-only dependencies by itself.
@@ -105,6 +107,8 @@ if (client.SupportsApplyJacobian()) {
   std::cout << "Jacobian action: " << to_string(client.jacobianAction) << std::endl;
 }
 ```
+
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/clients/c%2B%2B)
 
 ## R client
 
@@ -172,6 +176,8 @@ if (supports_apply_jacobian(url, name)) {
 }
 ```
 
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/clients/R)
+
 ## MUQ client
 
 Within the [MIT Uncertainty Quantification library (MUQ)](https://mituq.bitbucket.io), there is a ModPiece available that allows embedding an HTTP model in MUQ's model graph framework.
@@ -191,6 +197,8 @@ auto modpiece = std::make_shared<UMBridgeModPiece>("http://localhost:4242", "for
 Apart from the constructor, UMBridgeModPiece behaves like any ModPiece in MUQ. For example, models or benchmarks outputting a posterior density may be directly passed into a SamplingProblem, to which Markov Chain Monte Carlo methods provided by MUQ may then be applied for sampling.
 
 See MUQ's documentation for more in-depth documentation on model graphs and UM-Bridge integration.
+
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/clients/muq)
 
 ## PyMC client
 
@@ -244,6 +252,8 @@ with pm.Model() as model:
     plt.show()
 ```
 
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/python/pymc-client.py)
+
 ## QMCPy client
 
 QMCPy supports UM-Bridge models as integrands. QMCPy and UM-Bridge can be installed from pip.
@@ -280,3 +290,5 @@ qmc_sobol_algorithm = qp.CubQMCSobolG(integrand, abs_tol=1e-1)
 solution,data = qmc_sobol_algorithm.integrate()
 print(data)
 ```
+
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/python/qmcpy-client.py)

@@ -67,6 +67,8 @@ umbridge.serve_models([testmodel], 4242)
 
 This server can be connected to by any client at port 4242.
 
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/models/testmodel-python)
+
 ### C++ server
 
 The c++ server abstraction is part of the umbridge.h header-only library available from our repository. Note that it has some header-only dependencies by itself.
@@ -108,6 +110,8 @@ Making the model available to clients is then as simple as:
 ExampleModel model;
 umbridge::serveModels({&model}, "0.0.0.0", 4242);
 ```
+
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/models/testmodel)
 
 ## MUQ server
 
