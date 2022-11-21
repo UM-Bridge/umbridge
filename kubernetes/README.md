@@ -31,7 +31,7 @@ helm install kubernetes-ingress haproxytech/kubernetes-ingress \
 Then, start HAProxy with the configuration provided by UM-Bridge:
 
 ``
-kubectl apply -f ./setup/svc-ingress.yml
+kubectl apply -f setup/svc-ingress.yml
 ``
 
 ## Step 3: Run model instances
