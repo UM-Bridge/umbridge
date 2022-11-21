@@ -8,7 +8,9 @@ These instructions show how to use the UM-Bridge kubernetes configuration. It as
 
 First, clone the UM-Bridge repository by running:
 
-``git clone https://github.com/UM-Bridge/umbridge.git``
+```
+git clone https://github.com/UM-Bridge/umbridge.git
+```
 
 In the cloned repository, navigate to the folder `kubernetes`. It contains all that is needed in the following.
 
@@ -16,44 +18,52 @@ In the cloned repository, navigate to the folder `kubernetes`. It contains all t
 
 First, retrieve HAProxy:
 
-``
+```
 helm repo add haproxytech https://haproxytech.github.io/helm-charts
-``
+```
 
-``
+```
 helm repo update
-``
+```
 
-``
-helm install kubernetes-ingress haproxytech/kubernetes-ingress --create-namespace --namespace haproxy-controller --set controller.service.type=LoadBalancer --set controller.replicaCount=1 --set defaultBackend.replicaCount=1 --set controller.logging.level=debug --set controller.ingressClass=haproxy
-``
+```
+helm install kubernetes-ingress haproxytech/kubernetes-ingress \
+--create-namespace \
+--namespace \
+haproxy-controller \
+--set controller.service.type=LoadBalancer \
+--set controller.replicaCount=1 \
+--set defaultBackend.replicaCount=1 \
+--set controller.logging.level=debug \
+--set controller.ingressClass=haproxy
+```
 
 Then, start HAProxy with the configuration provided by UM-Bridge:
 
-``
+```
 kubectl apply -f setup/svc-ingress.yml
-``
+```
 
 ## Step 3: Run model instances
 
 To start model instances, run:
 
-``
+```
 kubectl create -f model.yaml
-``
+```
 
 You can check the status of the model instances by running:
 
-``
+```
 kubectl get pods
-``
+```
 
 
 They can be again via:
 
-``
+```
 kubectl delete -f model.yaml
-``
+```
 
 The default `model.yaml` may be adjusted to run your own model by changing:
 - `image`: The docker image containing a model with UM-Bridge support. Any image provided by the UM-Bridge project will work right away.
@@ -65,9 +75,9 @@ The default `model.yaml` may be adjusted to run your own model by changing:
 
 The model instances are now available through your load balancer's IP address, which you can determine from:
 
-``
+```
 kubectl describe ingress
-``
+```
 
 The model instances may be accessed from any UM-Bridge client, and up to `replicas` requests will be handled in parallel.
 
@@ -92,25 +102,31 @@ When separating between builder and final image, the corresponding base images m
 
 In addition to choosing a suitable base image for the model, the mpi-òperator needs to be deployed on the cluster:
 
-``
+```
 kubectl apply -f https://raw.githubusercontent.com/kubeflow/mpi-operator/master/deploy/v2beta1/mpi-operator.yaml
-``
+```
 
 ## Step 3: Setting up NFS
 
 The multinode MPI setup mounts a shared (NFS) file system on the `/shared` directory of your model container, replicating a traditional HPC setup. The NFS server is set up via:
 
-``kubectl apply -f setup/nfs.yaml``
+```
+kubectl apply -f setup/nfs.yaml
+```
 
 In order to finish the setup we need the IP address. We can get this from
 
-``kubectl describe service``
+```
+kubectl describe service
+```
 
 Change `setup/nfs-pv-pvc.yaml` to the IP address you just retrieved.
 
 Then run:
 
-``kubectl apply -f setup/nfs-pv-pvc.yaml``
+```
+kubectl apply -f setup/nfs-pv-pvc.yaml
+```
 
 ## Step 4: Running a job on the new cluster
 

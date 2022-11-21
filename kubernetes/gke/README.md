@@ -6,7 +6,10 @@ These instructions describe how to set up a kubernetes cluster on Google Kuberne
 
 To start you will need access to cloud shell. On ubuntu this can be snap installed:
 
-``sudo snap install google-cloud-cli --classic``
+```
+sudo snap install google-cloud-cli --classic
+```
+
 
 It is also available for download directly from Google.
 
@@ -15,7 +18,10 @@ It is also available for download directly from Google.
 
 Next we need to initialise and set up our session in cloud shell. To initialise run:
 
-``gcloud init``
+```
+gcloud init
+```
+
 
 It will ask you to log into your Google account and set the billing account. If you don't have one already you will need to create one.
 
@@ -23,7 +29,9 @@ It will then ask you to set up a default location. We generally use `europe-west
 
 Next you start an interactive session:
 
-``gcloud cloud-shell ssh --authorize-session``
+```
+gcloud cloud-shell ssh --authorize-session
+```
 
 In parallel, it can be convenient to see whats happening in the [GUI](https://console.cloud.google.com/kubernetes/).
 
@@ -31,7 +39,10 @@ In parallel, it can be convenient to see whats happening in the [GUI](https://co
 
 To start we will clone umbridge by running:
 
-``git clone https://github.com/UM-Bridge/umbridge.git``
+```
+git clone https://github.com/UM-Bridge/umbridge.git
+```
+
 
 In the cloned repository, navigate to the folder `kubernetes`. It contains all that is needed in the following.
 
@@ -45,17 +56,28 @@ When creating a cluster, there are several relevant options:
 - `placement-type`: If set to COMPACT, nodes will be close in terms of network latency. This may impose some limitations, e.g. on the maximum number of nodes.
 - `threads-per-core`: The number of threads to use per physical CPU core. When set to 1, SMT (Simultaneous Multi-Threading) is disabled. This leads to more predictable performance in many HPC applications. Since a kubernetes CPU unit corresponds to an SMT thread, only half the CPU units offered by a machine type are then usable (for hardware architectures with 2 SMT threads per core).
 
-``
-gcloud beta container clusters create testcluster --system-config-from-file=gke/kubeletconfig.yaml --machine-type c2-standard-4 --placement-type COMPACT --num-nodes=3 --zone=europe-west2-c --threads-per-core=1
-``
+```
+gcloud beta container clusters create testcluster \
+--system-config-from-file=gke/kubeletconfig.yaml \
+--machine-type c2-standard-4 \
+--placement-type COMPACT \
+--num-nodes=3 \
+--zone=europe-west2-c \
+--threads-per-core=1
+```
 
 At any time, you can scale down the cluster to zero nodes, essentially shutting it down while keeping the entire configuration:
 
-``gcloud container clusters resize testcluster --size 0``
+```
+gcloud container clusters resize testcluster --size 0
+```
 
 When changes to the cluster are made, it may be necessary to attach `kubectl` to the current cluster (again):
 
-``kubectl config set-cluster testcluster``
+```
+kubectl config set-cluster testcluster
+```
+
 
 ## Step 5: Set up UM-Bridge kubernetes cluster
 
