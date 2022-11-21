@@ -1,6 +1,8 @@
 # Cloud HPC
 
-These instructions show how to run the UM-Bridge kubernetes configuration. It assumes that you have a kubernetes cluster available, for example by following our insructions for setting up Google Kubernetes Engine (GKE).
+UM-Bridge provides a kubernetes-based solution for running any UM-Bridge model container on cloud platforms at HPC scale.
+
+These instructions show how to use the UM-Bridge kubernetes configuration. It assumes that you have a kubernetes cluster available, for example by following our insructions for setting up Google Kubernetes Engine (GKE).
 
 ## Step 1: Clone UM-Bridge
 
@@ -71,7 +73,7 @@ kubectl describe ingress
 
 The model instances may be accessed from any UM-Bridge client, and up to `replicas` requests will be handled in parallel.
 
-# Multinode MPI models
+# Multinode MPI on Cloud HPC
 
 The instructions above work for any UM-Bridge model container, even ones that are MPI parallel. However, a single container is naturally limited to a single physical node. In order to parallelize across nodes (and therefore across containers) via MPI, the additional steps below are needed.
 
