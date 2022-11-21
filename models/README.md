@@ -28,9 +28,17 @@ A model may make use of the existing integrations below. They take care of the e
 
 ### Python server
 
-In order to provide a Python model via UM-Bridge, the umbridge module available from pip can be used.
+In order to provide a Python model via UM-Bridge, the umbridge module available from pip can be used. The model needs to be defined by specifying its input and output sizes as well as the actual model evaluation.
 
-First the model needs to be defined by specifying its input and output sizes as well as the actual model evaluation. The latter is implemented in the ```__call__``` method.
+Since UM-Bridge allows the model input to be a list of (potentially) multiple vectors, input and output dimensions are specified as lists of integers. An input size `[4,2]` then indicates that the model expects a 4D vector and a 2D vector as input. The output size is specified analogously.
+
+The model evaluation is implemented in the ```__call__``` method. It receives an input `parameters` of the dimensions specified in `get_input_sizes`, and returns an output whose dimensions are specified in `get_output_sizes`.
+
+Each feature supported by the model (evaluation, Jacobian action, Hessian action etc.) is optional. When implemented, `supports_*` should return `True` for the corresponding feature.
+
+Optionally, configuration options may be passed to the model by the client: `config` is a JSON-compatible Python structure, so it is a dictionary that may contain lists, strings, numbers, and other dictionaries. The config options accepted by a particular model should be indicated in the model's documentation.
+
+For more flexibility, the model's input and output dimensions may optionally depend on `config`.
 
 ```
 class TestModel(umbridge.Model):
@@ -65,6 +73,8 @@ testmodel = TestModel()
 umbridge.serve_models([testmodel], 4242)
 ```
 
+Note that a single server may provide multiple models.
+
 This server can be connected to by any client at port 4242.
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/models/testmodel-python)
@@ -73,7 +83,15 @@ This server can be connected to by any client at port 4242.
 
 The c++ server abstraction is part of the umbridge.h header-only library available from our repository. Note that it has some header-only dependencies by itself.
 
-In order to provide a model via UM-Bridge, it first needs to be defined by inheriting from umbridge::Model. Input and output sizes are defined in the constructor, by means of vectors. Each of these size vectors define how many input/output vectors there will be, and the size vector entries define the dimension of each input/output vector. The actual model evaluation is then defined in the Evaluate method.
+Since UM-Bridge allows the model input to be a list of (potentially) multiple vectors, input and output dimensions are specified as `std::vector<std::size_t>`. An input size `{4,2}` then indicates that the model expects a 4D vector and a 2D vector as input. The output size is specified analogously.
+
+The model evaluation is then defined in the `Evaluate` method. UM-Bridge represents model input and output, each a list of mathematical vectors, as a `std::vector<std::vector<double>>` of dimensions specified above.
+
+Each feature supported by the model (evaluation, Jacobian action, Hessian action etc.) is optional. When implemented, `Supports*` should return `True` for the corresponding feature.
+
+Optionally, configuration options may be passed to the model by the client: `config` is a )(potentially nested) JSON structure. The config options accepted by a particular model should be indicated in the model's documentation.
+
+For more flexibility, the model's input and output dimensions may optionally depend on `config`.
 
 ```
 class ExampleModel : public umbridge::Model {
@@ -110,6 +128,10 @@ Making the model available to clients is then as simple as:
 ExampleModel model;
 umbridge::serveModels({&model}, "0.0.0.0", 4242);
 ```
+
+Note that a single server may provide multiple models.
+
+This server can be connected to by any client at port 4242.
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/models/testmodel)
 

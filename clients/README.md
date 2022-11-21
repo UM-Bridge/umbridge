@@ -14,7 +14,7 @@ The Python integration can either be found in the git repository or simply be in
 pip install umbridge
 ```
 
-Connecting to a model server, listing models availabel on it and accessing a model called "forward" is as easy as
+Connecting to a model server, listing models available on it and accessing a model called "forward" is as easy as
 
 ```
 import umbridge
@@ -24,20 +24,22 @@ print(umbridge.supported_models("http://localhost:4242"))
 model = umbridge.HTTPModel("http://localhost:4242", "forward")
 ```
 
-Now that we have connected to a model, we can query its input and output dimensions.
+Now that we have connected to a model, we can query its input and output dimensions. The input to and output from an UM-Bridge model are (potentially) multiple vectors each. For example, `get_input_sizes()` returning `[4,2]` indicates the model expects a 4D vector and a 2D vector. The model's output dimensions can be queried in the same way.
 
 ```
 print(model.get_input_sizes())
 print(model.get_output_sizes())
 ```
 
-Evaluating a model that expects an input consisting of a single 2D vector then consists of the following.
+The UM-Bridge Python integration represents a list of mathematical vectors as simple Python list of lists. A model that expects an input consisting of a single 2D vector can therefore be evaluated as follows.
 
 ```
 print(model([[0.0, 10.0]]))
 ```
 
-Additional configuration options may be passed to the model in a JSON-compatible Python structure.
+The output is a list of lists as well.
+
+Additional configuration options may be passed to the model in a JSON-compatible Python structure (i.e. a dict of suitable basic types, and possibly nested dicts). The config options accepted by a particular model can be found in the model's documentation.
 
 ```
 print(model([[0.0, 10.0]], {"level": 0}))
@@ -45,7 +47,7 @@ print(model([[0.0, 10.0]], {"level": 0}))
 
 Each time, the output of the model evaluation is an array of arrays containing the output defined by the model.
 
-Models indicate whether they support further features, e.g. Jacobian actions. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
+Models indicate whether they support further features, e.g. Jacobian or Hessian actions. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
 
 ```
 if model.supports_apply_jacobian():
@@ -70,14 +72,14 @@ Invoking a model is mostly analogous to the above. Note that HTTP headers may op
 umbridge::HTTPModel client("http://localhost:4242", "forward");
 ```
 
-As before, we can query input and output dimensions.
+Now that we have connected to a model, we can query its input and output dimensions. The input to and output from an UM-Bridge model are (potentially) multiple vectors each. For example, `GetInputSizes()` returning `{4,2}` indicates the model expects a 4D vector and a 2D vector. The model's output dimensions can be queried in the same way.
 
 ```
 client.GetInputSizes()
 client.GetOutputSizes()
 ```
 
-In order to evaluate the model, we first define an input. Input to a model may consist of multiple vectors, and is therefore of type std::vector<std::vector<double>>. The following example creates a single 2D vector in that structure.
+The UM-Bridge C++ integration represents a list of mathematical vectors as a `std::vector<std::vector<double>>`. A model that expects an input consisting of a single 2D vector can therefore be evaluated on the following input.
 
 ```
 std::vector<std::vector<double>> inputs {{100.0, 18.0}};
@@ -89,7 +91,9 @@ The input vector can then be passed into the model.
 std::vector<std::vector<double>> outputs = client.Evaluate(input);
 ```
 
-Optionally, configuration options may be passed to the model using a JSON structure.
+The output of the model evaluation is a `std::vector<std::vector<double>>` containing the output defined by the model.
+
+Additional configuration options may be passed to the model in a (potentially nested) JSON structure. The config options accepted by a particular model can be found in the model's documentation.
 
 ```
 json config;
@@ -97,9 +101,7 @@ config["level"] = 0;
 client.Evaluate(input, config);
 ```
 
-Each time, the output of the model evaluation is an vector of vectors containing the output defined by the model.
-
-Models indicate whether they support further features, e.g. Jacobian actions. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
+Models indicate whether they support further features, e.g. Jacobian or Hessian actions. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
 
 ```
 if (client.SupportsApplyJacobian()) {
@@ -140,7 +142,8 @@ models <- get_models(url)
 name <- models[[1]]
 ```
 
-The following retrieves the model's input and output dimensions.
+Now that we have connected to a model, we can query its input and output dimensions. The input to and output from an UM-Bridge model are (potentially) multiple vectors each. For example, `model_input_sizes` returning `[4,2]` indicates the model expects a 4D vector and a 2D vector. The model's output dimensions can be queried in the same way.
+
 
 ```
 model_input_sizes(url, name)
@@ -159,7 +162,7 @@ output <- evaluate(url, name, param)
 print(output)
 ```
 
-Optionally, configuration options may be passed to the model using a JSON compatible structure. Note that, since R treats scalars as 1D vectors and converts them to JSON as such, jsonlite::unbox must be used when defining true scalars in config options.
+Optionally, configuration options may be passed to the model using a JSON compatible structure. The config options accepted by a particular model can be found in the model's documentation. Note that, since R treats scalars as 1D vectors and converts them to JSON as such, jsonlite::unbox must be used when defining true scalars in config options.
 
 ```
 config = list(level = jsonlite::unbox(0))
@@ -167,7 +170,7 @@ output <- evaluate(url, name, param, config)
 print(output)
 ```
 
-To be sure, we first check if the model supports Jacobian actions. If so, we may apply the Jacobian at the parameter above to a vector.
+Models indicate whether they support further features, e.g. Jacobian or Hessian actions. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
 
 ```
 if (supports_apply_jacobian(url, name)) {
