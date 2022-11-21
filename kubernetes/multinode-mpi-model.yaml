@@ -1,7 +1,7 @@
 apiVersion: kubeflow.org/v2beta1
 kind: MPIJob
 metadata:
-  name: mpijob-${SHARED_FILE_PREFIX}
+  name: mpijob-${JOB_INDEX}
 spec:
   slotsPerWorker: 1
   runPolicy:
@@ -31,7 +31,7 @@ spec:
               runAsUser: 1000
             env:
             - name: SHARED_DIR
-              value: "/shared/comm_${SHARED_FILE_PREFIX}_"
+              value: "/shared/comm_${JOB_INDEX}_"
             - name: RANKS
               value: "2"
             command:
@@ -62,7 +62,7 @@ spec:
               runAsUser: 1000
             env:
             - name: SHARED_DIR
-              value: "/shared/comm_${SHARED_FILE_PREFIX}_"
+              value: "/shared/comm_${JOB_INDEX}_"
             command:
             - /usr/sbin/sshd
             args:
