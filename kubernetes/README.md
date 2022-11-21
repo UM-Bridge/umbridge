@@ -18,16 +18,14 @@ First, retrieve HAProxy:
 
 ``
 helm repo add haproxytech https://haproxytech.github.io/helm-charts
-helm repo update
+``
 
-helm install kubernetes-ingress haproxytech/kubernetes-ingress \
---create-namespace \
---namespace haproxy-controller \
---set controller.service.type=LoadBalancer \
---set controller.replicaCount=1 \
---set defaultBackend.replicaCount=1 \
---set controller.logging.level=debug \
---set controller.ingressClass=haproxy
+``
+helm repo update
+``
+
+``
+helm install kubernetes-ingress haproxytech/kubernetes-ingress --create-namespace --namespace haproxy-controller --set controller.service.type=LoadBalancer --set controller.replicaCount=1 --set defaultBackend.replicaCount=1 --set controller.logging.level=debug --set controller.ingressClass=haproxy
 ``
 
 Then, start HAProxy with the configuration provided by UM-Bridge:
