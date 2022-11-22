@@ -139,7 +139,9 @@ The job configuration is located in `multinode-mpi-model.yaml`. It is largely an
 
 The `multinode-mpi-model.yaml` file describes a single launcher with a number of workers assigned to it. In order to run multiple jobs (each a launcher and multiple MPI parallel workers), run the following script:
 
-``bash launch-multinode-mpi-model.sh``
+```
+bash launch-multinode-mpi-model.sh
+```
 
 It creates a number of jobs from the `multinode-mpi-model.yaml` file, each time substituting `JOB_INDEX` for a unique index.
 
@@ -147,4 +149,6 @@ Just as before, access to the model instances is now available via the load bala
 
 All jobs can be shut down via:
 
-``kubectl delete MPIJob --all``
+```
+kubectl delete MPIJob --all
+```
