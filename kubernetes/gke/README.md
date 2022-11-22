@@ -69,7 +69,7 @@ gcloud beta container clusters create testcluster \
 At any time, you can scale down the cluster to zero nodes, essentially shutting it down while keeping the entire configuration:
 
 ```
-gcloud container clusters resize testcluster --size 0
+gcloud container clusters resize testcluster --num-nodes 0 --zone europe-west2-c
 ```
 
 When changes to the cluster are made, it may be necessary to attach `kubectl` to the current cluster (again):
