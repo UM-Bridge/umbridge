@@ -34,8 +34,6 @@ spec:
               value: "/shared/comm_${JOB_INDEX}_"
             - name: RANKS
               value: "2"
-            command:
-            - /server/server
             resources:
               requests:
                 cpu: 1
