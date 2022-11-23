@@ -114,13 +114,15 @@ The multinode MPI setup mounts a shared (NFS) file system on the `/shared` direc
 kubectl apply -f setup/nfs.yaml
 ```
 
+Note: This assumes a disk 'gce-nfs-disk' to be set up in GCE!
+
 In order to finish the setup we need the IP address. We can get this from
 
 ```
 kubectl describe service
 ```
 
-Change `setup/nfs-pv-pvc.yaml` to the IP address you just retrieved.
+Change `setup/nfs-pv-pvc.yaml` to the IP address you just retrieved, and (if needed) adjust storage capacity to the attached disk.
 
 Then run:
 
