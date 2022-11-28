@@ -295,3 +295,44 @@ print(data)
 ```
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/python/qmcpy-client.py)
+
+## tinyDA client
+
+tinyDA supports UM-Bridge models. Installation is available through pip:
+
+```
+pip install umbridge tinyda
+```
+
+First, an UM-Bridge model server can be connected to as usual in the Python integration.
+
+```
+umbridge_model = umbridge.HTTPModel('http://model:4242', "forward")
+```
+
+This model may then be wrapped as a tinyDA model. Optionally, a configuration structure (a Python dict) may be passed.
+
+```
+my_model = tda.UmBridgeModel(umbridge_model)
+```
+
+Together with a prior and log-likelihood, the model may be used to form a tinyDA posterior.
+
+```
+my_posterior = tda.Posterior(my_prior, my_loglike, my_model)
+```
+
+This posterior may then be used to sample from the posterior distribution.
+
+```
+my_chains = tda.sample(my_posterior, my_proposal, iterations=10000, n_chains=2, force_sequential=True)
+```
+
+The samples may be analyzed using tinyDA's integration with arviz.
+
+```
+idata = tda.to_inference_data(my_chains, burnin=1000)
+az.summary(idata)
+```
+
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/python/tinyDA-client.ipynb)
