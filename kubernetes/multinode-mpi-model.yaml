@@ -1,9 +1,9 @@
 apiVersion: kubeflow.org/v2beta1
 kind: MPIJob
 metadata:
-  name: mpijob-${SHARED_FILE_PREFIX}
+  name: mpijob-${JOB_INDEX}
 spec:
-  slotsPerWorker: 2
+  slotsPerWorker: 1
   runPolicy:
     cleanPodPolicy: Running
   sshAuthMountPath: /home/mpiuser/.ssh
@@ -12,13 +12,16 @@ spec:
     Launcher:
       replicas: 1
       template:
+        metadata:
+          labels:
+            app: model
         spec:
           volumes:
           - name: my-pvc-nfs
             persistentVolumeClaim:
               claimName: nfs
           containers:
-          - image: linusseelinger/benchmark-exahype-tsunami:latest
+          - image: linusseelinger/model-exahype-tsunami:latest
             name: mpi-launcher
             volumeMounts:
               # name must match the volume name below
@@ -28,11 +31,9 @@ spec:
               runAsUser: 1000
             env:
             - name: SHARED_DIR
-              value: "/shared/comm_${SHARED_FILE_PREFIX}_"
+              value: "/shared/comm_${JOB_INDEX}_"
             - name: RANKS
-              value: "4"
-            command:
-            - /server/server
+              value: "2"
             resources:
               requests:
                 cpu: 1
@@ -49,7 +50,7 @@ spec:
             persistentVolumeClaim:
               claimName: nfs
           containers:
-          - image: linusseelinger/benchmark-exahype-tsunami:latest
+          - image: linusseelinger/model-exahype-tsunami:latest
             name: mpi-worker
             volumeMounts:
               # name must match the volume name below
@@ -59,7 +60,7 @@ spec:
               runAsUser: 1000
             env:
             - name: SHARED_DIR
-              value: "/shared/comm_${SHARED_FILE_PREFIX}_"
+              value: "/shared/comm_${JOB_INDEX}_"
             command:
             - /usr/sbin/sshd
             args:
@@ -72,8 +73,8 @@ spec:
               initialDelaySeconds: 2
             resources:
               requests:
-                cpu: 2
-                memory: 2Gi
+                cpu: 12
+                memory: 30Gi
               limits:
-                cpu: 2
-                memory: 2Gi
+                cpu: 12
+                memory: 30Gi
