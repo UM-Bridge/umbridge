@@ -24,11 +24,7 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y git python3-pip && pip3 install umbridge
-       -
-        name: Clone QMCPy develop branch and install # To be replaced by pip install qmcpy once umbridge support propagates to QMCPy on pip
-        run: |
-          git clone https://github.com/QMCSoftware/QMCSoftware.git && cd QMCSoftware && git checkout develop && pip3 install .
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y git python3-pip && pip3 install umbridge qmcpy
        -
         name: Build and run
         run: |
