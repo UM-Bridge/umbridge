@@ -1,4 +1,4 @@
-# Contributing to UM-Bridge
+# Contributing
 
 The goal of UM-Bridge is to connect software packages, research projects and communities. Contributions are therefore more than welcome!
 
