@@ -39,6 +39,6 @@ if __name__ == "__main__":
         map_estimate = pm.find_MAP()
         print(f"MAP estimate of posterior is {map_estimate['posterior']}")
 
-        inferencedata = pm.sample(draws=50,cores=1)
+        inferencedata = pm.sample(tune=100,draws=400,cores=1)
         az.plot_pair(inferencedata);
         plt.show()
