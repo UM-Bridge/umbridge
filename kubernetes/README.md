@@ -58,8 +58,7 @@ You can check the status of the model instances by running:
 kubectl get pods
 ```
 
-
-They can be again via:
+They can be deleted again via:
 
 ```
 kubectl delete -f model.yaml
