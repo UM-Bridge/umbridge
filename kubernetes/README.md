@@ -75,7 +75,7 @@ The default `model.yaml` may be adjusted to run your own model by changing:
 The model instances are now available through your load balancer's IP address, which you can determine from:
 
 ```
-kubectl describe ingress
+kubectl get services --namespace=haproxy-controller
 ```
 
 The model instances may be accessed from any UM-Bridge client, and up to `replicas` requests will be handled in parallel.
