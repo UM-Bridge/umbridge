@@ -11,7 +11,7 @@ methods
         model.model_name = model_name;
 	end
 	input_sizes = get_input_sizes(self); % matlab requires the first argument to be explicitly the name of the self object. we call it self, but anything could do
-% 	output_sizes = get_output_sizes()
+	output_sizes = get_output_sizes(self); 
 % 	get_info
 % 	support_evaluate
 % 	support_evaluate_gradient
