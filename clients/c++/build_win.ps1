@@ -1,0 +1,1 @@
+g++ -std=c++17 -o http-client http-client.cpp -pthread -I../../lib/ -lWs2_32 -lssl -lcrypto -lCrypt32

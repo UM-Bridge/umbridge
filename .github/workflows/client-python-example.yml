@@ -1,0 +1,31 @@
+name: client-python-example
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    container: ubuntu:latest
+
+    services:
+      model:
+        image: linusseelinger/model-exahype-tsunami:latest
+        ports:
+        - 4242:4242
+
+    steps:
+       -
+        name: Checkout
+        uses: actions/checkout@v2
+       -
+        name: Dependencies
+        run: |
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install umbridge
+       -
+        name: Build and run
+        run: |
+          cd clients/python && python3 umbridge-client.py http://model:4242

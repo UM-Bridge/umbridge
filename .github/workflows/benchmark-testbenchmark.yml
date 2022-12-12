@@ -46,4 +46,4 @@ jobs:
        -
         name: Validate
         run: |
-          docker run --network=host -e model_host=http://localhost:4243 linusseelinger/testing-protocol-conformity-0.9:latest
+          docker run --network=host -e model_host=http://localhost:4243 linusseelinger/testing-protocol-conformity-current:latest

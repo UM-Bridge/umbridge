@@ -34,12 +34,22 @@ year = {1953},
 doi = {10.1063/1.1699114},
 }
 
-@article{ParallelMLMCMC,
+@inproceedings{ParallelMLMCMC,
 author = {Seelinger, Linus and Reinarz, Anne and Rannabauer, Leonhard and Bader, Michael and Bastian, Peter and Scheichl, Robert},
 title = {High Performance Uncertainty Quantification with Parallelized Multilevel Markov Chain Monte Carlo},
 year = {2021},
-number = {to appear},
-journal = {Supercomputing 21},
+isbn = {9781450384421},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3458817.3476150},
+doi = {10.1145/3458817.3476150},
+abstract = {Numerical models of complex real-world phenomena often necessitate High Performance Computing (HPC). Uncertainties increase problem dimensionality further and pose even greater challenges.We present a parallelization strategy for multilevel Markov chain Monte Carlo, a state-of-the-art, algorithmically scalable Uncertainty Quantification (UQ) algorithm for Bayesian inverse problems, and a new software framework allowing for large-scale parallelism across forward model evaluations and the UQ algorithms themselves. The main scalability challenge presents itself in the form of strong data dependencies introduced by the MLMCMC method, prohibiting trivial parallelization.Our software is released as part of the modular and open-source MIT Uncertainty Quantification Library (MUQ), and can easily be coupled with arbitrary user codes. We demonstrate it using the Distributed and Unified Numerics Environment (DUNE) and the ExaHyPE Engine. The latter provides a realistic, large-scale tsunami model in which we identify the source of a tsunami from buoy-elevation data.},
+booktitle = {Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis},
+articleno = {75},
+numpages = {15},
+keywords = {ADER-DG, bayesian inverse problems, tsunami simulation, multilevel methods},
+location = {St. Louis, Missouri},
+series = {SC '21}
 }
 
 @article{singularity,
@@ -86,4 +96,33 @@ doi = {10.4208/cicp.2009.v6.p826}
   number={239},
   pages={2},
   year={2014}
-} 
+}
+
+@article{PyMC,
+author = {Salvatier, John and Wiecki, Thomas and Fonnesbeck, Christopher},
+year = {2016},
+month = {01},
+pages = {},
+title = {Probabilistic programming in Python using PyMC3},
+doi = {10.7287/PEERJ.PREPRINTS.1686V1}
+}
+
+@Article{preCICE,
+AUTHOR = { Chourdakis, G and Davis, K and Rodenberg, B and Schulte, M and Simonis, F and Uekermann, B and Abrams, G and Bungartz, HJ and Cheung Yau, L and Desai, I and Eder, K and Hertrich, R and Lindner, F and Rusch, A and Sashko, D and Schneider, D and Totounferoush, A and Volland, D and Vollmer, P and Koseomur, OZ},
+TITLE = {preCICE v2: A sustainable and user-friendly coupling library [version 2; peer review: 2 approved]
+},
+JOURNAL = {Open Research Europe},
+VOLUME = {2},
+YEAR = {2022},
+NUMBER = {51},
+DOI = {10.12688/openreseurope.14445.2}
+}
+
+@misc{QMCPy,
+  Author = {S.-C. T. Choi and F. J. Hickernell and M. McCourt and A. Sorokin},
+  Date-Added = {2020-04-15 15:19:14 -0500},
+  Date-Modified = {2020-04-26 17:13:25 -0500},
+  Title = {{QMCPy}: A quasi-{M}onte {C}arlo {P}ython Library},
+  Url = {https://github.com/QMCSoftware/QMCSoftware},
+  Year = {2020+},
+  Bdsk-Url-1 = {https://github.com/QMCSoftware/QMCSoftware}}

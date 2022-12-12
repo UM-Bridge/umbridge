@@ -1,2 +1,2 @@
 # init file for umbridge
-from .umbridge import *
+from .um import *

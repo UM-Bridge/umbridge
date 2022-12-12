@@ -2,25 +2,30 @@
 import argparse
 import umbridge
 
+# Read URL from command line argument
 parser = argparse.ArgumentParser(description='Minimal HTTP model demo.')
 parser.add_argument('url', metavar='url', type=str,
-                    help='the ULR on which the model is running, for example http://localhost:4242')
+                    help='the URL at which the model is running, for example http://localhost:4242')
 args = parser.parse_args()
 print(f"Connecting to host URL {args.url}")
 
-# Set up a model by connecting to URL
-model = umbridge.HTTPModel(args.url)
+# Print modelssupported by server
+print(umbridge.supported_models(args.url))
+
+# Set up a model by connecting to URL and selecting the "forward" model
+model = umbridge.HTTPModel(args.url, "forward")
 
 print(model.get_input_sizes())
 print(model.get_output_sizes())
 
 param = [[100.0, 18.0]]
 
-# Simple model evaluation
+# Simple model evaluation without config
 print(model(param))
 
 # Model evaluation with configuration parameters
-print(model(param, {"vtk_output": True, "level": 1, "verbosity": False}))
+config={"vtk_output": True, "level": 1}
+print(model(param, config))
 
 # If model supports Jacobian action,
 # apply Jacobian of output zero with respect to input zero to a vector

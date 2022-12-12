@@ -4,15 +4,15 @@ metadata:
   name: my-svc
   namespace: default
   annotations:
-    haproxy.org/pod-maxconn: "1"
     haproxy.org/load-balance: "leastconn"
+
 spec:
   ports:
   - port: 80
     protocol: TCP
     targetPort: 4242
   selector:
-    training.kubeflow.org/job-role: launcher
+    app: model
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -37,10 +37,10 @@ metadata:
   name: kubernetes-ingress
   namespace: haproxy-controller
 data:
-  timeout-server: 10m
-  timeout-connect: 1m
+  timeout-server: 1h
+  timeout-connect: 1h
   timeout-queue: 1h
-  timeout-http-request: 1m
+  timeout-http-request: 1h
   syslog-server: "address:stdout, format:raw, facility:daemon"
-  auth-type: basic-auth
-  auth-secret: haproxy-controller/haproxy-credentials
+  #auth-type: basic-auth
+  #auth-secret: haproxy-controller/haproxy-credentials

@@ -13,9 +13,9 @@ jobs:
 
     services:
       model:
-        image: linusseelinger/benchmark-analytic-banana:latest
+        image: linusseelinger/model-muq-beam:latest
         ports:
-        - 4243:4243
+        - 4242:4242
 
     steps:
        -
@@ -24,8 +24,8 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install umbridge
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install umbridge pytest
        -
         name: Build and run
         run: |
-          cd clients/python && python3 umbridge-client.py http://model:4243
+          cd testing/clients && pytest -v test_python.py

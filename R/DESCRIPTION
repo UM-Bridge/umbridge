@@ -1,0 +1,20 @@
+Package: umbridge
+Title: Integration for the UM-Bridge Protocol
+Version: 1.0
+Maintainer: Linus Seelinger <mail@linusseelinger.de>
+Authors@R:
+    person("Linus", "Seelinger", , "mail@linusseelinger.de", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-8632-8493"))
+Description: A convenient wrapper for the UM-Bridge protocol. UM-Bridge is a protocol designed for coupling uncertainty quantification (or statistical / optimization) software to numerical models. A model is represented as a mathematical function with optional support for derivatives via Jacobian actions etc.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.1
+BugReports: https://github.com/um-bridge
+Imports:
+	httr2,
+	jsonlite,
+    magrittr
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

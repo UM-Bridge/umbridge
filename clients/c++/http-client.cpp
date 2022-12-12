@@ -20,28 +20,37 @@ int main(int argc, char** argv) {
   std::string host = argv[1];
   std::cout << "Connecting to host " << host << std::endl;
 
-  umbridge::HTTPModel client(host);
+  // List supported models
+  std::vector<std::string> models = umbridge::SupportedModels(host);
+  std::cout << "Supported models: " << std::endl;
+  for (auto model : models) {
+    std::cout << "  " << model << std::endl;
+  }
+
+  // Connect to a model
+  umbridge::HTTPModel client(host, "forward");
 
   // Print out input and output sizes
-  std::cout << to_string(client.inputSizes) << std::endl;
-  std::cout << to_string(client.outputSizes) << std::endl;
+  std::cout << to_string(client.GetInputSizes()) << std::endl;
+  std::cout << to_string(client.GetOutputSizes()) << std::endl;
 
   // Define a single 2D vector as input parameter
   std::vector<std::vector<double>> inputs {{100.0, 18.0}};
 
   // Evaluate model for input
-  client.Evaluate(inputs);
-  std::cout << "Output: " << to_string(client.outputs[0]) << std::endl;
+  std::vector<std::vector<double>> outputs = client.Evaluate(inputs);
+  std::cout << "Output: " << to_string(outputs[0]) << std::endl;
 
   // And evaluate again, this time specifying config parameters
   json config;
-  config["level"] = 0;
+  config["level"] = 1;
+  config["vtk_output"] = true;
   client.Evaluate(inputs, config);
 
   // If model supports Jacobian action,
   // apply Jacobian of output zero with respect to input zero to a vector
   if (client.SupportsApplyJacobian()) {
-    client.ApplyJacobian(0, 0, inputs, {1.0, 4.0});
-    std::cout << "Jacobian action: " << to_string(client.jacobianAction) << std::endl;
+    std::vector<double> jacobian = client.ApplyJacobian(0, 0, inputs, {1.0, 4.0});
+    std::cout << "Jacobian action: " << to_string(jacobian) << std::endl;
   }
 }

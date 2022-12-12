@@ -13,9 +13,9 @@ jobs:
 
     services:
       model:
-        image: linusseelinger/benchmark-analytic-banana:latest
+        image: linusseelinger/model-muq-beam:latest
         ports:
-        - 4243:4243
+        - 4242:4242
 
     steps:
        -
@@ -24,8 +24,8 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update; DEBIAN_FRONTEND="noninteractive" apt install -y g++ libssl-dev
+          apt update; DEBIAN_FRONTEND="noninteractive" apt install -y g++
        -
         name: Build and run
         run: |
-          cd clients/c++ && ./build.sh && ./http-client model:4243
+          cd testing/clients && g++ -std=c++17 test_c++.cc -pthread -I../../lib/ -o test_c++ && ./test_c++
