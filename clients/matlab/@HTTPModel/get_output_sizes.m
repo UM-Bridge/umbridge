@@ -14,9 +14,9 @@ r.Body = MessageBody(jsonencode(value));
 %disp(r.Body.string);
 uri = URI([self.uri,'/OutputSizes']);
 resp = send(r,uri);
-% disp(resp.StatusCode);
-% disp(resp.Body.string);
+self.check_http_status(resp); % check if connection broke down
 json = jsondecode(resp.Body.string);
+self.check_error(json); % check if message came in but contains an error
 output_sizes = json.outputSizes;
 
 end

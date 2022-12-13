@@ -6,7 +6,9 @@ import matlab.net.http.*
 r = RequestMessage;
 uri = URI([uri, '/Info']);
 resp = send(r,uri);
+HTTPModel.check_http_status(resp); % check if connection broke down
 json = jsondecode(resp.Body.string);
+HTTPModel.check_error(json); % check if message came in but contains an error
 model_names = json.models;
 
 end
