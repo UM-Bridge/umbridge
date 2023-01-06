@@ -155,9 +155,9 @@ class HTTPModel(Model):
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
         return response["output"]
 
-def serve_models(models, port=4242):
+def serve_models(models, port=4242, max_workers=1):
 
-    model_executor = ThreadPoolExecutor(max_workers=1)
+    model_executor = ThreadPoolExecutor(max_workers=max_workers)
 
     def error_response(type, message, status):
         response_body = {
