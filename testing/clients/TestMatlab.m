@@ -1,4 +1,4 @@
-classdef TestUmbridge < matlab.unittest.TestCase
+classdef TestMatlab < matlab.unittest.TestCase
 
     methods (Test)
 
