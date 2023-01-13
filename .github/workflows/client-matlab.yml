@@ -1,0 +1,34 @@
+name: client-matlab
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'matlab-umbridge'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      model:
+        image: linusseelinger/benchmark-analytic-banana
+        ports:
+        - 4243:4243
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup MATLAB
+        uses: matlab-actions/setup-matlab@v1
+
+      - name: Run all tests
+        uses: matlab-actions/run-tests@v1
+        with:
+          source-folder: clients/matlab
+
+      #As an alternative to run-tests, you can use run-command to execute a MATLAB script, function, or statement.
+      #- name: Run all tests
+      #  uses: matlab-actions/run-command@v1
+      #  with:
+      #    command: addpath('clients/matlab'); results = runtests('IncludeSubfolders', true); assertSuccess(results);
