@@ -5,7 +5,7 @@ uri = 'http://localhost:4243';
 model = HTTPModel(uri,'posterior');
 
 % TT demo with umbridge model
-tol= 1e-6;
-X = tt_meshgrid_vert(tt_tensor(linspace(-5,5,33)), 2)
-TTlogLikelihood = amen_cross(X, @(x)model.evaluate(x), tol, 'vec', false)
+tol = 1e-6;
+x = linspace(-5,5,33);
+TTlogLikelihood = amen_cross(numel(x)*ones(2,1), @(i)model.evaluate(x(i)), tol, 'vec', false)
 
