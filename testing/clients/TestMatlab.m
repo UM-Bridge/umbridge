@@ -13,8 +13,12 @@ classdef TestMatlab < matlab.unittest.TestCase
 
         end
 
-        function testExample(testCase)
+        function testBasicExample(testCase)
           matlabClient;;
+        end
+
+        function testTTExample(testCase)
+          ttClient;;
         end
     end
 end
