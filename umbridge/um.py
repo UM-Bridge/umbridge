@@ -416,6 +416,6 @@ def serve_models(models, port=4242):
         return web.json_response(response_body)
 
 
-    app = web.Application()
+    app = web.Application(client_max_size=None)
     app.add_routes(routes)
     web.run_app(app, port=port)
