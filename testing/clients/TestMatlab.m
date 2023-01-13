@@ -12,5 +12,9 @@ classdef TestMatlab < matlab.unittest.TestCase
             testCase.verifyEqual(httpValue, exactValue, 'RelTol', 1e-14)
 
         end
+
+        function testExample(testCase)
+          matlabClient;;
+        end
     end
 end
