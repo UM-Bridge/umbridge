@@ -3,7 +3,7 @@ classdef TestMatlab < matlab.unittest.TestCase
     methods (Test)
 
         function testConnection(testCase)
-            uri = 'http://model:4243';
+            uri = 'http://localhost:4243';
 
             model = HTTPModel(uri,'posterior');
 
