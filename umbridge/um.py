@@ -2,6 +2,7 @@ from aiohttp import web
 import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import os
 
 class Model(object):
 
@@ -44,6 +45,8 @@ class HTTPModel(Model):
         if (name not in supported_models(url)):
             raise Exception(f'Model {name} not supported by server! Supported models are: {supported_models(url)}')
 
+        self.__pid = -1
+
         input = {}
         input["name"] = name
         response = requests.post(f"{self.url}/ModelInfo", json=input).json()
@@ -52,18 +55,25 @@ class HTTPModel(Model):
         self.__supports_apply_jacobian = response["support"].get("ApplyJacobian", False)
         self.__supports_apply_hessian = response["support"].get("ApplyHessian", False)
 
+    # This makes sure that the session is recreated if the process is forked (in particular when using multiprocessing)
+    def get_process_local_session(self):
+        if self.__pid != os.getpid():
+            self.__pid = os.getpid()
+            self.__session = requests.Session()
+        return self.__session
+
     def get_input_sizes(self, config={}):
         input = {}
         input["name"] = self.name
         input["config"] = config
-        response = requests.post(f"{self.url}/InputSizes", json=input).json()
+        response = self.get_process_local_session().post(f"{self.url}/InputSizes", json=input).json()
         return response["inputSizes"]
 
     def get_output_sizes(self, config={}):
         input = {}
         input["name"] = self.name
         input["config"] = config
-        response = requests.post(f"{self.url}/OutputSizes", json=input).json()
+        response = self.get_process_local_session().post(f"{self.url}/OutputSizes", json=input).json()
         return response["outputSizes"]
 
     def supports_evaluate(self):
@@ -93,7 +103,7 @@ class HTTPModel(Model):
         inputParams["name"] = self.name
         inputParams["input"] = parameters
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/Evaluate", json=inputParams).json()
+        response = self.get_process_local_session().post(f"{self.url}/Evaluate", json=inputParams).json()
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
@@ -111,7 +121,7 @@ class HTTPModel(Model):
         inputParams["input"] = parameters
         inputParams["sens"] = sens
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/Gradient", json=inputParams).json()
+        response = self.get_process_local_session().post(f"{self.url}/Gradient", json=inputParams).json()
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
@@ -129,7 +139,7 @@ class HTTPModel(Model):
         inputParams["input"] = parameters
         inputParams["vec"] = vec
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/ApplyJacobian", json=inputParams).json()
+        response = self.get_process_local_session().post(f"{self.url}/ApplyJacobian", json=inputParams).json()
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
@@ -149,7 +159,7 @@ class HTTPModel(Model):
         inputParams["sens"] = sens
         inputParams["vec"] = vec
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/ApplyHessian", json=inputParams).json()
+        response = self.get_process_local_session().post(f"{self.url}/ApplyHessian", json=inputParams).json()
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
