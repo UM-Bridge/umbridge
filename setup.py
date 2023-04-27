@@ -12,9 +12,6 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     install_requires=["aiohttp", "requests", "asyncio"],
-    extras_require = {
-        'pymc':  ["aesara"]
-    },
     url="https://github.com/UM-Bridge/umbridge",
     packages=setuptools.find_packages(),
     classifiers=(                                 # Classifiers help people find your
