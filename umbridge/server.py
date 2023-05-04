@@ -1,8 +1,6 @@
 from aiohttp import web
-import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from .model import Model
 
 
 def serve_models(models, port=4242, max_workers=1):
