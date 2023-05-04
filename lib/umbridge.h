@@ -1,6 +1,8 @@
 #ifndef UMBRIDGE
 #define UMBRIDGE
 
+// #define LOGGING
+
 // Increase timeout to allow for long-running models.
 // This should be (to be on the safe side) significantly greater than the maximum time your model may take
 #define CPPHTTPLIB_READ_TIMEOUT_SECOND 60*60
@@ -399,6 +401,13 @@ namespace umbridge {
     res.status = 400;
   }
 
+  // log  request
+
+  void log_request(const httplib::Request& req, const httplib::Response& res) {
+      std::cout << "Incoming request from: " << req.remote_addr << " | Type: " << req.method << " " << req.path << " -> " << res.status << std::endl;
+      
+  }
+
   // Get model from name
   Model& get_model_from_name(std::vector<Model*>& models, std::string name) {
     for (auto& model : models) {
@@ -655,6 +664,19 @@ namespace umbridge {
     });
 
     std::cout << "Listening on port " << port << "..." << std::endl;
+
+#ifdef LOGGING
+    svr.set_logger([](const httplib::Request& req, const httplib::Response& res) {
+        if (res.status >= 500) {
+            std::cerr << "[ERROR] ";
+        } else if (res.status >= 400) {
+            std::cerr << "[WARNING] ";
+        } else {
+            std::cout << "[INFO] ";
+        }
+        log_request(req, res);
+    });
+#endif
     svr.listen(host.c_str(), port);
     std::cout << "Quit" << std::endl;
   }
