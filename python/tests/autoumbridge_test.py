@@ -1,13 +1,17 @@
 from umbridge.autoumbridge import autoUm
 from umbridge import serve_models
 
+@autoUm(use_jax=True)
+def f(x):
+    return x**2
+
 def test_wrapper():
-    @autoUm(use_jax=True)
-    def f(x):
-        x**2
+    assert f(2) == 4
+
+    # assert f.gradient(1) == 2
     
-    serve_models([f])
+    
 
 
 if __name__ == "__main__":
-    test_wrapper()
+    serve_models([f])
