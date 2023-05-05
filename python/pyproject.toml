@@ -13,6 +13,8 @@ requests = "^2.30.0"
 numpy = "^1.24.3"
 pytensor = "^2.11.2"
 aiohttp = "^3.8.4"
+jax = "^0.4.8"
+jaxlib = "^0.4.7"
 
 
 [tool.poetry.group.dev.dependencies]

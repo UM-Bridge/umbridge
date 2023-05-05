@@ -7,25 +7,22 @@ class Model(ABC):
 
     @abstractmethod
     def get_input_sizes(self):
-        raise NotImplementedError(f'You need to implement this method in {self.__class__.__name__}.')
+        return
 
     @abstractmethod
     def get_output_sizes(self):
-        raise NotImplementedError(f'You need to implement this method in {self.__class__.__name__}.')
+        return
     
     @abstractmethod
     def __call__(self, parameters, config={}):
-        raise NotImplementedError(f'Method called but not implemented in {self.__class__.__name__}.')
+        return
 
-    @abstractmethod
     def gradient(self, out_wrt, in_wrt, parameters, sens, config={}):
         raise NotImplementedError(f'Method called but not implemented in {self.__class__.__name__}.')
     
-    @abstractmethod
     def apply_jacobian(self, out_wrt, in_wrt, parameters, vec, config={}):
         raise NotImplementedError(f'Method called but not implemented in {self.__class__.__name__}.')
     
-    @abstractmethod
     def apply_hessian(self, out_wrt, in_wrt1, in_wrt2, parameters, sens, vec, config={}):
         raise NotImplementedError(f'Method called but not implemented in {self.__class__.__name__}.')
 
