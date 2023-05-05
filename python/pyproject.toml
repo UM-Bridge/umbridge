@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "umbridge"
+version = "0.1.0"
+description =  "UM-Bridge (the UQ and Model Bridge) provides a unified interface for numerical models that is accessible from virtually any programming language or framework. It is primarily intended for coupling advanced models (e.g. simulations of complex physical processes) to advanced statistical or optimization methods."
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "umbridge"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+litestar = "^2.0.0a5"
+requests = "^2.30.0"
+numpy = "^1.24.3"
+pytensor = "^2.11.2"
+aiohttp = "^3.8.4"
+jax = "^0.4.8"
+jaxlib = "^0.4.7"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+pytest = "^7.3.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
