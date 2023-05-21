@@ -1,8 +1,8 @@
 import argparse
 import numpy as np
 import pymc as pm
-import aesara.tensor as at
-from aesara.gradient import verify_grad
+from pytensor import tensor as pt
+from pytensor.gradient import verify_grad
 import arviz as az
 import matplotlib.pyplot as plt
 from umbridge.pymc import UmbridgeOp
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(f"Connecting to host URL {args.url}")
 
-    # Set up an aesara op connecting to UM-Bridge model
+    # Set up an pytensor op connecting to UM-Bridge model
     op = UmbridgeOp(args.url, "posterior")
 
     # Define input parameter
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     input_val = [0.0, 10.0]
 
     # Evaluate model with input parameter
-    op_application = op(at.as_tensor_variable(input_val))
+    op_application = op(pt.as_tensor_variable(input_val))
     print(f"Model output: {op_application.eval()}")
 
     # Verify gradient

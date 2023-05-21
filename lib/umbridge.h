@@ -294,7 +294,7 @@ namespace umbridge {
 
   // Check if inputs dimensions match model's expected input size and return error in httplib response
   bool check_input_sizes(const std::vector<std::vector<double>>& inputs, const json& config_json, const Model& model, httplib::Response& res) {
-    if (inputs.size() != model.GetOutputSizes(config_json).size()) {
+    if (inputs.size() != model.GetInputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
       response_body["error"]["message"] = "Number of inputs does not match number of model inputs. Expected " + std::to_string(model.GetInputSizes(config_json).size()) + " but got " + std::to_string(inputs.size());

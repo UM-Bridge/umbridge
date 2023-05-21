@@ -1,4 +1,4 @@
-name: client-python-pymc
+name: client-python-emcee
 
 on:
   push:
@@ -24,8 +24,8 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install numpy arviz pymc umbridge
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install numpy arviz emcee umbridge
        -
         name: Build and run
         run: |
-          cd clients/python && python3 pymc-client.py http://model:4243
+          cd clients/python && python3 emcee-client.py http://model:4243
