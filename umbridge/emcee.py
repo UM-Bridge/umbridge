@@ -2,8 +2,8 @@ import numpy as np
 import umbridge
 
 class UmbridgeLogProb():
-    def __init__(self, url, config = {}):
-        self.umbridge_model = umbridge.HTTPModel(url, 'posterior')
+    def __init__(self, url, name, config = {}):
+        self.umbridge_model = umbridge.HTTPModel(url, name)
         self.config = config
         # For now, make sure model takes a single input vector and returns a single output vector.
         # More could be supported, but needs improved aesara op.

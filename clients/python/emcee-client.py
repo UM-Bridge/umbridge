@@ -13,9 +13,9 @@ if __name__ == "__main__":
     parser.add_argument('url', metavar='url', type=str,
                         help='the ULR on which the model is running, for example http://localhost:4242')
     args = parser.parse_args()
-    print(f"Connecting to host URL {args.url}")
+    print(f'Connecting to host URL {args.url}')
 
-    log_prob = UmbridgeLogProb(args.url)
+    log_prob = UmbridgeLogProb(args.url, 'posterior')
 
     nwalkers = 32
     sampler = emcee.EnsembleSampler(nwalkers, log_prob.ndim, log_prob)
@@ -30,4 +30,4 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig('emcee_inference.png')
 
-    print(az.summary(inference_data, round_to=2))        
+    print(az.summary(inference_data, round_to=2))
