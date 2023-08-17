@@ -3,22 +3,26 @@ classdef HTTPModel
 properties
 	uri
 	model_name
+    send_engine    % 'send' or 'webwrite'
 end
 
 methods
-	function model = HTTPModel(uri,model_name)
-        import matlab.net.*
-        import matlab.net.http.*
-
+    function model = HTTPModel(uri,model_name,send_engine)
         model.uri = uri;
         model.model_name = model_name;
+        if (nargin<3) || (isempty(send_engine))
+            model.send_engine = 'send';
+        else
+            model.send_engine = send_engine;
+        end
         
         % check protocol, make sure it's matching
-        r = RequestMessage;
-        uri = URI([uri, '/Info']);
+        uri = matlab.net.URI([uri, '/Info']);
+        r = matlab.net.http.RequestMessage;      % This must be GET
         resp = send(r,uri);
         HTTPModel.check_http_status(resp); % check if connection broke down
         json = jsondecode(resp.Body.string);
+
         if json.protocolVersion ~= 1
             error('the protocol version on the server side does not match the client')
         end        
@@ -45,6 +49,7 @@ end
 
 methods (Access=private)    
     output_json = get_model_info(self); 
+    output_json = send_data(self, uri, value);
 end
 
 methods (Static, Access=public)
