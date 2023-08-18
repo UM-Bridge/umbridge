@@ -12,11 +12,7 @@ if (nargin<8) || (isempty(config))
     config = struct;
 end
 
-import matlab.net.*
-import matlab.net.http.*
-
 % Evaluate model
-r = RequestMessage('POST');
 if (isa(input, 'cell'))
     value.input = input;
 elseif (isa(input, 'double'))
@@ -35,11 +31,9 @@ value.inWrt1 = inWrt1;
 value.inWrt2 = inWrt2;
 value.outWrt = outWrt;
 value.config = config;
-r.Body = MessageBody(jsonencode(value));
-uri = URI([self.uri, '/ApplyHessian']);
-resp = send(r,uri);
-self.check_http_status(resp);
-json = jsondecode(resp.Body.string);
+value = jsonencode(value);
+uri = matlab.net.URI([self.uri, '/ApplyHessian']);
+json = self.send_data(uri, value);
 self.check_error(json);
 output = json.output;
 
