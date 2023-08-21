@@ -495,7 +495,7 @@ def test_apply_hessian(model_url, input_value):
     jsonschema.validate(instance=resp.json(), schema=schema)
 
     # Check if output has dimension of output outWrt
-    assert len(resp.json()["output"]) == outputSizesJSON["outputSizes"][0]
+    assert len(resp.json()["output"]) == inputSizesJSON["inputSizes"][0]
 
 def test_apply_hessian_unsupported(model_url):
     resp_info = requests.get(f'{model_url}/Info')

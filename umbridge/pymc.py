@@ -1,12 +1,12 @@
-import aesara.tensor as at
+from pytensor import tensor as pt
 import umbridge
 import numpy as np
 
 
-class UmbridgeGradOp(at.Op):
+class UmbridgeGradOp(pt.Op):
 
-    itypes = [at.dvector, at.dvector]
-    otypes = [at.dvector]
+    itypes = [pt.dvector, pt.dvector]
+    otypes = [pt.dvector]
 
     def __init__(self, umbridge_model, config):
         self.umbridge_model = umbridge_model
@@ -16,17 +16,17 @@ class UmbridgeGradOp(at.Op):
         grad = self.umbridge_model.gradient(0, 0, [inputs_var[0].tolist()], inputs_var[1].tolist(), self.config)
         output_storage[0][0] = np.asarray(grad).astype('float64')
 
-class UmbridgeOp(at.Op):
+class UmbridgeOp(pt.Op):
 
-    itypes = [at.dvector]
-    otypes = [at.dvector]
+    itypes = [pt.dvector]
+    otypes = [pt.dvector]
 
     # Take model URL in constructor
     def __init__(self, url, name, config = {}):
         self.umbridge_model = umbridge.HTTPModel(url, name)
         self.config = config
         # For now, make sure model takes a single input vector and returns a single output vector.
-        # More could be supported, but needs improved aesara op.
+        # More could be supported, but needs improved pytensor op.
         # (i.e. adjust input/output types according to UM-Bridge model, pass through multiple vectors etc.)
         assert len(self.umbridge_model.get_input_sizes(config)) == 1
         assert len(self.umbridge_model.get_output_sizes(config)) == 1

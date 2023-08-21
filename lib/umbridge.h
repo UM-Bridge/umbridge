@@ -1,6 +1,8 @@
 #ifndef UMBRIDGE
 #define UMBRIDGE
 
+// #define LOGGING
+
 // Increase timeout to allow for long-running models.
 // This should be (to be on the safe side) significantly greater than the maximum time your model may take
 #define CPPHTTPLIB_READ_TIMEOUT_SECOND 60*60
@@ -294,7 +296,7 @@ namespace umbridge {
 
   // Check if inputs dimensions match model's expected input size and return error in httplib response
   bool check_input_sizes(const std::vector<std::vector<double>>& inputs, const json& config_json, const Model& model, httplib::Response& res) {
-    if (inputs.size() != model.GetOutputSizes(config_json).size()) {
+    if (inputs.size() != model.GetInputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
       response_body["error"]["message"] = "Number of inputs does not match number of model inputs. Expected " + std::to_string(model.GetInputSizes(config_json).size()) + " but got " + std::to_string(inputs.size());
@@ -397,6 +399,13 @@ namespace umbridge {
     response_body["error"]["message"] = "Feature '" + feature + "' is not supported by this model";
     res.set_content(response_body.dump(), "application/json");
     res.status = 400;
+  }
+
+  // log  request
+
+  void log_request(const httplib::Request& req, const httplib::Response& res) {
+      std::cout << "Incoming request from: " << req.remote_addr << " | Type: " << req.method << " " << req.path << " -> " << res.status << std::endl;
+      
   }
 
   // Get model from name
@@ -655,6 +664,19 @@ namespace umbridge {
     });
 
     std::cout << "Listening on port " << port << "..." << std::endl;
+
+#ifdef LOGGING
+    svr.set_logger([](const httplib::Request& req, const httplib::Response& res) {
+        if (res.status >= 500) {
+            std::cerr << "[ERROR] ";
+        } else if (res.status >= 400) {
+            std::cerr << "[WARNING] ";
+        } else {
+            std::cout << "[INFO] ";
+        }
+        log_request(req, res);
+    });
+#endif
     svr.listen(host.c_str(), port);
     std::cout << "Quit" << std::endl;
   }
