@@ -181,6 +181,42 @@ if (supports_apply_jacobian(url, name)) {
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/clients/R)
 
+## Matlab client
+
+The Matlab integration can be found in the [git repository](https://github.com/UM-Bridge/umbridge/tree/main/matlab).
+
+We use the Matlab function `addpath()` to add the specified folder.
+
+```
+umbridge_supported_models('http://localhost:4242‘)
+model = HTTPModel('http://localhost:4242‘, 'forward');
+```
+
+`umbridge_supported_models()` gives a list of models that are supported by the current server. We set up a model by connecting to the URL and selecting for example the „forward“ model. We obtain its input and output dimensions using the functions
+
+
+```
+model.get_input_sizes()
+model.get_output_sizes()
+```
+
+A model that expects an input consisting of a single 2D vector can be evaluated as follows.
+
+```
+model.evaluate([0, 10.0])
+model.evaluate([0, 10.0], config)
+```
+
+If the model accepts configuartion parameters, we can add those to the model evaluation. The config options accepted by a particular model can be found in the model’s documentation.
+
+Furthermore a model indicates wheather it supports further features. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
+
+```
+model.apply_jacobian([1.0,4.0], [0, 10.0], 0, 0)
+```
+
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/matlab_client.m)
+
 ## MUQ client
 
 Within the [MIT Uncertainty Quantification library (MUQ)](https://mituq.bitbucket.io), there is a ModPiece available that allows embedding an HTTP model in MUQ's model graph framework.
@@ -384,40 +420,3 @@ if __name__ == "__main__":
 ```
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/python/emcee-client.py)
-
-## Matlab client
-
-The Matlab integration can be found in the [git repository](https://github.com/UM-Bridge/umbridge/tree/main/matlab).
-
-We use the Matlab function `addpath()` to add the specified folder.
-
-```
-umbridge_supported_models('http://localhost:4243‘)
-model = HTTPModel('http://localhost:4243‘, 'forward');
-```
-
-`umbridge_supported_models()` gives a list of models that are supported by the current server. We set up a model by connecting to the URL and selecting for example the „forward“ model. We obtain its input and output dimensions using the functions
-
-
-```
-model.get_input_sizes()
-model.get_output_sizes()
-```
-
-A model that expects an input consisting of a single 2D vector can be evaluated as follows.
-
-```
-model.evaluate([100.0, 18.0])
-model.evaluate([100.0, 18.0], config)
-```
-
-If the model accepts configuartion parameters, we can add those to the model evaluation. The config options accepted by a particular model can be found in the model’s documentation.
-
-Furthermore a model indicates wheather it supports further features. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
-
-```
-model.apply_jacobian([1.0,4.0],[100.0, 18.0], 0, 0)
-```
-[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/matlabClient.m)
-
-
