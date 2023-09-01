@@ -204,7 +204,7 @@ A model that expects an input consisting of a single 2D vector can be evaluated 
 
 ```
 model.evaluate([0, 10.0])
-model.evaluate([0, 10.0], config)
+model.evaluate([0, 10.0], struct('a', 3.9))
 ```
 
 If the model accepts configuartion parameters, we can add those to the model evaluation. The config options accepted by a particular model can be found in the model’s documentation.
