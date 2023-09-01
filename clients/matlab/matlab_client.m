@@ -16,6 +16,10 @@ param=[0, 10.0];
 % Simple model evaluation without config
 model.evaluate(param)
 
+%Model evaluation with configuration parameters
+config = struct('a', 3.9);
+model.evaluate(param, config)
+
 % If model supports Jacobian action,
 % apply Jacobian of output zero with respect to input zero to a vector
 if model.supports_apply_jacobian()
