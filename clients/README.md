@@ -188,11 +188,11 @@ The Matlab integration can be found in the [git repository](https://github.com/U
 We use the Matlab function `addpath()` to add the specified folder.
 
 ```
-umbridge_supported_models('http://localhost:4242‘)
-model = HTTPModel('http://localhost:4242‘, 'forward');
+umbridge_supported_models('http://localhost:4243‘)
+model = HTTPModel('http://localhost:4243‘, 'posterior');
 ```
 
-`umbridge_supported_models()` gives a list of models that are supported by the current server. We set up a model by connecting to the URL and selecting for example the „forward“ model. We obtain its input and output dimensions using the functions
+`umbridge_supported_models()` gives a list of models that are supported by the current server. We set up a model by connecting to the URL and selecting for example the „posterior“ model. We obtain its input and output dimensions using the functions
 
 
 ```
