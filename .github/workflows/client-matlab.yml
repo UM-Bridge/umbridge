@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - 'main'
-
+      - 'marlenaweidenauer-patch-2'
+      
 jobs:
   test:
     runs-on: ubuntu-latest
