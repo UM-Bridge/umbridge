@@ -215,7 +215,7 @@ Furthermore a model indicates wheather it supports further features. The followi
 model.apply_jacobian([1.0,4.0], [0, 10.0], 0, 0)
 ```
 
-[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/matlab_client.m)
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/matlabClient.m)
 
 ## MUQ client
 
