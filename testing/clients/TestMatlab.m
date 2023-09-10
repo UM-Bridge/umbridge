@@ -13,6 +13,17 @@ classdef TestMatlab < matlab.unittest.TestCase
 
         end
 
+        function testApplyJacobian(testCase)
+             uri = 'http://localhost:4243';
+
+            model = HTTPModel(uri,'posterior');
+
+            httpValue = model.apply_jacobian([1.0,4.0], [1,3], 0, 0)
+            exactValue = -3.370206919896928;
+            testCase.verifyEqual(httpValue, exactValue, 'RelTol', 1e-14)
+
+        end
+        
         function testBasicExample(testCase)
           matlabClient;;
         end
