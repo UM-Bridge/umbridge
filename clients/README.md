@@ -217,6 +217,47 @@ model.apply_jacobian([1.0,4.0], [0, 10.0], 0, 0)
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/matlabClient.m)
 
+## Julia client
+
+The Julia integration can be installed using Julia's builtin package manager Pkg
+
+```
+Pkg.add("UMBridge")
+```
+
+It can be used as usual via
+
+```
+using UMBridge
+```
+
+We set up a model by connection to the URL and selecting the "forward" model
+
+```
+model = UMBridge.HTTPModel("forward", "http://localhost:4242")
+print(UMBridge.model_input_sizes(model))
+print(UMBridge.model_output_sizes(model))
+```
+
+The functions UMBridge.model_input_sizes() and UMBridge.model_output_sizes() give the input and output dimension of a model, respectively. A model that expects an input consisting of a single 2D vector can be evaluated as follows
+
+```
+print(UMBridge.evaluate(model, [[0, 10]], Dict()))
+
+config = Dict("vtk_output" => true, "level" => 1);
+print(UMBridge.evaluate(model, [[0, 10]], config))
+```
+
+If the model accepts configuartion parameters, we can add those to the model evaluation. The config options accepted by a particular model can be found in the model's documentation.
+
+Models indicate whether they support further features, e.g. Jacobian or Hessian actions. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
+
+```
+ UMBridge.apply_jacobian(model, 0, 0, [[0, 10]], [1, 4])
+```
+
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/julia/juliaClient.jl)
+
 ## MUQ client
 
 Within the [MIT Uncertainty Quantification library (MUQ)](https://mituq.bitbucket.io), there is a ModPiece available that allows embedding an HTTP model in MUQ's model graph framework.
