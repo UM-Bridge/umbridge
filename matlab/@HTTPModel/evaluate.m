@@ -3,11 +3,7 @@ if (nargin<3) || (isempty(config))
     config = struct;
 end
 
-import matlab.net.*
-import matlab.net.http.*
-
-% Evaluate model
-r = RequestMessage('POST');
+% Parse inputs
 if (isa(input, 'cell'))
     value.input = input;
 elseif (isa(input, 'double'))
@@ -21,11 +17,10 @@ else
 end
 value.name = self.model_name;
 value.config = config;
-r.Body = MessageBody(jsonencode(value));
-uri = URI([self.uri, '/Evaluate']);
-resp = send(r,uri);
-self.check_http_status(resp);
-json = jsondecode(resp.Body.string);
+value = jsonencode(value);
+uri = matlab.net.URI([self.uri, '/Evaluate']);
+% Evaluate model
+json = self.send_data(uri, value);
 self.check_error(json);
 output = json.output;
 
