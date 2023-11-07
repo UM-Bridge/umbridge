@@ -19,29 +19,13 @@ In the cloned repository, navigate to the folder `kubernetes`. It contains all t
 First, retrieve HAProxy:
 
 ```
-helm repo add haproxytech https://haproxytech.github.io/helm-charts
-```
-
-```
-helm repo update
-```
-
-```
-helm install kubernetes-ingress haproxytech/kubernetes-ingress \
---create-namespace \
---namespace \
-haproxy-controller \
---set controller.service.type=LoadBalancer \
---set controller.replicaCount=1 \
---set defaultBackend.replicaCount=1 \
---set controller.logging.level=debug \
---set controller.ingressClass=haproxy
+kubectl create -f setup/haproxy.yaml
 ```
 
 Then, start HAProxy with the configuration provided by UM-Bridge:
 
 ```
-kubectl apply -f setup/svc-ingress.yml
+kubectl apply -f setup/svc-ingress.yaml
 ```
 
 ## Step 3: Run model instances

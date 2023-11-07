@@ -1,0 +1,30 @@
+#helm install kubernetes-ingress haproxytech/kubernetes-ingress \
+#--create-namespace \
+#--namespace \
+#haproxy-controller \
+#--set controller.service.type=LoadBalancer \
+#--set controller.replicaCount=1 \
+#--set defaultBackend.replicaCount=1 \
+#--set controller.logging.level=debug \
+#--set controller.ingressClass=haproxy
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: haproxy-controller
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: kubernetes-ingress
+  namespace: default
+spec:
+  repo: https://haproxytech.github.io/helm-charts
+  chart: kubernetes-ingress #haproxy
+  targetNamespace: haproxy-controller
+  set:
+    controller.service.type: LoadBalancer
+    controller.replicaCount: 1
+    defaultBackend.replicaCount: 1
+    controller.logging.level: debug
+    controller.ingressClass: haproxy
