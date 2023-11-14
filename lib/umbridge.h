@@ -9,7 +9,7 @@
 
 #include <string>
 #include <vector>
-
+#include <sys/mman.h>
 
 #include "json.hpp"
 #include "httplib.h"
@@ -86,6 +86,53 @@ namespace umbridge {
     }
   }
 
+  class SharedMemoryVector {
+  public:
+    SharedMemoryVector(std::size_t size, std::string shmem_name, bool create)
+    : length(size * sizeof(double)), shmem_name(shmem_name) {
+      int oflags = O_RDWR;
+      if (create) {
+        oflags |= O_CREAT;
+      }
+
+      int fd = shm_open(shmem_name.c_str(), oflags, 0644 ); // Create shared memory
+      ftruncate(fd, length); // Set size of shared memory
+      assert (fd>0);
+
+      ptr = (u_char *) mmap(NULL, length, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0); // Map shared memory to process
+      close(fd);
+
+      assert (ptr);
+    }
+
+    SharedMemoryVector(const std::vector<double>& vector, std::string shmem_name)
+    : SharedMemoryVector(vector.size(), shmem_name, true) {
+      SetVector(vector);
+    }
+
+    std::vector<double> GetVector() {
+      std::vector<double> vector(length / sizeof(double));
+      memcpy(vector.data(), ptr, length);
+      return vector;
+    }
+
+    void SetVector(const std::vector<double>& vector) {
+      memcpy(ptr, vector.data(), length);
+    }
+
+    ~SharedMemoryVector() {
+      munmap(ptr, length);
+      shm_unlink(shmem_name.c_str());
+    }
+
+  private:
+    u_char *ptr = nullptr;
+    off_t length = 0;
+    std::string shmem_name;
+  };
+
+
+
   // Client-side Model connecting to a server for the actual evaluations etc.
   class HTTPModel : public Model {
   public:
@@ -114,6 +161,7 @@ namespace umbridge {
         supportsGradient = supported_features.value("Gradient", false);
         supportsApplyJacobian = supported_features.value("ApplyJacobian", false);
         supportsApplyHessian = supported_features.value("ApplyHessian", false);
+        supportsEvaluateShMem = supported_features.value("EvaluateShMem", false);
       } else {
         throw std::runtime_error("POST ModelInfo failed with error type '" + to_string(res.error()) + "'");
       }
@@ -155,24 +203,58 @@ namespace umbridge {
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config_json = json::parse("{}")) override {
 
-      json request_body;
-      request_body["name"] = name;
+      if (supportsEvaluateShMem) {
+        std::cout << "Using shared memory" << std::endl;
 
-      for (std::size_t i = 0; i < inputs.size(); i++) {
-        request_body["input"][i] = inputs[i];
-      }
-      request_body["config"] = config_json;
-
-      if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "application/json")) {
-        json response_body = parse_result_with_error_handling(res);
-
-        std::vector<std::vector<double>> outputs(response_body["output"].size());
-        for (std::size_t i = 0; i < response_body["output"].size(); i++) {
-          outputs[i] = response_body["output"][i].get<std::vector<double>>();
+        std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
+        for (int i = 0; i < inputs.size(); i++) {
+          shmem_inputs.push_back(std::make_unique<SharedMemoryVector>(inputs[i], "/umbridge_in_" + std::to_string(i)));
         }
-        return outputs;
+        std::vector<std::unique_ptr<SharedMemoryVector>> shmem_outputs;
+        std::vector<std::size_t> output_sizes = GetOutputSizes(config_json); // Potential optimization: Avoid this call (e.g. share output memory with appropriate dimension from server side, sync with client via POSIX semaphore)
+        for (int i = 0; i < output_sizes.size(); i++) {
+          shmem_outputs.push_back(std::make_unique<SharedMemoryVector>(output_sizes[i], "/umbridge_out_" + std::to_string(i), true));
+        }
+
+        json request_body;
+        request_body["name"] = name;
+        request_body["config"] = config_json;
+        request_body["shmem_name"] = "/umbridge";
+        request_body["shmem_num_inputs"] = inputs.size();
+        for (int i = 0; i < inputs.size(); i++) {
+          request_body["shmem_size_" + std::to_string(i)] = inputs[i].size();
+        }
+        if (auto res = cli.Post("/EvaluateShMem", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
+
+          std::vector<std::vector<double>> outputs(output_sizes.size());
+          for (int i = 0; i < output_sizes.size(); i++) {
+            outputs[i] = shmem_outputs[i]->GetVector();
+          }
+          return outputs;
+        } else {
+          throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
+        }
+
       } else {
-        throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
+        json request_body;
+        request_body["name"] = name;
+        for (std::size_t i = 0; i < inputs.size(); i++) {
+          request_body["input"][i] = inputs[i];
+        }
+        request_body["config"] = config_json;
+
+        if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
+
+          std::vector<std::vector<double>> outputs(response_body["output"].size());
+          for (std::size_t i = 0; i < response_body["output"].size(); i++) {
+            outputs[i] = response_body["output"][i].get<std::vector<double>>();
+          }
+          return outputs;
+        } else {
+          throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
+        }
       }
     }
 
@@ -278,6 +360,7 @@ namespace umbridge {
     bool supportsGradient = false;
     bool supportsApplyJacobian = false;
     bool supportsApplyHessian = false;
+    bool supportsEvaluateShMem = false;
 
     json parse_result_with_error_handling(const httplib::Result& res) const {
       json response_body;
@@ -405,7 +488,7 @@ namespace umbridge {
 
   void log_request(const httplib::Request& req, const httplib::Response& res) {
       std::cout << "Incoming request from: " << req.remote_addr << " | Type: " << req.method << " " << req.path << " -> " << res.status << std::endl;
-      
+
   }
 
   // Get model from name
@@ -472,6 +555,47 @@ namespace umbridge {
         response_body["output"][i] = outputs[i];
       }
 
+      res.set_content(response_body.dump(), "application/json");
+    });
+
+    svr.Post("/EvaluateShMem", [&](const httplib::Request &req, httplib::Response &res) {
+      json request_body = json::parse(req.body);
+      if (!check_model_exists(models, request_body["name"], res))
+        return;
+      Model& model = get_model_from_name(models, request_body["name"]);
+
+      if (!model.SupportsEvaluate()) {
+        write_unsupported_feature_response(res, "Evaluate");
+        return;
+      }
+
+      std::vector<std::vector<double>> inputs;
+      for (int i = 0; i < request_body["shmem_num_inputs"].get<int>(); i++) {
+        SharedMemoryVector shmem_input(request_body["shmem_size_" + std::to_string(i)].get<int>(), request_body["shmem_name"].get<std::string>() + "_in_" + std::to_string(i), false);
+        inputs.push_back(shmem_input.GetVector());
+      }
+      std::vector<std::unique_ptr<SharedMemoryVector>> shmem_outputs;
+      for (int i = 0; i < model.GetOutputSizes().size(); i++) {
+        shmem_outputs.push_back(std::make_unique<SharedMemoryVector>(model.GetOutputSizes()[i], request_body["shmem_name"].get<std::string>() + "_out_" + std::to_string(i), false));
+      }
+
+      json empty_default_config;
+      json config_json = request_body.value("config", empty_default_config);
+
+      if (!check_input_sizes(inputs, config_json, model, res))
+        return;
+
+      const std::lock_guard<std::mutex> model_lock(model_mutex);
+      std::vector<std::vector<double>> outputs = model.Evaluate(inputs, config_json);
+
+      if (!check_output_sizes(outputs, config_json, model, res))
+        return;
+
+      for (std::size_t i = 0; i < outputs.size(); i++) {
+        shmem_outputs[i]->SetVector(outputs[i]);
+      }
+
+      json response_body;
       res.set_content(response_body.dump(), "application/json");
     });
 
@@ -626,6 +750,7 @@ namespace umbridge {
       json response_body;
       response_body["support"] = {};
       response_body["support"]["Evaluate"] = model.SupportsEvaluate();
+      response_body["support"]["EvaluateShMem"] = model.SupportsEvaluate();
       response_body["support"]["Gradient"] = model.SupportsGradient();
       response_body["support"]["ApplyJacobian"] = model.SupportsApplyJacobian();
       response_body["support"]["ApplyHessian"] = model.SupportsApplyHessian();

@@ -2,6 +2,8 @@ from aiohttp import web
 import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import shared_memory
+import numpy as np
 
 class Model(object):
 
@@ -221,6 +223,61 @@ def serve_models(models, port=4242, max_workers=1):
 
         return web.Response(text=f"{{\"output\": {output} }}")
 
+    @routes.post('/EvaluateShMem')
+    async def evaluate(request):
+
+        req_json = await request.json()
+        model_name = req_json["name"]
+        model = get_model_from_name(model_name)
+        if model is None:
+            return model_not_found_response(req_json["name"])
+        if not model.supports_evaluate():
+            return error_response("UnsupportedFeature", "Evaluate not supported by model!", 400)
+
+        config = {}
+        if "config" in req_json:
+            config = req_json["config"]
+
+        parameters = []
+        for i in range(req_json["shmem_num_inputs"]):
+            shm_c = shared_memory.SharedMemory(req_json["shmem_name"] + f"_in_{i}", False, req_json[f"shmem_size_{i}"])
+            raw_shmem_parameter = np.ndarray((req_json[f"shmem_size_{i}"],), dtype=np.float64, buffer=shm_c.buf)
+            parameters.append(raw_shmem_parameter.tolist())
+            shm_c.close()
+            shm_c.unlink()
+
+        # Check if parameter dimensions match model input sizes
+        if len(parameters) != len(model.get_input_sizes(config)):
+            return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
+        for i in range(len(parameters)):
+            if len(parameters[i]) != model.get_input_sizes(config)[i]:
+                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {model.get_input_sizes(config)[i]} but got {len(parameters[i])}.", 400)
+
+        output_future = model_executor.submit(model.__call__, parameters, config)
+        output = await asyncio.wrap_future(output_future)
+
+        # Check if output is a list of lists
+        if not isinstance(output, list):
+            return error_response("InvalidOutput", "Model output is not a list of lists!", 500)
+        if not all (isinstance(x, list) for x in output):
+            return error_response("InvalidOutput", "Model output is not a list of lists!", 500)
+
+        # Check if output dimensions match model output sizes
+        if len(output) != len(model.get_output_sizes(config)):
+            return error_response("InvalidOutput", "Number of output vectors returned by model does not match number of model outputs declared by model!", 500)
+        for i in range(len(output)):
+            if len(output[i]) != model.get_output_sizes(config)[i]:
+                return error_response("InvalidOutput", f"Output vector {i} has invalid length! Model declared {model.get_output_sizes(config)[i]} but returned {len(output[i])}.", 500)
+
+        # Write output to shared memory
+        for i in range(len(output)):
+            shm_c = shared_memory.SharedMemory(req_json["shmem_name"] + f"_out_{i}", create=False, size=len(output[i])*8)
+            raw_shmem_output = np.ndarray((len(output[i]),), dtype=np.float64, buffer=shm_c.buf)
+            raw_shmem_output[:] = output[i]
+            shm_c.close()
+
+        return web.Response(text="{}")
+
     @routes.post('/Gradient')
     async def gradient(request):
 
@@ -402,6 +459,7 @@ def serve_models(models, port=4242, max_workers=1):
             return model_not_found_response(req_json["name"])
         response_body = {"support": {}}
         response_body["support"]["Evaluate"] = model.supports_evaluate()
+        response_body["support"]["EvaluateShMem"] = model.supports_evaluate()
         response_body["support"]["Gradient"] = model.supports_gradient()
         response_body["support"]["ApplyJacobian"] = model.supports_apply_jacobian()
         response_body["support"]["ApplyHessian"] = model.supports_apply_hessian()
