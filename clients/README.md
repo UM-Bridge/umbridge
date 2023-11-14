@@ -184,36 +184,42 @@ if (supports_apply_jacobian(url, name)) {
 ## Matlab client
 
 The Matlab integration can be found in the [git repository](https://github.com/UM-Bridge/umbridge/tree/main/matlab).
-
 We use the Matlab function `addpath()` to add the specified folder.
 
-```
-umbridge_supported_models('http://localhost:4243‘)
-model = HTTPModel('http://localhost:4243‘, 'posterior');
+```matlab
+umbridge_supported_models('http://localhost:4243')
+model = HTTPModel('http://localhost:4243', 'posterior');
 ```
 
-`umbridge_supported_models()` gives a list of models that are supported by the current server. We set up a model by connecting to the URL and selecting for example the „posterior“ model. We obtain its input and output dimensions using the functions
+`umbridge_supported_models()` gives a list of models that are supported by the current server. We set up a model by connecting for example to the URL `http://localhost:4243` and selecting the `posterior` model. We obtain its input and output dimensions using the functions
 
-
-```
+```matlab
 model.get_input_sizes()
 model.get_output_sizes()
 ```
 
 A model that expects an input consisting of a single 2D vector can be evaluated as follows.
 
-```
+```matlab
 model.evaluate([0, 10.0])
 model.evaluate([0, 10.0], struct('a', 3.9))
 ```
 
-If the model accepts configuartion parameters, we can add those to the model evaluation. The config options accepted by a particular model can be found in the model’s documentation.
+If the model accepts configuration parameters, we can add those to the model evaluation. The config options accepted by a particular model can be found in the model’s documentation.
 
 Furthermore a model indicates wheather it supports further features. The following example evaluates the Jacobian of model output zero with respect to model input zero at the same input parameter as before. It then applies it to the additional vector given.
 
-```
+```matlab
 model.apply_jacobian([1.0,4.0], [0, 10.0], 0, 0)
 ```
+
+The `HTTPModel` constructor selects by default the Matlab `net.http` `send` engine for handling network requests. It can be slow. Matlab offers an alternative engine `webwrite` which is often faster. It can be selected by passing the corresponging third argument to the constructor:
+
+```matlab
+model = HTTPModel('http://localhost:4243', 'posterior', 'webwrite');
+```
+
+Note that `webwrite` handles all HTTP statuses internally, and is unable to filter UM-Bridge errors from other HTTP errors. Use it on well debugged models.
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/matlabClient.m)
 
@@ -461,3 +467,55 @@ if __name__ == "__main__":
 ```
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/python/emcee-client.py)
+
+
+## TT-Toolbox client
+
+TT-Toolbox is a Matlab package for computing with the Tensor-Train (TT) decomposition.
+For example, tensors can contain expansion coefficients of a function in a simple Cartesian basis.
+
+The UM-Bridge folder [clients/matlab](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab) contains a script [check_tt.m](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/check_tt.m) which can be run to download the TT-Toolbox automatically and add its subdirectories to the Matlab path.
+
+```matlab
+check_tt;
+```
+
+We can then create a model as before.
+
+```matlab
+model = HTTPModel('http://localhost:4243', 'posterior');
+```
+
+Or, alternatively, using the `webwrite` network engine.
+
+```matlab
+model = HTTPModel('http://localhost:4243', 'posterior', 'webwrite');
+```
+
+Now we need to find out the input size of the model, which will be the dimension of the tensor of coefficients to be approximated.
+
+```matlab
+d = model.get_input_sizes
+```
+
+For simplicity, we approximate the model evaluation function in a piecewise linear basis in each variable.
+This allows us to compute the tensor of coefficients in this basis simply as a tensor of evaluations of the function on a tensor product grid.
+For example, we can take 33 equispaced grid nodes on the interval [-5,5].
+
+```matlab
+x = linspace(-5,5,33);
+```
+
+Finally, we can run one of the Tensor-Train Cross algorithms (for example, the greedy DMRG cross) to approximate the tensor of nodal values by a Tensor-Train decomposition.
+
+```matlab
+TTlogPosterior = greedy2_cross(repmat(numel(x),d,1), @(i)model.evaluate(x(i)), 1e-5, 'vec', false)
+```
+
+Specifically, the first argument to `greedy2_cross` is a vector of tensor sizes (in this case [33; 33]), and the second argument is a Matlab function handle that evaluates tensor elements on given indices.
+In this case we compute UM-Bridge model values at the grid nodes corresponding to these indices.
+The remaining arguments are the stopping tolerance (`1e-5`) and a vectorization flag indicating that UM-Bridge needs to receive input samples one by one.
+
+We can notice the total number of model evaluations as `cum#evals=449` in the printout of `greedy2_cross`, and the Tensor-Train rank `max_rank=3`. A neat reduction compared to 1089 points in the full 2D grid!
+
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/ttClient.m)
