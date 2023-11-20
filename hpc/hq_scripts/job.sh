@@ -6,8 +6,24 @@
 #HQ --stdout none
 #HQ --stderr none
 
-# Dummy job only used to send back the slurm job ID
-# and to ensure that HQ won't schedule any more jobs to this allocation
+# Launch model server, send back slurm job ID
+# and wait to ensure that HQ won't schedule any more jobs to this allocation
 
-echo "$SLURM_JOB_ID" > urls/hqjob-$HQ_JOB_ID.txt # send the slurm job id to load-balancer
+/your/model/server/call & # CHANGE ME!
+
+port=4242
+
+load_balancer_dir="/load/balancer/directory" # CHANGE ME!
+
+
+host=$(hostname -I | awk '{print $1}')
+
+# Wait for model server to start
+while ! curl -s "http://$host:$port/Info" > /dev/null; do
+    sleep 1
+done
+
+mkdir -p "$load_balancer_dir/urls"
+echo "http://$host:$port" > "$load_balancer_dir/urls/url-$HQ_JOB_ID.txt"
+
 sleep infinity # keep the job occupied

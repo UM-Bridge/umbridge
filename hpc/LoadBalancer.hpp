@@ -218,17 +218,20 @@ std::string submitHQJob()
             job_id.pop_back();
 
         ++i;
-    } while (waitForHQJobState(job_id, "RUNNING") == false && i < 3 && waitForFile("./urls/hqjob-" + job_id + ".txt", 10) == false);
+        std::cout << "Waiting for job " << job_id << " to start." << std::endl;
+    } while (waitForHQJobState(job_id, "RUNNING") == false && i < 3 && waitForFile("./urls/url-" + job_id + ".txt", 10) == false);
     // Wait for the HQ Job to start
     // Also wait until job is running and url file is written
     // Try maximum 3 times
 
+    std::cout << "Job " << job_id << " started." << std::endl;
     // Check if the job is running
-    if (waitForHQJobState(job_id, "RUNNING") == false || waitForFile("./urls/hqjob-" + job_id + ".txt", 10) == false)
+    if (waitForHQJobState(job_id, "RUNNING") == false || waitForFile("./urls/url-" + job_id + ".txt", 10) == false)
     {
         std::cout << "Submit job failure." << std::endl;
         exit(-1);
     }
+    std::cout << "Job " << job_id << " running." << std::endl;
 
     return job_id;
 }
@@ -240,11 +243,8 @@ public:
     {
         job_id = submitHQJob();
 
-        // Get the slurm job id
-        const std::string slurm_id = readUrl("./urls/hqjob-" + job_id + ".txt");
-
         // Get the server URL
-        const std::string server_url = readUrl("./urls/url-" + slurm_id + ".txt");
+        const std::string server_url = readUrl("./urls/url-" + job_id + ".txt");
 
         // Start a client, using unique pointer
         client_ptr = std::make_unique<umbridge::HTTPModel>(server_url, model_name); // always uses the model "forward"
@@ -256,7 +256,7 @@ public:
         std::system(("hq job cancel " + job_id).c_str());
 
         // Delete the url text file
-        std::system(("rm ./urls/hqjob-" + job_id + ".txt").c_str());
+        std::system(("rm ./urls/url-" + job_id + ".txt").c_str());
     }
 
     std::unique_ptr<umbridge::HTTPModel> client_ptr;
