@@ -158,6 +158,7 @@ namespace umbridge {
       json request_body;
       request_body["name"] = name;
 
+      request_body["input"] = json::parse("[]");
       for (std::size_t i = 0; i < inputs.size(); i++) {
         request_body["input"][i] = inputs[i];
       }
@@ -405,7 +406,6 @@ namespace umbridge {
 
   void log_request(const httplib::Request& req, const httplib::Response& res) {
       std::cout << "Incoming request from: " << req.remote_addr << " | Type: " << req.method << " " << req.path << " -> " << res.status << std::endl;
-      
   }
 
   // Get model from name
@@ -468,6 +468,7 @@ namespace umbridge {
         return;
 
       json response_body;
+      response_body["output"] = json::parse("[]");
       for (std::size_t i = 0; i < outputs.size(); i++) {
         response_body["output"][i] = outputs[i];
       }
