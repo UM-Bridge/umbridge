@@ -441,14 +441,14 @@ namespace umbridge {
 
     svr.Post("/Evaluate", [&](const httplib::Request &req, httplib::Response &res) {
       json request_body = json::parse(req.body);
-      if (!check_model_exists(models, request_body["name"], res))
-        return;
+      //if (!check_model_exists(models, request_body["name"], res))
+      //  return;
       Model& model = get_model_from_name(models, request_body["name"]);
 
-      if (!model.SupportsEvaluate()) {
-        write_unsupported_feature_response(res, "Evaluate");
-        return;
-      }
+      //if (!model.SupportsEvaluate()) {
+      //  write_unsupported_feature_response(res, "Evaluate");
+      //  return;
+      //}
 
       std::vector<std::vector<double>> inputs(request_body["input"].size());
       for (std::size_t i = 0; i < inputs.size(); i++) {
@@ -458,8 +458,8 @@ namespace umbridge {
       json empty_default_config;
       json config_json = request_body.value("config", empty_default_config);
 
-      if (!check_input_sizes(inputs, config_json, model, res))
-        return;
+      //if (!check_input_sizes(inputs, config_json, model, res))
+      //  return;
 
       std::unique_lock<std::mutex> model_lock(model_mutex, std::defer_lock);
       if (disable_parallel) {
@@ -471,8 +471,8 @@ namespace umbridge {
         model_lock.unlock();  // for safety, although should unlock after request finished
       }
 
-      if (!check_output_sizes(outputs, config_json, model, res))
-        return;
+      //if (!check_output_sizes(outputs, config_json, model, res))
+      //  return;
 
       json response_body;
       response_body["output"] = json::parse("[]");
