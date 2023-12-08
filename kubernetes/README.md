@@ -1,4 +1,4 @@
-# Cloud HPC
+# Kubernetes
 
 UM-Bridge provides a kubernetes-based solution for running any UM-Bridge model container on cloud platforms at HPC scale.
 
