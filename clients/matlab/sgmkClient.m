@@ -1,8 +1,8 @@
 clear
 
 % Analytic-gaussian-mixture. Use the sparse grids matlab kit as a high-dimensional quadrature tool to compute the
-% integral of the posterior density defined in the benchmark. The problem is a bit challenging so even a poor result is
-% ok, this is just for testing the client. The pdfs in the benchmark are not normalized so the integral should be
+% integral of the posterior density function (pdf) defined in the benchmark. The problem is a bit challenging so even a poor result is
+% ok, this is just for testing the client. The pdfs in the benchmark is not normalized so the integral should be
 % around 3
 
 % add the Sparse Grids Matlab Kit to your path
@@ -35,17 +35,21 @@ w=7;
 %      b  d ];
 domain = [-5.5 -5;  
            5    5.5];
-knots={@(n) knots_CC(n,domain(1,1),domain(2,1),'nonprob'), @(n) knots_CC(n,domain(1,2),domain(2,2),'nonprob')};
-S=create_sparse_grid(N,w,knots,@lev2knots_doubling); 
-Sr=reduce_sparse_grid(S); 
-f_evals=evaluate_on_sparse_grid(f,Sr); 
+knots = {@(n) knots_CC(n,domain(1,1),domain(2,1),'nonprob'), @(n) knots_CC(n,domain(1,2),domain(2,2),'nonprob')};
+S = create_sparse_grid(N,w,knots,@lev2knots_doubling); 
+Sr = reduce_sparse_grid(S); 
+f_evals = evaluate_on_sparse_grid(f,Sr); 
 
 % from here on, do whatever UQ analysis you want with the values contained in f_evals. Here we just check that 
-% the pdf integrates to 3 (the benchmark is not normalized). We also plot the sparse grids interpolant of the
-% function in the benchmark
+% the pdf integrates to 3 (the benchmark is not normalized). Note that the values returned by the container
+% and stored in f_evals are actually the log-posterior, so we need to take their exponent before computing the integral
+
+Ev = quadrature_on_sparse_grid(exp(f_evals),Sr)
+
+
+% We also plot the sparse grids interpolant of the function in the benchmark
 figure
 plot_sparse_grids_interpolant(S,Sr,domain,exp(f_evals),'nb_plot_pts',80)
 figure
 plot_sparse_grids_interpolant(S,Sr,domain,f_evals,'with_f_values')
 
-Ev = quadrature_on_sparse_grid(exp(f_evals),Sr)
