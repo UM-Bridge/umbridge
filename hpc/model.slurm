@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --partition=shared
+#SBATCH --partition=devel
 #SBATCH --ntasks=1
 #SBATCH --time=00:10:00
 #SBATCH --mem=1gb
 #SBATCH --output=./sub-jobs/%j.out
-#SBATCH --error=./sub-jobs/%j.out
+#SBATCH --error=./sub-jobs/%j.err
 
 
 module load python
