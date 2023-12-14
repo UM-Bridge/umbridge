@@ -7,8 +7,6 @@
 #SBATCH --error=./sub-jobs/%j.err
 
 
-module load python
-
 # start the server named "server"
 server_file="./server" # Assume your server files are placed in the project root directory, named "server"
 
@@ -34,7 +32,7 @@ export PORT=$port
 
 mkdir -p ./urls
 
-python $server_file &
+$server_file &
 
 while ! curl -s "http://$(hostname):$port/Info" > /dev/null; do
 	sleep 1
