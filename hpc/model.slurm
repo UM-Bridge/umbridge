@@ -4,6 +4,8 @@
 #SBATCH --time=00:10:00
 #SBATCH --mem=1gb
 #SBATCH --output=./sub-jobs/%j.out
+#SBATCH --error=./sub-jobs/%j.err
+
 
 # start the server named "server"
 server_file="./server" # Assume your server files are placed in the project root directory, named "server"
@@ -29,7 +31,14 @@ port=$(get_avaliable_port)
 export PORT=$port
 
 mkdir -p ./urls
+
+$server_file &
+
+while ! curl -s "http://$(hostname):$port/Info" > /dev/null; do
+	sleep 1
+done
+
 echo "http://$(hostname):$port" > ./urls/url-$SLURM_JOB_ID.txt # send the url to load-balancer
 
-$server_file
+sleep infinity
 
