@@ -22,9 +22,21 @@ std::string get_hostname() {
     return std::string(hostname);
 }
 
+const std::vector<std::string> get_model_names() {
+    // Setup HyperQueue server
+    std::system("hq server start &");
+    sleep(1); // Workaround: give the HQ server enough time to start.
+
+    // Create allocation queue
+    std::system("hq_scripts/allocation_queue.sh");
+
+    HyperQueueJob hq_job("", false); // Don't start a client.
+
+    return umbridge::SupportedModels(hq_job.server_url);
+}
+
 int main(int argc, char *argv[])
 {
-
     create_directory_if_not_existing("urls");
     create_directory_if_not_existing("sub-jobs");
 
@@ -41,15 +53,8 @@ int main(int argc, char *argv[])
         port = atoi(port_cstr);
     }
 
-    // Start: Instaltialize multiple LB classes for multiple models on the regular server
-
-    // start a SLURM job for single request
-    const std::string job_id = submitJob("sbatch model.slurm");
-    const std::string server_url = readUrl("./urls/url-" + job_id + ".txt"); // read server url from txt file
-    // May use $SLURM_LOCALID in a .slurm file later
-    std::cout << "Hosting sub-server at : " << server_url << std::endl;
-    // List supported models
-    std::vector<std::string> model_names = umbridge::SupportedModels(server_url);
+    // Initialize load balancer for each available model on the model server.
+    const std::vector<std::string> model_names = get_model_names();
 
     std::vector<LoadBalancer> LB_vector;
     for (auto model_name : model_names)
@@ -58,9 +63,7 @@ int main(int argc, char *argv[])
         LB_vector.emplace_back(LoadBalancer{model_name});
     }
 
-    // End: Instaltialize multiple LB classes for multiple models on the regular server
-
-    // Create a new vector of pointers to LB_vector
+    // umbridge::serveModels currently only accepts raw pointers.
     std::vector<umbridge::Model *> LB_ptr_vector(LB_vector.size());
     std::transform(LB_vector.begin(), LB_vector.end(), LB_ptr_vector.begin(),
                    [](LoadBalancer& obj) { return &obj; });
