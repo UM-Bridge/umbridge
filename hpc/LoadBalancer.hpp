@@ -239,15 +239,18 @@ std::string submitHQJob()
 class HyperQueueJob
 {
 public:
-    HyperQueueJob(std::string model_name = "forward")
+    HyperQueueJob(std::string model_name, bool start_client=true)
     {
         job_id = submitHQJob();
 
         // Get the server URL
-        const std::string server_url = readUrl("./urls/url-" + job_id + ".txt");
+        server_url = readUrl("./urls/url-" + job_id + ".txt");
 
         // Start a client, using unique pointer
-        client_ptr = std::make_unique<umbridge::HTTPModel>(server_url, model_name); // always uses the model "forward"
+        if(start_client)
+        {
+            client_ptr = std::make_unique<umbridge::HTTPModel>(server_url, model_name);
+        }
     }
 
     ~HyperQueueJob()
@@ -259,6 +262,7 @@ public:
         std::system(("rm ./urls/url-" + job_id + ".txt").c_str());
     }
 
+    std::string server_url;
     std::unique_ptr<umbridge::HTTPModel> client_ptr;
 
 private:
@@ -269,7 +273,7 @@ private:
 class LoadBalancer : public umbridge::Model
 {
 public:
-    LoadBalancer(std::string name = "forward") : umbridge::Model(name)
+    LoadBalancer(std::string name) : umbridge::Model(name)
     {
         // Setup HyperQueue server
         std::system("hq server start &");
@@ -281,19 +285,19 @@ public:
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->GetInputSizes(config_json);
     }
 
     std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->GetOutputSizes(config_json);
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->Evaluate(inputs, config_json);
     }
 
@@ -303,7 +307,7 @@ public:
                                  const std::vector<double> &sens,
                                  json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->Gradient(outWrt, inWrt, inputs, sens, config_json);
     }
 
@@ -313,7 +317,7 @@ public:
                                       const std::vector<double> &vec,
                                       json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
     }
 
@@ -325,28 +329,28 @@ public:
                                      const std::vector<double> &vec,
                                      json config_json = json::parse("{}"))
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
     }
 
     bool SupportsEvaluate() override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->SupportsEvaluate();
     }
     bool SupportsGradient() override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->SupportsGradient();
     }
     bool SupportsApplyJacobian() override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->SupportsApplyJacobian();
     }
     bool SupportsApplyHessian() override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->SupportsApplyHessian();
     }
 };
