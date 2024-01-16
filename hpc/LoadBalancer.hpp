@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <tuple>
 #include <memory>
+#include <filesystem>
 #include "lib/umbridge.h"
 
 // run and get the result of command
@@ -29,21 +30,13 @@ std::string getCommandOutput(const std::string command)
     return output;
 }
 
-// Check for every 100 ms, wait for maximum 20 second
-bool waitForFile(const std::string &filename, int time_out = 20)
+// wait until file is created
+bool waitForFile(const std::string &filename)
 {
-    auto start_time = std::chrono::steady_clock::now();
-    auto timeout = std::chrono::seconds(time_out); // wait for maximum 10 seconds
-
-    const std::string command = "while [ ! -f " + filename + " ]; do sleep 0.1; done";
-    // std::cout << "Waiting for file: " << command << std::endl;
-    std::system(command.c_str());
-    auto end_time = std::chrono::steady_clock::now();
-
-    if (end_time - start_time > timeout)
-    {
-        std::cerr << "Timeout reached waiting for file " << filename << std::endl;
-        return false;
+    // Check if the file exists
+    while (!std::filesystem::exists(filename)) {
+        // If the file doesn't exist, wait for a certain period
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     return true;
@@ -116,14 +109,14 @@ std::string submitHQJob()
 
         ++i;
         std::cout << "Waiting for job " << job_id << " to start." << std::endl;
-    } while (waitForHQJobState(job_id, "RUNNING") == false && i < 3 && waitForFile("./urls/url-" + job_id + ".txt", 10) == false);
+    } while (waitForHQJobState(job_id, "RUNNING") == false && i < 3 && waitForFile("./urls/url-" + job_id + ".txt") == false);
     // Wait for the HQ Job to start
     // Also wait until job is running and url file is written
     // Try maximum 3 times
 
     std::cout << "Job " << job_id << " started." << std::endl;
     // Check if the job is running
-    if (waitForHQJobState(job_id, "RUNNING") == false || waitForFile("./urls/url-" + job_id + ".txt", 10) == false)
+    if (waitForHQJobState(job_id, "RUNNING") == false || waitForFile("./urls/url-" + job_id + ".txt") == false)
     {
         std::cout << "Submit job failure." << std::endl;
         exit(-1);
