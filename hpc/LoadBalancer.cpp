@@ -16,6 +16,14 @@ void create_directory_if_not_existing(std::string directory) {
     }
 }
 
+void clear_url(std::string directory) {
+    for (auto& file : std::filesystem::directory_iterator(directory)) {
+        if (std::regex_match(file.path().filename().string(), std::regex("url-\\d+\\.txt"))) {
+            std::filesystem::remove(file);
+        }
+    }
+}
+
 std::string get_hostname() {
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
@@ -39,6 +47,8 @@ int main(int argc, char *argv[])
 {
     create_directory_if_not_existing("urls");
     create_directory_if_not_existing("sub-jobs");
+    clear_url("urls");
+    std::system("hq server stop &> /dev/null");
 
     // Read environment variables for configuration
     char const *port_cstr = std::getenv("PORT");
