@@ -97,31 +97,21 @@ std::string submitHQJob()
 {
     std::string hq_command = "hq submit --output-mode=quiet hq_scripts/job.sh";
 
-    std::string job_id;
-    int i = 0;
-    do
-    {
-        job_id = getCommandOutput(hq_command);
+    std::string job_id = getCommandOutput(hq_command);
 
-        // Delete the line break
-        if (!job_id.empty())
-            job_id.pop_back();
+    // Delete the line break
+    if (!job_id.empty())
+        job_id.pop_back();
 
-        ++i;
-        std::cout << "Waiting for job " << job_id << " to start." << std::endl;
-    } while (waitForHQJobState(job_id, "RUNNING") == false && i < 3 && waitForFile("./urls/url-" + job_id + ".txt") == false);
+    std::cout << "Waiting for job " << job_id << " to start." << std::endl;
+    
     // Wait for the HQ Job to start
+    waitForHQJobState(job_id, "RUNNING"); 
+
     // Also wait until job is running and url file is written
-    // Try maximum 3 times
+    waitForFile("./urls/url-" + job_id + ".txt");
 
     std::cout << "Job " << job_id << " started." << std::endl;
-    // Check if the job is running
-    if (waitForHQJobState(job_id, "RUNNING") == false || waitForFile("./urls/url-" + job_id + ".txt") == false)
-    {
-        std::cout << "Submit job failure." << std::endl;
-        exit(-1);
-    }
-    std::cout << "Job " << job_id << " running." << std::endl;
 
     return job_id;
 }
