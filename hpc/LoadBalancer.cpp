@@ -31,13 +31,6 @@ std::string get_hostname() {
 }
 
 const std::vector<std::string> get_model_names() {
-    // Setup HyperQueue server
-    std::system("hq server start &");
-    sleep(1); // Workaround: give the HQ server enough time to start.
-
-    // Create allocation queue
-    std::system("hq_scripts/allocation_queue.sh");
-
     HyperQueueJob hq_job("", false); // Don't start a client.
 
     return umbridge::SupportedModels(hq_job.server_url);
@@ -49,6 +42,12 @@ int main(int argc, char *argv[])
     create_directory_if_not_existing("sub-jobs");
     clear_url("urls");
     std::system("hq server stop &> /dev/null");
+
+    std::system("hq server start &");
+    sleep(1); // Workaround: give the HQ server enough time to start.
+
+    // Create HQ allocation queue
+    std::system("hq_scripts/allocation_queue.sh");
 
     // Read environment variables for configuration
     char const *port_cstr = std::getenv("PORT");

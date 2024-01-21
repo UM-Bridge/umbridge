@@ -153,15 +153,7 @@ private:
 class LoadBalancer : public umbridge::Model
 {
 public:
-    LoadBalancer(std::string name) : umbridge::Model(name)
-    {
-        // Setup HyperQueue server
-        std::system("hq server start &");
-        sleep(1); // Workaround: give the HQ server enough time to start.
-
-        // Create allocation queue
-        std::system("hq_scripts/allocation_queue.sh");
-    }
+    LoadBalancer(std::string name) : umbridge::Model(name) {}
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override
     {
