@@ -228,6 +228,7 @@ Note that `webwrite` handles all HTTP statuses internally, and is unable to filt
 The Julia integration can be installed using Julia's builtin package manager Pkg
 
 ```
+import Pkg
 Pkg.add("UMBridge")
 ```
 
