@@ -9,6 +9,7 @@
 #include <limits.h>
 
 #include "lib/umbridge.h"
+#include "HPCIO.hpp"
 
 void create_directory_if_not_existing(std::string directory) {
     if (!std::filesystem::is_directory(directory) || !std::filesystem::exists(directory)) {
@@ -41,9 +42,24 @@ void launch_hq_with_alloc_queue() {
 }
 
 const std::vector<std::string> get_model_names() {
-    HyperQueueJob hq_job("", false); // Don't start a client.
 
-    return umbridge::SupportedModels(hq_job.server_url);
+    std::string filename_input = "hpcio-0-input.txt";
+    std::string filename_output = "hpcio-0-output.txt";
+
+    FileWriter writer(filename_input);
+    writer.writeString("SupportedModels");
+    writer.close();
+
+    std::system("sbatch --export=HPCIO_JOB_ID=0 HPCIO.slurm");
+
+    waitForFile(filename_output);
+
+    FileReader reader(filename_output);
+    std::vector<std::string> model_names = reader.readVectorString();
+    reader.close();
+    std::filesystem::remove(filename_input);
+    std::filesystem::remove(filename_output);
+    return model_names;
 }
 
 int main(int argc, char *argv[])
@@ -52,7 +68,7 @@ int main(int argc, char *argv[])
     create_directory_if_not_existing("sub-jobs");
     clear_url("urls");
 
-    launch_hq_with_alloc_queue();
+    //launch_hq_with_alloc_queue();
 
     // Read environment variables for configuration
     char const *port_cstr = std::getenv("PORT");
@@ -69,6 +85,12 @@ int main(int argc, char *argv[])
 
     // Initialize load balancer for each available model on the model server.
     const std::vector<std::string> model_names = get_model_names();
+
+    std::cout << "Found " << model_names.size() << " models on the model server." << std::endl;
+    for (auto model_name : model_names)
+    {
+        std::cout << "Model: " << model_name << std::endl;
+    }
 
     std::vector<LoadBalancer> LB_vector;
     for (auto model_name : model_names)

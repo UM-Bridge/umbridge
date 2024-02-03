@@ -8,6 +8,8 @@
 #include <memory>
 #include <filesystem>
 #include "lib/umbridge.h"
+#include "HPCIO.hpp"
+#include <atomic>
 
 // run and get the result of command
 std::string getCommandOutput(const std::string command)
@@ -152,25 +154,90 @@ private:
 
 class LoadBalancer : public umbridge::Model
 {
+
+    static std::atomic<int> job_id_counter;
+
 public:
     LoadBalancer(std::string name) : umbridge::Model(name) {}
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override
-    {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->GetInputSizes(config_json);
+    {        
+        int job_id = job_id_counter++;
+
+        // Write the inputs to a file
+        std::string filename = "hpcio-" + std::to_string(job_id) + "-input.txt";
+        FileWriter writer(filename);
+        writer.writeString("GetInputSizes");
+        writer.writeString(name);
+        writer.close();
+
+
+        std::string cmd = "sbatch --export=HPCIO_JOB_ID=" + std::to_string(job_id) + " HPCIO.slurm";
+        std::system(cmd.c_str());
+
+        std::string output_filename = "hpcio-" + std::to_string(job_id) + "-output.txt";
+        waitForFile(output_filename);
+
+        // Read the output file
+        FileReader reader(output_filename);
+        std::vector<std::size_t> sizes = reader.readVectorSizeT();
+        reader.close();
+        //std::filesystem::remove(filename);
+        //std::filesystem::remove(output_filename);
+        return sizes;
     }
 
     std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->GetOutputSizes(config_json);
+        int job_id = job_id_counter++;
+
+        // Write the inputs to a file
+        std::string filename = "hpcio-" + std::to_string(job_id) + "-input.txt";
+        FileWriter writer(filename);
+        writer.writeString("GetOutputSizes");
+        writer.writeString(name);
+        writer.close();
+
+        std::string cmd = "sbatch --export=HPCIO_JOB_ID=" + std::to_string(job_id) + " HPCIO.slurm";
+        std::system(cmd.c_str());
+
+        std::string output_filename = "hpcio-" + std::to_string(job_id) + "-output.txt";
+        waitForFile(output_filename);
+
+        // Read the output file
+        FileReader reader(output_filename);
+        std::vector<std::size_t> sizes = reader.readVectorSizeT();
+        reader.close();
+        //std::filesystem::remove(filename);
+        //std::filesystem::remove(output_filename);
+        return sizes;
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->Evaluate(inputs, config_json);
+        int job_id = job_id_counter++;
+
+        // Write the inputs to a file
+        std::string filename = "hpcio-" + std::to_string(job_id) + "-input.txt";
+        FileWriter writer(filename);
+        writer.writeString("Evaluate");
+        writer.writeString(name);
+        writer.writeVectorVectorDouble(inputs);
+        writer.close();
+
+        std::string cmd = "sbatch --export=HPCIO_JOB_ID=" + std::to_string(job_id) + " HPCIO.slurm";
+        std::system(cmd.c_str());
+
+        std::string output_filename = "hpcio-" + std::to_string(job_id) + "-output.txt";
+        waitForFile(output_filename);
+
+        // Read the output file
+        FileReader reader(output_filename);
+        std::vector<std::vector<double>> outputs = reader.readVectorVectorDouble();
+        reader.close();
+        //std::filesystem::remove(filename);
+        //std::filesystem::remove(output_filename);
+        return outputs;
     }
 
     std::vector<double> Gradient(unsigned int outWrt,
@@ -179,8 +246,8 @@ public:
                                  const std::vector<double> &sens,
                                  json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        std::cerr << "Gradient is not supported by HPCIO" << std::endl;
+        return {};
     }
 
     std::vector<double> ApplyJacobian(unsigned int outWrt,
@@ -189,8 +256,8 @@ public:
                                       const std::vector<double> &vec,
                                       json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+        std::cerr << "ApplyJacobian is not supported by HPCIO" << std::endl;
+        return {};
     }
 
     std::vector<double> ApplyHessian(unsigned int outWrt,
@@ -201,28 +268,26 @@ public:
                                      const std::vector<double> &vec,
                                      json config_json = json::parse("{}"))
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+        std::cerr << "ApplyHessian is not supported by HPCIO" << std::endl;
+        return {};
     }
 
     bool SupportsEvaluate() override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->SupportsEvaluate();
+        return true; // TODO: Query this from model
     }
     bool SupportsGradient() override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->SupportsGradient();
+        return false; // TODO: Query this from model
     }
     bool SupportsApplyJacobian() override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->SupportsApplyJacobian();
+        return false; // TODO: Query this from model
     }
     bool SupportsApplyHessian() override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->SupportsApplyHessian();
+        return false; // TODO: Query this from model
     }
 };
+
+std::atomic<int> LoadBalancer::job_id_counter{1};
