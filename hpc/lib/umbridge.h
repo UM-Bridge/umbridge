@@ -3,7 +3,7 @@
 
 // Increase timeout to allow for long-running models.
 // This should be (to be on the safe side) significantly greater than the maximum time your model may take
-#define CPPHTTPLIB_READ_TIMEOUT_SECOND 60 * 60
+#define CPPHTTPLIB_READ_TIMEOUT_SECOND 7 * 24 * 60 * 60
 
 #include <string>
 #include <vector>
