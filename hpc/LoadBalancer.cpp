@@ -67,6 +67,13 @@ int main(int argc, char *argv[])
         port = atoi(port_cstr);
     }
 
+    char const *delay_cstr = std::getenv("HQ_SUBMIT_DELAY_MS");
+    if (delay_cstr != NULL)
+    {
+        hq_submit_delay_ms = atoi(delay_cstr);
+    }
+    std::cout << "HQ_SUBMIT_DELAY_MS set to " << hq_submit_delay_ms << std::endl;
+
     // Initialize load balancer for each available model on the model server.
     const std::vector<std::string> model_names = get_model_names();
 

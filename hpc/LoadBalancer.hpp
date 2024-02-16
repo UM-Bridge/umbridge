@@ -65,56 +65,8 @@ std::string readUrl(const std::string &filename)
     return url;
 }
 
-// state = ["WAITING", "RUNNING", "FINISHED", "CANCELED"]
-bool waitForHQJobState(const std::string &job_id, const std::string &state = "COMPLETED")
-{
-    const std::string command = "hq job info " + job_id + " | grep State | awk '{print $4}'";
-    // std::cout << "Checking runtime: " << command << std::endl;
-    std::string job_status;
-
-    do
-    {
-        job_status = getCommandOutput(command);
-
-        // Delete the line break
-        if (!job_status.empty())
-            job_status.pop_back();
-
-        // Don't wait if there is an error or the job is ended
-        if (job_status == "" || (state != "FINISHED" && job_status == "FINISHED") || job_status == "FAILED" || job_status == "CANCELED")
-        {
-            std::cerr << "Wait for job status failure, status : " << job_status << std::endl;
-            return false;
-        }
-        // std::cout<<"Job status: "<<job_status<<std::endl;
-        sleep(1);
-    } while (job_status != state);
-
-    return true;
-}
-
-std::string submitHQJob()
-{
-    std::string hq_command = "hq submit --output-mode=quiet hq_scripts/job.sh";
-
-    std::string job_id = getCommandOutput(hq_command);
-
-    // Delete the line break
-    if (!job_id.empty())
-        job_id.pop_back();
-
-    std::cout << "Waiting for job " << job_id << " to start." << std::endl;
-    
-    // Wait for the HQ Job to start
-    waitForHQJobState(job_id, "RUNNING"); 
-
-    // Also wait until job is running and url file is written
-    waitForFile("./urls/url-" + job_id + ".txt");
-
-    std::cout << "Job " << job_id << " started." << std::endl;
-
-    return job_id;
-}
+std::mutex job_submission_mutex;
+int hq_submit_delay_ms = 0;
 
 class HyperQueueJob
 {
@@ -146,6 +98,62 @@ public:
     std::unique_ptr<umbridge::HTTPModel> client_ptr;
 
 private:
+
+    std::string submitHQJob()
+    {
+        if (hq_submit_delay_ms) {
+            std::lock_guard<std::mutex> lock(job_submission_mutex);
+            std::this_thread::sleep_for(std::chrono::milliseconds(hq_submit_delay_ms));
+        }
+
+        std::string hq_command = "hq submit --output-mode=quiet hq_scripts/job.sh";
+        std::string job_id = getCommandOutput(hq_command);
+
+        // Delete the line break
+        if (!job_id.empty())
+            job_id.pop_back();
+
+        std::cout << "Waiting for job " << job_id << " to start." << std::endl;
+
+        // Wait for the HQ Job to start
+        waitForHQJobState(job_id, "RUNNING");
+
+        // Also wait until job is running and url file is written
+        waitForFile("./urls/url-" + job_id + ".txt");
+
+        std::cout << "Job " << job_id << " started." << std::endl;
+
+        return job_id;
+    }
+
+    // state = ["WAITING", "RUNNING", "FINISHED", "CANCELED"]
+    bool waitForHQJobState(const std::string &job_id, const std::string &state)
+    {
+        const std::string command = "hq job info " + job_id + " | grep State | awk '{print $4}'";
+        // std::cout << "Checking runtime: " << command << std::endl;
+        std::string job_status;
+
+        do
+        {
+            job_status = getCommandOutput(command);
+
+            // Delete the line break
+            if (!job_status.empty())
+                job_status.pop_back();
+
+            // Don't wait if there is an error or the job is ended
+            if (job_status == "" || (state != "FINISHED" && job_status == "FINISHED") || job_status == "FAILED" || job_status == "CANCELED")
+            {
+                std::cerr << "Wait for job status failure, status : " << job_status << std::endl;
+                return false;
+            }
+
+            sleep(1);
+        } while (job_status != state);
+
+        return true;
+    }
+
     std::string job_id;
 };
 
