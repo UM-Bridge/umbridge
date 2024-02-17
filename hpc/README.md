@@ -1,7 +1,6 @@
 # README
 
-This load balancer allows any UM-Bridge client to request model evaluations from many parallel instances of any numerical model running on an HPC system.
-
+This load balancer allows any UM-Bridge client to request model evaluations from many parallel instances of a UM-Bridge model server running on an HPC system. To the client, it behaves like a regular UM-Bridge server. When it receives model evaluation requests, it will adaptively spawn model server instances on the HPC system, and forward evaluation requests to them. To the model server, the load balancer therefore appears as a regular UM-Bridge client.
 
 ## Installation
 
