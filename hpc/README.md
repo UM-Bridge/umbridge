@@ -1,59 +1,71 @@
 # README
 
-This load balancer allows any UM-Bridge client to control many parallel instances of any numerical model running on an HPC system.
-
-## File descriptions
-
-- `LoadBalancer.hpp`
-
-  The main header file that implements the load balancer as a C++ class `LoadBalancer`.
-
-- `LoadBalancer.cpp`
-
-  Load balancer executable.
-
-- `LoadBalancer.slurm`
-
-  A slurm configuration file, which is used to start a LoadBalancer on a compute node.
-
-- `model.slurm`
-
-  A slurm configuration file, which is used to start a slurm job running a model server on a compute node.
+This load balancer allows any UM-Bridge client to request model evaluations from many parallel instances of any numerical model running on an HPC system.
 
 
-## How to start the load balancer
+## Installation
 
->The LoadBalancer server is supposed to run at login node, but it can also run at computing node.
+1. **Building the load balancer**
+  
+   Clone the UM-Bridge repository.
+ 
+   ```
+   git clone https://github.com/UM-Bridge/umbridge.git
+   ```
+   
+   Then navigate to the `hpc` directory.
 
-1. Load module that is necessary to compile `cpp` files
-> e.g. On Helix it's `module load compiler/gnu`
+   ```
+   cd umbridge/hpc
+   ```
+   
+   Finally, compile the load balancer. Depending on your HPC system, you likely have to load a module providing a recent c++ compiler.
 
-2. (**Optional**) Set the port of load balancer: `export PORT=4243`
-> Sometimes the default port 4242 of the login node is occupied.
+   ```
+   make
+   ```
 
-3. Compile and run the server
+2. **Downloading HyperQueue**
+   
+   Download HyperQueue from the most recent release at https://github.com/It4innovations/hyperqueue/releases and place the `hq` binary in the `hpc` directory next to the load balancer.
 
-    - Compile the load balancer: `make`
+## Usage
 
-    - Prepare a model server. Specify the path of your model server file in `model.slurm`, as the variable `server_file`.
-    > You can also specify slurm parameters in the file `regular-server.slurm`.
-    - Run the load balancer: `./load-balancer`
+The load balancer is primarily intended to run on a login node.
 
-    > You can specify slurm parameters in the file `LoadBalancer.slurm`
-    > The the LoadBalancer server will occupy a terminal, so you need to start a new one if you want to run a client on the same node.
+1. **Configure resource allocation**
 
-> The Load Balancer will submit a new SLURM job whenever it receives an evaluation request, and cancel the SLURM job when the evaluation is finished.
-> The Load Balancer will listen to the hostname of node instead of localhost.
-> The regular server in SLURM job will also listen to the hostname and use a random port that is not in use.
+   The load balancer instructs HyperQueue to allocate batches of resources on the HPC system, depending on demand for model evaluations. HyperQueue will submit SLURM or PBS jobs on the HPC system when needed, scheduling requested model runs within those jobs. When demand decreases, HyperQueue will cancel some of those jobs again.
+  
+   Adapt the configuration in ``hpc/hq_scripts/allocation_queue.sh`` to your needs.
 
-## How to connect a client to the LoadBalancer
+   For example, when running a very fast UM-Bridge model on an HPC cluster, it is still advisable to choose medium-sized jobs for resource allocation. That will avoid submitting large numbers of jobs to the HPC system's scheduler, while HyperQueue itself will handle large numbers of small model runs within those jobs.
 
-A client is supposed to run on the login node or at your own device, since it does not perform intensive calculations.
+2. **Configure model job**
 
-Clients running directly on the login node may connect to the load balancer via `localhost.
+   Adapt the configuration in ``hpc/hq_scripts/job.sh`` to your needs:
+   * Specify what UM-Bridge model server to run,
+   * set `#HQ` variables at the top to specify what resources each instance should receive,
+   * and set the directory of your load balancer binary in `load_balancer_dir`.
 
-Alternatively, you can create an SSH tunnel to the login node, and then run the client on your own device. For example:
+   Importantly, the UM-Bridge model server must serve its models at the port specified by the environment variable `PORT`. The value of `PORT` is automatically determined by `job.sh`, avoiding potential conflicts if multiple servers run on the same compute node.
 
+
+4. **Run load balancer**
+
+   Navigate to the `hpc` directory and execute the load balancer.
+
+   ```
+   ./load-balancer
+   ```
+
+5. **Connect from client**
+
+   Once running, you can connect to the load balancer from any UM-Bridge client on the login node via `http://localhost:4242`. To the client, it will appear like any other UM-Bridge server, except that it can process concurrent evaluation requests.
+
+## (Optional) Running clients on your own machine while offloading runs to HPC
+
+Alternatively, a client may run on your own device. In order to connect UM-Bridge clients on your machine to the login node, you can create an SSH tunnel to the HPC system.
 
 ```
     ssh <username>@hpc.cluster.address -N -f -L 4242:<server hostname>:4242
@@ -62,10 +74,4 @@ Alternatively, you can create an SSH tunnel to the login node, and then run the 
     # -f : request ssh to go to the background once the ssh connection has been established
 ```
 
-While the SSH tunnel is running, you can run the client on your own device, and connect it to the load balancer via `localhost:4242`.
-
-## Example
-
-An example server is in the folder `test/MultiplyBy2`. The server `minimal-server.cpp` take the input written in `client.py`, multiply them by 2 and then return.
-
-Currently, it will run and test 4 models in parallel, but the LoadBalancer server will process them in sequence.
+While the SSH tunnel is running, you can run the client on your own device, and connect it to the load balancer via `http://localhost:4242`.
