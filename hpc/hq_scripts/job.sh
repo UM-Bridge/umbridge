@@ -1,6 +1,7 @@
 #! /bin/bash
 
 #HQ --resource model=1
+#HQ --cpus=1
 #HQ --time-request=1m
 #HQ --time-limit=2m
 #HQ --stdout none
