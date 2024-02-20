@@ -144,3 +144,74 @@ muq::Modeling::serveModPiece(mod_piece, "0.0.0.0", 4242);
 ```
 
 See MUQ's documentation for more in-depth documentation on model graphs and UM-Bridge integration.
+
+## CUQIpy server
+
+CUQIpy stands for Computational Uncertainty Quantification for Inverse Problems in python. It’s a robust Python package designed for modeling and solving inverse problems using Bayesian inference. Here’s what it brings to the table:
+
+- A straightforward high-level interface for UQ analysis.
+
+- Complete control over the models and methods.
+
+- An array of predefined distributions, samplers, models, and test problems.
+
+- Easy extendability for your unique needs.
+
+A number of CUQIpy Plugins are available as separate packages that expand the functionality of CUQIpy.
+
+### CUQIpy-UMBridge
+
+The CUQIpy-Umbridge plugin allows you to serve CUQIpy models and distributions via UM-Bridge.
+
+The plugin can be installed from pip
+
+```
+pip install cuqipy-umbridge
+```
+
+This installs CUQIpy and Umbridge as dependencies.
+
+### Examples
+
+Serving a CUQIpy model via UM-Bridge is as simple as:
+
+```python
+import cuqi
+import cuqipy_umbridge
+
+# This is the forward model to serve
+# This can be changed to any other CUQIpy forward model
+# Current example is the forward model of a 1D deconvolution test problem
+
+model = cuqi.testproblem.Deconvolution1D().model
+
+# Serve the distribution as UM-Bridge model
+# Name will be name of CUQIpy class for distribution
+# In this case "LinearModel"
+cuqipy_umbridge.server.serve_model(model)
+
+```
+
+
+Serving a CUQIpy distribution via UM-Bridge is as simple as:
+
+```python
+
+import cuqi
+import cuqipy_umbridge
+
+# This is the distribution to serve
+# This can be changed to any other CUQIpy distribution
+# Current example is the posterior of a 1D deconvolution test problem
+
+dist = cuqi.testproblem.Deconvolution1D().posterior
+
+# Serve the distribution as UM-Bridge model
+# Name will be name of CUQIpy class for distribution
+# In this case "Posterior"
+cuqipy_umbridge.server.serve_distribution(dist)
+
+```
+
+
+
