@@ -434,7 +434,7 @@ namespace umbridge {
   }
 
   // Provides access to a model via network
-  void serveModels(std::vector<Model*> models, std::string host, int port, bool enable_parallel = true, bool error_checks = true) {
+  void serveModels(std::vector<Model*> models, std::string host, int port, bool enable_parallel = false, bool error_checks = true) {
 
     httplib::Server svr;
     std::mutex model_mutex; // Ensure the underlying model is only called sequentially
