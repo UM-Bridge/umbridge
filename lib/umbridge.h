@@ -434,18 +434,18 @@ namespace umbridge {
   }
 
   // Provides access to a model via network
-  void serveModels(std::vector<Model*> models, std::string host, int port) {
+  void serveModels(std::vector<Model*> models, std::string host, int port, bool enable_parallel = true, bool error_checks = true) {
 
     httplib::Server svr;
     std::mutex model_mutex; // Ensure the underlying model is only called sequentially
 
     svr.Post("/Evaluate", [&](const httplib::Request &req, httplib::Response &res) {
       json request_body = json::parse(req.body);
-      if (!check_model_exists(models, request_body["name"], res))
+      if (error_checks && !check_model_exists(models, request_body["name"], res))
         return;
       Model& model = get_model_from_name(models, request_body["name"]);
 
-      if (!model.SupportsEvaluate()) {
+      if (error_checks && !model.SupportsEvaluate()) {
         write_unsupported_feature_response(res, "Evaluate");
         return;
       }
@@ -458,13 +458,20 @@ namespace umbridge {
       json empty_default_config;
       json config_json = request_body.value("config", empty_default_config);
 
-      if (!check_input_sizes(inputs, config_json, model, res))
+      if (error_checks && !check_input_sizes(inputs, config_json, model, res))
         return;
 
-      const std::lock_guard<std::mutex> model_lock(model_mutex);
+      std::unique_lock<std::mutex> model_lock(model_mutex, std::defer_lock);
+      if (!enable_parallel) {
+          model_lock.lock();
+      }
       std::vector<std::vector<double>> outputs = model.Evaluate(inputs, config_json);
 
-      if (!check_output_sizes(outputs, config_json, model, res))
+      if (model_lock.owns_lock()) {
+        model_lock.unlock();  // for safety, although should unlock after request finished
+      }
+
+      if (error_checks && !check_output_sizes(outputs, config_json, model, res))
         return;
 
       json response_body;
@@ -478,11 +485,11 @@ namespace umbridge {
 
     svr.Post("/Gradient", [&](const httplib::Request &req, httplib::Response &res) {
       json request_body = json::parse(req.body);
-      if (!check_model_exists(models, request_body["name"], res))
+      if (error_checks && !check_model_exists(models, request_body["name"], res))
         return;
       Model& model = get_model_from_name(models, request_body["name"]);
 
-      if (!model.SupportsGradient()) {
+      if (error_checks && !model.SupportsGradient()) {
         write_unsupported_feature_response(res, "Gradient");
         return;
       }
@@ -500,17 +507,24 @@ namespace umbridge {
       json empty_default_config;
       json config_json = request_body.value("config", empty_default_config);
 
-      if (!check_input_wrt(inWrt, config_json, model, res))
+      if (error_checks && !check_input_wrt(inWrt, config_json, model, res))
         return;
-      if (!check_output_wrt(outWrt, config_json, model, res))
+      if (error_checks && !check_output_wrt(outWrt, config_json, model, res))
         return;
-      if (!check_input_sizes(inputs, config_json, model, res))
+      if (error_checks && !check_input_sizes(inputs, config_json, model, res))
         return;
-      if (!check_sensitivity_size(sens, outWrt, config_json, model, res))
+      if (error_checks && !check_sensitivity_size(sens, outWrt, config_json, model, res))
         return;
 
-      const std::lock_guard<std::mutex> model_lock(model_mutex);
+      std::unique_lock<std::mutex> model_lock(model_mutex, std::defer_lock);
+      if (error_checks_parallel) {
+          model_lock.lock();
+      }
       std::vector<double> gradient = model.Gradient(outWrt, inWrt, inputs, sens, config_json);
+
+      if (model_lock.owns_lock()) {
+        model_lock.unlock();  // for safety, although should unlock after request finished
+      }
 
       json response_body;
       response_body["output"] = gradient;
@@ -520,11 +534,11 @@ namespace umbridge {
 
     svr.Post("/ApplyJacobian", [&](const httplib::Request &req, httplib::Response &res) {
       json request_body = json::parse(req.body);
-      if (!check_model_exists(models, request_body["name"], res))
+      if (error_checks && !check_model_exists(models, request_body["name"], res))
         return;
       Model& model = get_model_from_name(models, request_body["name"]);
 
-      if (!model.SupportsApplyJacobian()) {
+      if (error_checks && !model.SupportsApplyJacobian()) {
         write_unsupported_feature_response(res, "ApplyJacobian");
         return;
       }
@@ -542,17 +556,24 @@ namespace umbridge {
       json empty_default_config;
       json config_json = request_body.value("config", empty_default_config);
 
-      if (!check_input_wrt(inWrt, config_json, model, res))
+      if (error_checks && !check_input_wrt(inWrt, config_json, model, res))
         return;
-      if (!check_output_wrt(outWrt, config_json, model, res))
+      if (error_checks && !check_output_wrt(outWrt, config_json, model, res))
         return;
-      if (!check_input_sizes(inputs, config_json, model, res))
+      if (error_checks && !check_input_sizes(inputs, config_json, model, res))
         return;
-      if (!check_vector_size(vec, inWrt, config_json, model, res))
+      if (error_checks && !check_vector_size(vec, inWrt, config_json, model, res))
         return;
 
-      const std::lock_guard<std::mutex> model_lock(model_mutex);
+      std::unique_lock<std::mutex> model_lock(model_mutex, std::defer_lock);
+      if (!enable_parallel) {
+          model_lock.lock();
+      }
       std::vector<double> jacobian_action = model.ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+
+      if (model_lock.owns_lock()) {
+        model_lock.unlock();  // for safety, although should unlock after request finished
+      }
 
       json response_body;
       response_body["output"] = jacobian_action;
@@ -562,11 +583,11 @@ namespace umbridge {
 
     svr.Post("/ApplyHessian", [&](const httplib::Request &req, httplib::Response &res) {
       json request_body = json::parse(req.body);
-      if (!check_model_exists(models, request_body["name"], res))
+      if (error_checks && !check_model_exists(models, request_body["name"], res))
         return;
       Model& model = get_model_from_name(models, request_body["name"]);
 
-      if (!model.SupportsApplyHessian()) {
+      if (error_checks && !model.SupportsApplyHessian()) {
         write_unsupported_feature_response(res, "ApplyHessian");
         return;
       }
@@ -586,19 +607,26 @@ namespace umbridge {
       json empty_default_config;
       json config_json = request_body.value("config", empty_default_config);
 
-      if (!check_input_wrt(inWrt1, config_json, model, res))
+      if (error_checks && !check_input_wrt(inWrt1, config_json, model, res))
         return;
-      if (!check_input_wrt(inWrt2, config_json, model, res))
+      if (error_checks && !check_input_wrt(inWrt2, config_json, model, res))
         return;
-      if (!check_output_wrt(outWrt, config_json, model, res))
+      if (error_checks && !check_output_wrt(outWrt, config_json, model, res))
         return;
-      if (!check_input_sizes(inputs, config_json, model, res))
+      if (error_checks && !check_input_sizes(inputs, config_json, model, res))
         return;
-      if (!check_sensitivity_size(sens, outWrt, config_json, model, res))
+      if (error_checks && !check_sensitivity_size(sens, outWrt, config_json, model, res))
         return;
 
-      const std::lock_guard<std::mutex> model_lock(model_mutex);
+      std::unique_lock<std::mutex> model_lock(model_mutex, std::defer_lock);
+      if (!enable_parallel) {
+          model_lock.lock();
+      }
       std::vector<double> hessian_action = model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+
+      if (model_lock.owns_lock()) {
+        model_lock.unlock();  // for safety, although should unlock after request finished
+      }
 
       json response_body;
       response_body["output"] = hessian_action;
