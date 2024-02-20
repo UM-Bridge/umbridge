@@ -7,7 +7,7 @@
 #include <tuple>
 #include <memory>
 #include <filesystem>
-#include "lib/umbridge.h"
+#include "../lib/umbridge.h"
 
 // run and get the result of command
 std::string getCommandOutput(const std::string command)

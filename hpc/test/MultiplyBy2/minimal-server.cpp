@@ -3,7 +3,7 @@
 #include <chrono>
 #include <thread>
 
-#include "../../lib/umbridge.h"
+#include "../../../lib/umbridge.h"
 
 class ExampleModel : public umbridge::Model
 {
