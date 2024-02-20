@@ -517,7 +517,7 @@ namespace umbridge {
         return;
 
       std::unique_lock<std::mutex> model_lock(model_mutex, std::defer_lock);
-      if (enable_parallel) {
+      if (!enable_parallel) {
           model_lock.lock();
       }
       std::vector<double> gradient = model.Gradient(outWrt, inWrt, inputs, sens, config_json);
