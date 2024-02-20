@@ -1,4 +1,4 @@
-# Cloud HPC
+# Kubernetes
 
 UM-Bridge provides a kubernetes-based solution for running any UM-Bridge model container on cloud platforms at HPC scale.
 
@@ -80,7 +80,7 @@ kubectl get services --namespace=haproxy-controller
 
 The model instances may be accessed from any UM-Bridge client, and up to `replicas` requests will be handled in parallel.
 
-# Multinode MPI on Cloud HPC
+# Multinode MPI on kubernetes
 
 The instructions above work for any UM-Bridge model container, even ones that are MPI parallel. However, a single container is naturally limited to a single physical node. In order to parallelize across nodes (and therefore across containers) via MPI, the additional steps below are needed.
 
