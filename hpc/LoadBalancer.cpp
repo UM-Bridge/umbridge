@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <limits.h>
 
-#include "lib/umbridge.h"
+#include "../lib/umbridge.h"
 
 void create_directory_if_not_existing(std::string directory) {
     if (!std::filesystem::is_directory(directory) || !std::filesystem::exists(directory)) {
