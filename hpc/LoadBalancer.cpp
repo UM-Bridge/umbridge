@@ -91,5 +91,5 @@ int main(int argc, char *argv[])
 
     std::cout << "Load balancer running on host " << get_hostname()
               << " and bound to 0.0.0.0:" << port << std::endl;
-    umbridge::serveModels(LB_ptr_vector, "0.0.0.0", port, false);
+    umbridge::serveModels(LB_ptr_vector, "0.0.0.0", port, true, false);
 }
