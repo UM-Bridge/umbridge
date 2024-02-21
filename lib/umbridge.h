@@ -434,7 +434,7 @@ namespace umbridge {
   }
 
   // Provides access to a model via network
-  void serveModels(std::vector<Model*> models, std::string host, int port, bool enable_parallel = true, bool error_checks = true) {
+  void serveModels(std::vector<Model*> models, std::string host, int port, bool enable_parallel = false, bool error_checks = true) {
 
     httplib::Server svr;
     std::mutex model_mutex; // Ensure the underlying model is only called sequentially
@@ -517,7 +517,7 @@ namespace umbridge {
         return;
 
       std::unique_lock<std::mutex> model_lock(model_mutex, std::defer_lock);
-      if (error_checks_parallel) {
+      if (!enable_parallel) {
           model_lock.lock();
       }
       std::vector<double> gradient = model.Gradient(outWrt, inWrt, inputs, sens, config_json);
