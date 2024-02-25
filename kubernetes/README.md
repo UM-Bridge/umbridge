@@ -80,11 +80,11 @@ kubectl get services --namespace=haproxy-controller
 
 The model instances may be accessed from any UM-Bridge client, and up to `replicas` requests will be handled in parallel.
 
-# Multinode MPI on kubernetes
+## Multinode MPI on kubernetes
 
 The instructions above work for any UM-Bridge model container, even ones that are MPI parallel. However, a single container is naturally limited to a single physical node. In order to parallelize across nodes (and therefore across containers) via MPI, the additional steps below are needed.
 
-## Step 1: mpi-operator base image
+### Step 1: mpi-operator base image
 
 The multinode MPI configuration makes use of the [mpi-operator](https://github.com/kubeflow/mpi-operator) from kubeflow. This implies that the mode base image has to be constructed via one of the following base images, depending on MPI implementation:
 
@@ -97,7 +97,7 @@ When separating between builder and final image, the corresponding base images m
 - `mpioperator/intel`
 
 
-## Step 2: Deploy mpi-operator
+### Step 2: Deploy mpi-operator
 
 In addition to choosing a suitable base image for the model, the mpi-òperator needs to be deployed on the cluster:
 
@@ -105,7 +105,7 @@ In addition to choosing a suitable base image for the model, the mpi-òperator n
 kubectl apply -f https://raw.githubusercontent.com/kubeflow/mpi-operator/master/deploy/v2beta1/mpi-operator.yaml
 ```
 
-## Step 3: Setting up NFS
+### Step 3: Setting up NFS
 
 The multinode MPI setup mounts a shared (NFS) file system on the `/shared` directory of your model container, replicating a traditional HPC setup. The NFS server is set up via:
 
@@ -129,7 +129,7 @@ Then run:
 kubectl apply -f setup/nfs-pv-pvc.yaml
 ```
 
-## Step 4: Running a job on the new cluster
+### Step 4: Running a job on the new cluster
 
 The job configuration is located in `multinode-mpi-model.yaml`. It is largely analogous to `model.yaml`, except that both launcher and worker containers are configured. The relevant additional config options are:
 
