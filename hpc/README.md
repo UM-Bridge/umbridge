@@ -49,7 +49,7 @@ The load balancer is primarily intended to run on a login node.
 
    Importantly, the UM-Bridge model server must serve its models at the port specified by the environment variable `PORT`. The value of `PORT` is automatically determined by `job.sh`, avoiding potential conflicts if multiple servers run on the same compute node.
 
-   If your job is supposed to span multiple compute nodes via MPI, make sure that you forward the nodes HyperQueue allocates to you in `HQ_NODE_FILE` to MPI. See https://it4innovations.github.io/hyperqueue/stable/jobs/multinode/ for instructions.
+   If your job is supposed to span multiple compute nodes via MPI, make sure that you forward the nodes HyperQueue allocates to you in `HQ_NODE_FILE` to MPI. See [https://it4innovations.github.io/hyperqueue/stable/jobs/multinode/](https://it4innovations.github.io/hyperqueue/stable/jobs/multinode/#running-mpi-tasks) for instructions.
 
 
 4. **Run load balancer**
