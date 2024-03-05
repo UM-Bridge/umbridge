@@ -1,5 +1,9 @@
 #! /bin/bash
 
+# Note: For runs on systems without SLURM, replace the slurm allocator by
+# hq worker start &
+
+
 hq alloc add slurm --time-limit 10m \
                    --idle-timeout 3m \
                    --backlog 1 \
