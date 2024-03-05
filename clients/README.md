@@ -563,3 +563,79 @@ which indeed returns `Ev = 2.9948`, i.e., close to 3 as expected. The script the
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/sgmkClient.m)
 
 
+## CUQIpy client
+
+CUQIpy stands for Computational Uncertainty Quantification for Inverse Problems in python. It’s a robust Python package designed for modeling and solving inverse problems using Bayesian inference. Here’s what it brings to the table:
+
+- A straightforward high-level interface for UQ analysis.
+
+- Complete control over the models and methods.
+
+- An array of predefined distributions, samplers, models, and test problems.
+
+- Easy extendability for your unique needs.
+
+A number of CUQIpy Plugins are available as separate packages that expand the functionality of CUQIpy.
+
+### CUQIpy-UMBridge
+
+The CUQIpy-Umbridge plugin allows you to use UM-Bridge models as a forward model in CUQIpy and UM-Bridge posterior models as distributions in CUQIpy.
+
+The plugin can be installed from pip
+
+```
+pip install cuqipy-umbridge
+```
+
+This installs CUQIpy and Umbridge as dependencies.
+
+### Examples
+
+Given a model server running at `http://localhost:4242`, we can connect to it and use it as a forward model in CUQIpy.
+
+TODO: ADD EXPLICIT MODEL FROM DOCKER IMAGES
+
+```python
+import cuqipy_umbridge
+import numpy as np
+
+# Create CUQIpy forward model
+model = cuqipy_umbridge.client.create_model('http://localhost:4242', 'forward')
+
+# Print type of model and domain and range geometries
+print(model)
+
+# Evaluate the model
+result = model(np.ones(model.domain_dim))
+print(result)
+```
+
+Given a model server running at `http://localhost:4242`, we can connect to it and use it as a posterior model in CUQIpy. 
+
+TODO: ADD EXPLICIT DISTRIBUTION FROM DOCKER IMAGES
+
+```python
+import cuqi
+import cuqipy_umbridge
+import numpy as np
+
+# Create CUQIpy distribution
+dist = cuqipy_umbridge.client.create_distribution('http://localhost:4242', 'posterior')
+
+# Print geometry of distribution
+print(dist)
+
+# Sample distribution using MH sampler
+sampler = cuqi.sampler.MH(dist)
+
+# Sample from distribution (1000 samples with 200 burn-in)
+samples = sampler.sample(Ns=1000, Nb=200)
+
+# Plot trace of samples
+samples.plot_trace()
+```
+
+
+
+
+
