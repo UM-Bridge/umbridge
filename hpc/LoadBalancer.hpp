@@ -71,9 +71,10 @@ int hq_submit_delay_ms = 0;
 class HyperQueueJob
 {
 public:
-    HyperQueueJob(std::string model_name, bool start_client=true)
+    HyperQueueJob(std::string model_name, bool start_client=true, 
+                                          bool force_default_submission_script=false)
     {
-        job_id = submitHQJob();
+        job_id = submitHQJob(model_name, force_default_submission_script);
 
         // Get the server URL
         server_url = readUrl("./urls/url-" + job_id + ".txt");
@@ -98,20 +99,41 @@ public:
     std::unique_ptr<umbridge::HTTPModel> client_ptr;
 
 private:
-
-    std::string submitHQJob()
+    std::string submitHQJob(const std::string &model_name, bool force_default_submission_script=false)
     {
+        // Add optional delay to job submissions to prevent issues in some cases.
         if (hq_submit_delay_ms) {
             std::lock_guard<std::mutex> lock(job_submission_mutex);
             std::this_thread::sleep_for(std::chrono::milliseconds(hq_submit_delay_ms));
         }
+        
+        // Use model specific job script if available, default otherwise.
+        const std::filesystem::path submission_script_dir("./hq_scripts");
+        const std::filesystem::path submission_script_generic("job.sh");
+        const std::filesystem::path submission_script_model_specific("job_" + model_name + ".sh");
 
-        std::string hq_command = "hq submit --output-mode=quiet hq_scripts/job.sh";
+        std::string hq_command = "hq submit --output-mode=quiet ";
+        if (std::filesystem::exists(submission_script_dir / submission_script_model_specific) && !force_default_submission_script)
+        {
+            hq_command += (submission_script_dir / submission_script_model_specific).string();
+        }
+        else if (std::filesystem::exists(submission_script_dir / submission_script_generic)) 
+        {
+            hq_command += (submission_script_dir / submission_script_generic).string();
+        }
+        else
+        {
+            throw std::runtime_error("Job submission script not found: Check that file 'hq_script/job.sh' exists.");
+        }
+
+        // Submit the HQ job and retrieve the HQ job ID.
         std::string job_id = getCommandOutput(hq_command);
 
-        // Delete the line break
+        // Delete the line break.
         if (!job_id.empty())
+        {
             job_id.pop_back();
+        }
 
         std::cout << "Waiting for job " << job_id << " to start." << std::endl;
 

@@ -35,7 +35,8 @@ void launch_hq_with_alloc_queue() {
 }
 
 const std::vector<std::string> get_model_names() {
-    HyperQueueJob hq_job("", false); // Don't start a client.
+    // Don't start a client, always use the default job submission script.
+    HyperQueueJob hq_job("", false, true); 
 
     return umbridge::SupportedModels(hq_job.server_url);
 }
