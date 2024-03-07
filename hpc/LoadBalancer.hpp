@@ -71,6 +71,7 @@ int hq_submit_delay_ms = 0;
 class HyperQueueJob
 {
 public:
+    static std::atomic<int> job_count;
     HyperQueueJob(std::string model_name, bool start_client=true, 
                                           bool force_default_submission_script=false)
     {
@@ -113,6 +114,7 @@ private:
         const std::filesystem::path submission_script_model_specific("job_" + model_name + ".sh");
 
         std::string hq_command = "hq submit --output-mode=quiet ";
+        hq_command += "--priority=" + std::to_string(job_count) + " ";
         if (std::filesystem::exists(submission_script_dir / submission_script_model_specific) && !force_default_submission_script)
         {
             hq_command += (submission_script_dir / submission_script_model_specific).string();
@@ -128,6 +130,8 @@ private:
 
         // Submit the HQ job and retrieve the HQ job ID.
         std::string job_id = getCommandOutput(hq_command);
+        // TODO MUTEX
+        job_count--;
 
         // Delete the line break.
         if (!job_id.empty())

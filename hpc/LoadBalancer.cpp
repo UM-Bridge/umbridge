@@ -41,6 +41,8 @@ const std::vector<std::string> get_model_names() {
     return umbridge::SupportedModels(hq_job.server_url);
 }
 
+std::atomic<int> HyperQueueJob::job_count = 0;
+
 int main(int argc, char *argv[])
 {
     create_directory_if_not_existing("urls");
