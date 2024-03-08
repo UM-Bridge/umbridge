@@ -51,7 +51,6 @@ The load balancer is primarily intended to run on a login node.
 
    If your job is supposed to span multiple compute nodes via MPI, make sure that you forward the nodes HyperQueue allocates to you in `HQ_NODE_FILE` to MPI. See [https://it4innovations.github.io/hyperqueue/stable/jobs/multinode/](https://it4innovations.github.io/hyperqueue/stable/jobs/multinode/#running-mpi-tasks) for instructions.
 
-
 4. **Run load balancer**
 
    Navigate to the `hpc` directory and execute the load balancer.
@@ -63,6 +62,10 @@ The load balancer is primarily intended to run on a login node.
 5. **Connect from client**
 
    Once running, you can connect to the load balancer from any UM-Bridge client on the login node via `http://localhost:4242`. To the client, it will appear like any other UM-Bridge server, except that it can process concurrent evaluation requests.
+
+## (Optional) Varying resource requirements per model (e.g. for multilevel / multifidelity)
+
+If your UM-Bridge server provides multiple models, you can specify different resource requirements for each of them. Define a separate job script ``hpc/hq_scripts/job_<model_name>.sh`` for each model that needs different resources than what you defined in the default ``job.sh``.
 
 ## (Optional) Running clients on your own machine while offloading runs to HPC
 
