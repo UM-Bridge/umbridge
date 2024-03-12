@@ -71,7 +71,7 @@ int hq_submit_delay_ms = 0;
 class HyperQueueJob
 {
 public:
-    static std::atomic<int> job_count;
+    static std::atomic<int32_t> job_count;
     HyperQueueJob(std::string model_name, bool start_client=true, 
                                           bool force_default_submission_script=false)
     {
@@ -130,7 +130,6 @@ private:
 
         // Submit the HQ job and retrieve the HQ job ID.
         std::string job_id = getCommandOutput(hq_command);
-        // TODO MUTEX
         job_count--;
 
         // Delete the line break.
