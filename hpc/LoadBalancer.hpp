@@ -90,7 +90,7 @@ public:
     ~HyperQueueJob()
     {
         // Cancel the SLURM job
-        std::system(("hq job cancel " + job_id).c_str());
+        std::system(("./hq job cancel " + job_id).c_str());
 
         // Delete the url text file
         std::system(("rm ./urls/url-" + job_id + ".txt").c_str());
@@ -113,7 +113,7 @@ private:
         const std::filesystem::path submission_script_generic("job.sh");
         const std::filesystem::path submission_script_model_specific("job_" + model_name + ".sh");
 
-        std::string hq_command = "hq submit --output-mode=quiet ";
+        std::string hq_command = "./hq submit --output-mode=quiet ";
         hq_command += "--priority=" + std::to_string(job_count) + " ";
         if (std::filesystem::exists(submission_script_dir / submission_script_model_specific) && !force_default_submission_script)
         {
@@ -154,7 +154,7 @@ private:
     // state = ["WAITING", "RUNNING", "FINISHED", "CANCELED"]
     bool waitForHQJobState(const std::string &job_id, const std::string &state)
     {
-        const std::string command = "hq job info " + job_id + " | grep State | awk '{print $4}'";
+        const std::string command = "./hq job info " + job_id + " | grep State | awk '{print $4}'";
         // std::cout << "Checking runtime: " << command << std::endl;
         std::string job_status;
 

@@ -4,7 +4,7 @@
 # hq worker start &
 
 
-hq alloc add slurm --time-limit 10m \
+./hq alloc add slurm --time-limit 10m \
                    --idle-timeout 3m \
                    --backlog 1 \
                    --workers-per-alloc 1 \
