@@ -19,7 +19,7 @@ jobs:
 
       - name: Dependencies
         run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y g++ make wget curl tar
+          apt update -qq && DEBIAN_FRONTEND="noninteractive" apt install -yq g++ make wget curl tar
 
       - name: Build load balancer binary
         run: |
