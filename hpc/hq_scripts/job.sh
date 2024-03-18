@@ -37,10 +37,11 @@ load_balancer_dir="/load/balancer/directory" # CHANGE ME!
 
 host=$(hostname -I | awk '{print $1}')
 
-# Wait for model server to start
+echo "Waiting for model server to respond at $host:$port..."
 while ! curl -s "http://$host:$port/Info" > /dev/null; do
     sleep 1
 done
+echo "Model server responded"
 
 # Write server URL to file identified by HQ job ID.
 mkdir -p "$load_balancer_dir/urls"
