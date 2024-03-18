@@ -88,7 +88,7 @@ std::vector<std::vector<double>> inputs {{100.0, 18.0}};
 The input vector can then be passed into the model.
 
 ```
-std::vector<std::vector<double>> outputs = client.Evaluate(input);
+std::vector<std::vector<double>> outputs = client.Evaluate(inputs);
 ```
 
 The output of the model evaluation is a `std::vector<std::vector<double>>` containing the output defined by the model.
