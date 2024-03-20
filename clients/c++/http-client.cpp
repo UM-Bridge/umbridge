@@ -1,5 +1,5 @@
 // Needed for HTTPS
-#define CPPHTTPLIB_OPENSSL_SUPPORT
+//#define CPPHTTPLIB_OPENSSL_SUPPORT
 
 #include "umbridge.h"
 
