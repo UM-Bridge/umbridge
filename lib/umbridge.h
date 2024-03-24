@@ -33,10 +33,10 @@ namespace umbridge
   public:
     Model(std::string name) : name(name) {}
 
-    virtual std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const = 0;
-    virtual std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const = 0;
+    virtual std::vector<std::size_t> GetInputSizes(const json& config_json = json::parse("{}")) const = 0;
+    virtual std::vector<std::size_t> GetOutputSizes(const json& config_json = json::parse("{}")) const = 0;
 
-    virtual std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs,
+    virtual std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs,
                           json config_json = json::parse("{}")) {
       (void)inputs; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("Evaluate was called, but not implemented by model!");
@@ -44,8 +44,8 @@ namespace umbridge
 
     virtual std::vector<double> Gradient(unsigned int outWrt,
                           unsigned int inWrt,
-                          const std::vector<std::vector<double>> &inputs,
-                          const std::vector<double> &sens,
+                          const std::vector<std::vector<double>>& inputs,
+                          const std::vector<double>& sens,
                           json config_json = json::parse("{}")) {
       (void)outWrt; (void)inWrt; (void)inputs; (void)sens; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("Gradient was called, but not implemented by model!");
@@ -53,8 +53,8 @@ namespace umbridge
 
     virtual std::vector<double> ApplyJacobian(unsigned int outWrt,
                               unsigned int inWrt,
-                              const std::vector<std::vector<double>> &inputs,
-                              const std::vector<double> &vec,
+                              const std::vector<std::vector<double>>& inputs,
+                              const std::vector<double>& vec,
                               json config_json = json::parse("{}")) {
       (void)outWrt; (void)inWrt; (void)inputs; (void)vec; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("ApplyJacobian was called, but not implemented by model!");
@@ -63,9 +63,9 @@ namespace umbridge
     virtual std::vector<double> ApplyHessian(unsigned int outWrt,
                               unsigned int inWrt1,
                               unsigned int inWrt2,
-                              const std::vector<std::vector<double>> &inputs,
-                              const std::vector<double> &sens,
-                              const std::vector<double> &vec,
+                              const std::vector<std::vector<double>>& inputs,
+                              const std::vector<double>& sens,
+                              const std::vector<double>& vec,
                               json config_json = json::parse("{}")) {
       (void)outWrt; (void)inWrt1; (void)inWrt2; (void)inputs; (void)sens; (void)vec; (void)config_json; // Avoid unused argument warnings
       throw std::runtime_error("ApplyHessian was called, but not implemented by model!");
@@ -121,7 +121,7 @@ namespace umbridge
       assert(ptr);
     }
 
-    SharedMemoryVector(const std::vector<double> &vector, std::string shmem_name)
+    SharedMemoryVector(const std::vector<double>& vector, std::string shmem_name)
         : SharedMemoryVector(vector.size(), shmem_name, true) {
       SetVector(vector);
     }
@@ -132,7 +132,7 @@ namespace umbridge
       return vector;
     }
 
-    void SetVector(const std::vector<double> &vector) {
+    void SetVector(const std::vector<double>& vector) {
       memcpy(ptr, vector.data(), length);
     }
 
@@ -161,7 +161,7 @@ namespace umbridge
       std::vector<std::string> models = SupportedModels(host, headers);
       if (std::find(models.begin(), models.end(), name) == models.end()) {
         std::string model_names = "";
-        for (auto &m : models) {
+        for (auto& m : models) {
           model_names += "'" + m + "' ";
         }
         throw std::runtime_error("Model " + name + " not found on server! Available models: " + model_names + ".");
@@ -208,7 +208,7 @@ namespace umbridge
 #endif
     }
 
-    std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override {
+    std::vector<std::size_t> GetInputSizes(const json& config_json = json::parse("{}")) const override {
 
       json request_body;
       request_body["name"] = name;
@@ -225,7 +225,7 @@ namespace umbridge
       }
     }
 
-    std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override {
+    std::vector<std::size_t> GetOutputSizes(const json& config_json = json::parse("{}")) const override {
 
       json request_body;
       request_body["name"] = name;
@@ -243,7 +243,7 @@ namespace umbridge
       }
     }
 
-    std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, json config_json = json::parse("{}")) override {
+    std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config_json = json::parse("{}")) override {
 #ifdef SUPPORT_POSIX_SHMEM
       if (supportsEvaluateShMem) {
         unsigned int tid = pthread_self();
@@ -305,8 +305,8 @@ namespace umbridge
 
     std::vector<double> Gradient(unsigned int outWrt,
                                  unsigned int inWrt,
-                                 const std::vector<std::vector<double>> &inputs,
-                                 const std::vector<double> &sens,
+                                 const std::vector<std::vector<double>>& inputs,
+                                 const std::vector<double>& sens,
                                  json config_json = json::parse("{}")) override
     {
 
@@ -366,8 +366,8 @@ namespace umbridge
 
     std::vector<double> ApplyJacobian(unsigned int outWrt,
                                       unsigned int inWrt,
-                                      const std::vector<std::vector<double>> &inputs,
-                                      const std::vector<double> &vec,
+                                      const std::vector<std::vector<double>>& inputs,
+                                      const std::vector<double>& vec,
                                       json config_json = json::parse("{}")) override {
 
 #ifdef SUPPORT_POSIX_SHMEM
@@ -428,9 +428,9 @@ namespace umbridge
     std::vector<double> ApplyHessian(unsigned int outWrt,
                                      unsigned int inWrt1,
                                      unsigned int inWrt2,
-                                     const std::vector<std::vector<double>> &inputs,
-                                     const std::vector<double> &sens,
-                                     const std::vector<double> &vec,
+                                     const std::vector<std::vector<double>>& inputs,
+                                     const std::vector<double>& sens,
+                                     const std::vector<double>& vec,
                                      json config_json = json::parse("{}")) override {
 
 #ifdef SUPPORT_POSIX_SHMEM
@@ -519,11 +519,11 @@ namespace umbridge
     bool supportsApplyJacobianShMem = false;
     bool supportsApplyHessianShMem = false;
 
-    json parse_result_with_error_handling(const httplib::Result &res) const {
+    json parse_result_with_error_handling(const httplib::Result& res) const {
       json response_body;
       try {
         response_body = json::parse(res->body);
-      } catch (json::parse_error &e) {
+      } catch (json::parse_error& e) {
         throw std::runtime_error("Response JSON could not be parsed. Response body: '" + res->body + "'");
       }
       if (response_body.find("error") != response_body.end()) {
@@ -534,7 +534,7 @@ namespace umbridge
   };
 
   // Check if inputs dimensions match model's expected input size and return error in httplib response
-  bool check_input_sizes(const std::vector<std::vector<double>> &inputs, const json &config_json, const Model &model, httplib::Response &res) {
+  bool check_input_sizes(const std::vector<std::vector<double>>& inputs, const json& config_json, const Model& model, httplib::Response& res) {
     if (inputs.size() != model.GetInputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -557,7 +557,7 @@ namespace umbridge
   }
 
   // Check if sensitivity vector's dimension matches correct model output size and return error in httplib response
-  bool check_sensitivity_size(const std::vector<double> &sens, int outWrt, const json &config_json, const Model &model, httplib::Response &res) {
+  bool check_sensitivity_size(const std::vector<double>& sens, int outWrt, const json& config_json, const Model& model, httplib::Response& res) {
     if (sens.size() != model.GetOutputSizes(config_json)[outWrt]) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -570,7 +570,7 @@ namespace umbridge
   }
 
   // Check if vector's dimension matches correct model output size and return error in httplib response
-  bool check_vector_size(const std::vector<double> &vec, int inWrt, const json &config_json, const Model &model, httplib::Response &res) {
+  bool check_vector_size(const std::vector<double>& vec, int inWrt, const json& config_json, const Model& model, httplib::Response& res) {
     if (vec.size() != model.GetInputSizes(config_json)[inWrt]) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -583,7 +583,7 @@ namespace umbridge
   }
 
   // Check if outputs dimensions match model's expected output size and return error in httplib response
-  bool check_output_sizes(const std::vector<std::vector<double>> &outputs, const json &config_json, const Model &model, httplib::Response &res) {
+  bool check_output_sizes(const std::vector<std::vector<double>>& outputs, const json& config_json, const Model& model, httplib::Response& res) {
     if (outputs.size() != model.GetOutputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidOutput";
@@ -606,7 +606,7 @@ namespace umbridge
   }
 
   // Check if inWrt is between zero and model's input size inWrt and return error in httplib response
-  bool check_input_wrt(int inWrt, const json &config_json, const Model &model, httplib::Response &res) {
+  bool check_input_wrt(int inWrt, const json& config_json, const Model& model, httplib::Response& res) {
     if (inWrt < 0 || inWrt >= (int)model.GetInputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -619,7 +619,7 @@ namespace umbridge
   }
 
   // Check if outWrt is between zero and model's output size outWrt and return error in httplib response
-  bool check_output_wrt(int outWrt, const json &config_json, const Model &model, httplib::Response &res) {
+  bool check_output_wrt(int outWrt, const json& config_json, const Model& model, httplib::Response& res) {
     if (outWrt < 0 || outWrt >= (int)model.GetOutputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -632,7 +632,7 @@ namespace umbridge
   }
 
   // Construct response for unsupported feature
-  void write_unsupported_feature_response(httplib::Response &res, std::string feature) {
+  void write_unsupported_feature_response(httplib::Response& res, std::string feature) {
     json response_body;
     response_body["error"]["type"] = "UnsupportedFeature";
     response_body["error"]["message"] = "Feature '" + feature + "' is not supported by this model";
@@ -642,13 +642,13 @@ namespace umbridge
 
   // log  request
 
-  void log_request(const httplib::Request &req, const httplib::Response &res) {
+  void log_request(const httplib::Request& req, const httplib::Response& res) {
     std::cout << "Incoming request from: " << req.remote_addr << " | Type: " << req.method << " " << req.path << " -> " << res.status << std::endl;
   }
 
   // Get model from name
-  Model &get_model_from_name(std::vector<Model *> &models, std::string name) {
-    for (auto &model : models) {
+  Model& get_model_from_name(std::vector<Model*>& models, std::string name) {
+    for (auto& model : models) {
       if (model->GetName() == name) {
         return *model;
       }
@@ -657,10 +657,10 @@ namespace umbridge
   }
 
   // Check if model exists and return error in httplib response
-  bool check_model_exists(std::vector<Model *> &models, std::string name, httplib::Response &res) {
+  bool check_model_exists(std::vector<Model*>& models, std::string name, httplib::Response& res) {
     try {
       get_model_from_name(models, name);
-    } catch (std::runtime_error &e) {
+    } catch (std::runtime_error& e) {
       json response_body;
       response_body["error"]["type"] = "ModelNotFound";
       response_body["error"]["message"] = "Model '" + name + "' not supported by this server!";
@@ -672,7 +672,7 @@ namespace umbridge
   }
 
   // Provides access to a model via network
-  void serveModels(std::vector<Model *> models, std::string host, int port) {
+  void serveModels(std::vector<Model*> models, std::string host, int port) {
 
     httplib::Server svr;
     std::mutex model_mutex; // Ensure the underlying model is only called sequentially
