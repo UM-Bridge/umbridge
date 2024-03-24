@@ -1,8 +1,12 @@
 #! /bin/bash
 
 # Note: For runs on systems without SLURM, replace the slurm allocator by
-# hq worker start &
+# ./hq worker start &
 
+if [[ ! -f "./hq" ]]; then
+  echo "Error: hq binary does not exist at ./hq"
+  exit 1
+fi
 
 ./hq alloc add slurm --time-limit 10m \
                    --idle-timeout 3m \
