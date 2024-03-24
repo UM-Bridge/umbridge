@@ -852,19 +852,21 @@ def serve_models(models, port=4242, max_workers=1):
         model = get_model_from_name(model_name)
         if model is None:
             return model_not_found_response(req_json["name"])
-        
-        parameters = []
-        shm_c_in = shared_memory.SharedMemory("/umbridge_test_shmem_in_" + str(req_json["tid"]), False, 8)
-        raw_shmem_parameter = np.ndarray(1, dtype=np.float64, buffer=shm_c_in.buf)
-        parameters.append(raw_shmem_parameter.tolist())
-        shm_c_in.close()
-
-        shm_c_out = shared_memory.SharedMemory("/umbridge_test_shmem_out_" + str(req_json["tid"]), create=False, size=8)
-        raw_shmem_output = np.ndarray(1, dtype=np.float64, buffer=shm_c_out.buf)
-        raw_shmem_output[:] = parameters[0]
-        shm_c_out.close()
         response_body= {}
-        response_body["value"] = parameters[0]
+        try:#in case the test fails, FileNotFoundError will be thrown
+            parameters = []
+            shm_c_in = shared_memory.SharedMemory("/umbridge_test_shmem_in_" + str(req_json["tid"]), False, 8)
+            raw_shmem_parameter = np.ndarray(1, dtype=np.float64, buffer=shm_c_in.buf)
+            parameters.append(raw_shmem_parameter.tolist())
+            shm_c_in.close()
+
+            shm_c_out = shared_memory.SharedMemory("/umbridge_test_shmem_out_" + str(req_json["tid"]), create=False, size=8)
+            raw_shmem_output = np.ndarray(1, dtype=np.float64, buffer=shm_c_out.buf)
+            raw_shmem_output[:] = parameters[0]
+            shm_c_out.close()
+            response_body["value"] = parameters[0]
+        except:
+            pass
         return web.json_response(response_body)
 
     @routes.get('/Info')
