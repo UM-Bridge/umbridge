@@ -1,0 +1,42 @@
+name: hpc-load-balancer
+
+on:
+  push:
+  pull_request:
+    branches:
+      - 'main'
+
+
+jobs:
+
+  build-and-setup:
+    runs-on: ubuntu-latest
+    container: ubuntu:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Dependencies
+        run: |
+          apt update -qq && DEBIAN_FRONTEND="noninteractive" apt install -yq g++ make wget curl tar
+
+      - name: Build load balancer binary
+        run: |
+          cd hpc && make build-load-balancer
+
+      - name: Download and setup hq binary
+        run: |
+          url=$(curl -sSL https://api.github.com/repos/It4innovations/hyperqueue/releases/latest | \
+                grep -o "\"browser_download_url\": \"https://[^\"]*-linux-x64.tar.gz\"" | \
+                cut -d '"' -f 4)
+          if [ -z "$url" ]; then
+              echo "Error: URL not found"
+              exit 1
+          fi
+
+          filename="hq-linux-x64.tar.gz"
+          wget -q $url -O $filename
+          tar xzf $filename
+          ./hq --version
+
