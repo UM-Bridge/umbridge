@@ -1,4 +1,4 @@
-name: shared-mem-test
+name: shared-mem-test-c++
 
 on:
   push:
