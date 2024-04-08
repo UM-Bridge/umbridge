@@ -3,15 +3,13 @@ name: shared-mem-test
 on:
   push:
     branches:
-      - 'sharedmem'
+      - 'main'
 
 jobs:
 
   test:
     runs-on: ubuntu-latest
-    container: 
-      image: ubuntu:latest
-      options: --ipc=host
+    container: ubuntu:latest
 
     services:
       model:
