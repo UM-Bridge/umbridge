@@ -34,6 +34,6 @@ jobs:
           cd clients/c++ && ./build.sh && checkShMem=$(./http-client model:4242 | grep -o "not accessible"); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
        -
         name: Check if Shared Memory is used
-        if: env.CheckShMem == "not accessible"
+        if: env.CheckShMem == 'not accessible'
         run: |
             echo "Shared Memory not available, failed"; exit 1
