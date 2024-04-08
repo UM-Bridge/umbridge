@@ -3,7 +3,7 @@ name: shared-mem-test-python
 on:
   push:
     branches:
-      - 'sharedmem'
+      - 'main'
 
 jobs:
 
