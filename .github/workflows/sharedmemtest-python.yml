@@ -29,4 +29,10 @@ jobs:
        -
         name: Build and run
         run: |
-          cd clients/python && python3 umbridge-client.py http://model:4242
+          cd clients/python && checkShMem=$(python3 umbridge-client.py http://model:4242 | grep -o "not accessible"); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
+       - 
+        name: Check if Shared Memory is used
+        if: env.CheckShMem == 'not accessible'
+        run: |
+            echo "Shared Memory not available, failed"; exit 1
+       
