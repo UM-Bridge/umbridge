@@ -68,7 +68,8 @@ class HTTPModel(Model):
         raw_shmem_input[:] = testvec[0]
         shm_c_out = shared_memory.SharedMemory("/umbridge_test_shmem_out_" + str(tid), create=True, size=8)
         raw_shmem_output = np.ndarray(1, dtype=np.float64, buffer=shm_c_out.buf)
-        response = requests.post(f"{self.url}/TestShMem", json=input).json()
+        try: response = requests.post(f"{self.url}/TestShMem", json=input).json()
+        except: pass
         result = []
         result.append(raw_shmem_output.tolist()[0])
         shm_c_in.close()
