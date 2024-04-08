@@ -16,6 +16,7 @@ jobs:
         image: linusseelinger/model-exahype-tsunami
         ports:
         - 4242:4242
+        options: --ipc=host
 
     steps:
        -
