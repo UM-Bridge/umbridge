@@ -9,7 +9,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    container: ubuntu:latest
+    container: 
+      image: ubuntu:latest
+      options: --ipc=host
 
     services:
       model:
