@@ -2,8 +2,35 @@
 #include <string>
 #include <chrono>
 #include <thread>
-
+#include <cstdlib>
+#include <cstring>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "../../../lib/umbridge.h"
+
+
+bool isPortInUse(int port) {
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        std::cerr << "Failed to create socket." << std::endl;
+        return false;
+    }
+
+    struct sockaddr_in serverAddress;
+    memset(&serverAddress, 0, sizeof(serverAddress));
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+    serverAddress.sin_port = htons(port);
+
+    if (bind(sockfd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
+        close(sockfd);
+        return true;
+    }
+
+    close(sockfd);
+    return false;
+}
 
 class ExampleModel : public umbridge::Model
 {
@@ -79,6 +106,14 @@ int main(int argc, char *argv[])
     else
     {
         port = atoi(port_cstr);
+        std::cout << "Using port [ " << port_cstr << " ] as specified by environment variable PORT." << std::endl;
+        if (isPortInUse(port))
+        {
+            std::cerr << "Port " << port << " is already in use. Exiting." << std::endl;
+            
+            exit(-1);
+        }
+
     }
 
     char const *delay_cstr = std::getenv("TEST_DELAY");
