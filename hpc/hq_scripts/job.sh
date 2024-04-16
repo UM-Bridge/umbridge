@@ -6,12 +6,14 @@
 #HQ --stdout none
 #HQ --stderr none
 
+# Remove "#HQ --stdout none" and "#HQ --stderr none" if you want to see the output of the job.
+
 # Launch model server, send back server URL
 # and wait to ensure that HQ won't schedule any more jobs to this allocation.
 
 function get_avaliable_port {
     # Define the range of ports to select from
-    MIN_PORT=1024
+    MIN_PORT=49152
     MAX_PORT=65535
 
     # Generate a random port number
@@ -34,14 +36,21 @@ export PORT=$port
 
 load_balancer_dir="/load/balancer/directory" # CHANGE ME!
 
-
 host=$(hostname -I | awk '{print $1}')
 
+timeout=60 # timeout in seconds, might need to be increased if the model server takes longer to start
 echo "Waiting for model server to respond at $host:$port..."
-while ! curl -s "http://$host:$port/Info" > /dev/null; do
-    sleep 1
-done
-echo "Model server responded"
+if timeout $timeout sh -c 'while ! curl -s "http://'"$host"':'"$port"'/Info" > /dev/null ; do :; done'; then
+    echo "Model server responded within $timeout seconds"
+else
+    echo "Timeout: Model server did not respond within $timeout seconds"
+    echo "$HQ_JOB_ID" > "$load_balancer_dir/retry-respond-job_id.txt"
+    
+    # clear the server here if needed
+
+    # restart the job
+    $load_balancer_dir/hq_scripts/job.sh
+fi
 
 # Write server URL to file identified by HQ job ID.
 mkdir -p "$load_balancer_dir/urls"

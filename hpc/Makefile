@@ -6,6 +6,8 @@ build-load-balancer:
 	- g++ -O3 -Wno-unused-result -std=c++17 $(load-balancer-files) -o load-balancer -pthread
 
 run-load-balancer:
+	rm -f retry-respond-job_id.txt
+
 	if ! printenv PORT > /dev/null; then \
 	echo "PORT environment variable not set. Using default value 4242."; \
 	export PORT=4242; \
