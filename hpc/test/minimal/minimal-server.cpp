@@ -6,7 +6,7 @@
 // Needed for HTTPS, implies the need for openssl, may be omitted if HTTP suffices
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 
-#include "../../lib/umbridge.h"
+#include "../../../lib/umbridge.h"
 
 class ExampleModel : public umbridge::Model
 {

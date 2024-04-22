@@ -6,7 +6,8 @@
 #include <cstdlib>
 #include <tuple>
 #include <memory>
-#include "lib/umbridge.h"
+#include <filesystem>
+#include "../lib/umbridge.h"
 
 // run and get the result of command
 std::string getCommandOutput(const std::string command)
@@ -29,86 +30,16 @@ std::string getCommandOutput(const std::string command)
     return output;
 }
 
-// state = ["PENDING","RUNNING","COMPLETED","FAILED","CANCELLED"]
-bool waitForJobState(const std::string &job_id, const std::string &state = "COMPLETED")
+// wait until file is created
+bool waitForFile(const std::string &filename)
 {
-    const std::string command = "scontrol show job " + job_id + " | grep -oP '(?<=JobState=)[^ ]+'";
-    // std::cout << "Checking runtime: " << command << std::endl;
-    std::string job_status;
-
-    do
-    {
-        job_status = getCommandOutput(command);
-
-        // Delete the line break
-        if (!job_status.empty())
-            job_status.pop_back();
-
-        // Don't wait if there is an error or the job is ended
-        if (job_status == "" || (state != "COMPLETE" && job_status == "COMPLETED") || job_status == "FAILED" || job_status == "CANCELLED")
-        {
-            std::cerr << "Wait for job status failure, status : " << job_status << std::endl;
-            return false;
-        }
-        // std::cout<<"Job status: "<<job_status<<std::endl;
-        sleep(1);
-    } while (job_status != state);
-
-    return true;
-}
-
-// Check for every 100 ms, wait for maximum 20 second
-bool waitForFile(const std::string &filename, int time_out = 20)
-{
-    auto start_time = std::chrono::steady_clock::now();
-    auto timeout = std::chrono::seconds(time_out); // wait for maximum 10 seconds
-
-    const std::string command = "while [ ! -f " + filename + " ]; do sleep 0.1; done";
-    // std::cout << "Waiting for file: " << command << std::endl;
-    std::system(command.c_str());
-    auto end_time = std::chrono::steady_clock::now();
-
-    if (end_time - start_time > timeout)
-    {
-        std::cerr << "Timeout reached waiting for file " << filename << std::endl;
-        return false;
+    // Check if the file exists
+    while (!std::filesystem::exists(filename)) {
+        // If the file doesn't exist, wait for a certain period
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     return true;
-}
-
-// Start a slurm job and return job id
-std::string submitJob(const std::string &command)
-{
-    std::string sbatch_command = command + " | awk '{print $4}'"; // extract job ID from sbatch output
-    std::cout << "Submitting job with command: " << command << std::endl;
-
-    std::string job_id;
-    int i = 0;
-    do
-    {
-        job_id = getCommandOutput(sbatch_command);
-
-        // Delete the line break
-        if (!job_id.empty())
-            job_id.pop_back();
-
-        std::cout << "job_id: " << job_id << std::endl;
-        ++i;
-
-    } while (waitForJobState(job_id, "RUNNING") == false && i < 3 && waitForFile("./urls/url-" + job_id + ".txt", 20) == false);
-    // Wait to start all nodes on the cluster, call scontrol for every 1 sceond to check
-    // Also wait until job is running and url file is written
-    // Try maximum 3 times
-
-    // Check if the job is running
-    if (waitForJobState(job_id, "RUNNING") == false || waitForFile("./urls/url-" + job_id + ".txt", 10) == false)
-    {
-        std::cout << "Submit job failure." << std::endl;
-        exit(-1);
-    }
-
-    return job_id;
 }
 
 std::string readUrl(const std::string &filename)
@@ -134,120 +65,26 @@ std::string readUrl(const std::string &filename)
     return url;
 }
 
-class SingleSlurmJob
-{
-public:
-    SingleSlurmJob(std::string model_name = "forward")
-    {
-        // start a SLURM job for single request
-        job_id = submitJob("sbatch model.slurm");
-
-        const std::string server_url = readUrl("./urls/url-" + job_id + ".txt"); // read server url from txt file
-        // May use $SLURM_LOCALID in a .slurm file later
-
-        std::cout << "Hosting sub-server at : " << server_url << std::endl;
-
-        // List supported models
-        std::vector<std::string> models = umbridge::SupportedModels(server_url);
-        std::cout << "Supported models: " << std::endl;
-        for (auto model : models)
-        {
-            std::cout << "  " << model << std::endl;
-        }
-        std::cout << "Using model: " << model_name << std::endl;
-
-        // Start a client, using unique pointer
-        client_ptr = std::make_unique<umbridge::HTTPModel>(server_url, model_name); // use the first model avaliable on server by default
-    }
-
-    ~SingleSlurmJob()
-    {
-        // Cancel the SLURM job
-        std::system(("scancel " + job_id).c_str());
-
-        // Delete the url text file
-        std::system(("rm ./urls/url-" + job_id + ".txt").c_str());
-    }
-
-    std::unique_ptr<umbridge::HTTPModel> client_ptr;
-
-private:
-    std::string job_id;
-};
-
-// state = ["WAITING", "RUNNING", "FINISHED", "CANCELED"]
-bool waitForHQJobState(const std::string &job_id, const std::string &state = "COMPLETED")
-{
-    const std::string command = "hq job info " + job_id + " | grep State | awk '{print $4}'";
-    // std::cout << "Checking runtime: " << command << std::endl;
-    std::string job_status;
-
-    do
-    {
-        job_status = getCommandOutput(command);
-
-        // Delete the line break
-        if (!job_status.empty())
-            job_status.pop_back();
-
-        // Don't wait if there is an error or the job is ended
-        if (job_status == "" || (state != "FINISHED" && job_status == "FINISHED") || job_status == "FAILED" || job_status == "CANCELED")
-        {
-            std::cerr << "Wait for job status failure, status : " << job_status << std::endl;
-            return false;
-        }
-        // std::cout<<"Job status: "<<job_status<<std::endl;
-        sleep(1);
-    } while (job_status != state);
-
-    return true;
-}
-
-std::string submitHQJob()
-{
-    std::string hq_command = "hq submit --output-mode=quiet hq_scripts/job.sh";
-
-    std::string job_id;
-    int i = 0;
-    do
-    {
-        job_id = getCommandOutput(hq_command);
-
-        // Delete the line break
-        if (!job_id.empty())
-            job_id.pop_back();
-
-        ++i;
-    } while (waitForHQJobState(job_id, "RUNNING") == false && i < 3 && waitForFile("./urls/hqjob-" + job_id + ".txt", 10) == false);
-    // Wait for the HQ Job to start
-    // Also wait until job is running and url file is written
-    // Try maximum 3 times
-
-    // Check if the job is running
-    if (waitForHQJobState(job_id, "RUNNING") == false || waitForFile("./urls/hqjob-" + job_id + ".txt", 10) == false)
-    {
-        std::cout << "Submit job failure." << std::endl;
-        exit(-1);
-    }
-
-    return job_id;
-}
+std::mutex job_submission_mutex;
+int hq_submit_delay_ms = 0;
 
 class HyperQueueJob
 {
 public:
-    HyperQueueJob(std::string model_name = "forward")
+    static std::atomic<int32_t> job_count;
+    HyperQueueJob(std::string model_name, bool start_client=true, 
+                                          bool force_default_submission_script=false)
     {
-        job_id = submitHQJob();
-
-        // Get the slurm job id
-        const std::string slurm_id = readUrl("./urls/hqjob-" + job_id + ".txt");
+        job_id = submitHQJob(model_name, force_default_submission_script);
 
         // Get the server URL
-        const std::string server_url = readUrl("./urls/url-" + slurm_id + ".txt");
+        server_url = readUrl("./urls/url-" + job_id + ".txt");
 
         // Start a client, using unique pointer
-        client_ptr = std::make_unique<umbridge::HTTPModel>(server_url, model_name); // always uses the model "forward"
+        if(start_client)
+        {
+            client_ptr = std::make_unique<umbridge::HTTPModel>(server_url, model_name);
+        }
     }
 
     ~HyperQueueJob()
@@ -256,12 +93,92 @@ public:
         std::system(("hq job cancel " + job_id).c_str());
 
         // Delete the url text file
-        std::system(("rm ./urls/hqjob-" + job_id + ".txt").c_str());
+        std::system(("rm ./urls/url-" + job_id + ".txt").c_str());
     }
 
+    std::string server_url;
     std::unique_ptr<umbridge::HTTPModel> client_ptr;
 
 private:
+    std::string submitHQJob(const std::string &model_name, bool force_default_submission_script=false)
+    {
+        // Add optional delay to job submissions to prevent issues in some cases.
+        if (hq_submit_delay_ms) {
+            std::lock_guard<std::mutex> lock(job_submission_mutex);
+            std::this_thread::sleep_for(std::chrono::milliseconds(hq_submit_delay_ms));
+        }
+        
+        // Use model specific job script if available, default otherwise.
+        const std::filesystem::path submission_script_dir("./hq_scripts");
+        const std::filesystem::path submission_script_generic("job.sh");
+        const std::filesystem::path submission_script_model_specific("job_" + model_name + ".sh");
+
+        std::string hq_command = "hq submit --output-mode=quiet ";
+        hq_command += "--priority=" + std::to_string(job_count) + " ";
+        if (std::filesystem::exists(submission_script_dir / submission_script_model_specific) && !force_default_submission_script)
+        {
+            hq_command += (submission_script_dir / submission_script_model_specific).string();
+        }
+        else if (std::filesystem::exists(submission_script_dir / submission_script_generic)) 
+        {
+            hq_command += (submission_script_dir / submission_script_generic).string();
+        }
+        else
+        {
+            throw std::runtime_error("Job submission script not found: Check that file 'hq_script/job.sh' exists.");
+        }
+
+        // Submit the HQ job and retrieve the HQ job ID.
+        std::string job_id = getCommandOutput(hq_command);
+        job_count--;
+
+        // Delete the line break.
+        if (!job_id.empty())
+        {
+            job_id.pop_back();
+        }
+
+        std::cout << "Waiting for job " << job_id << " to start." << std::endl;
+
+        // Wait for the HQ Job to start
+        waitForHQJobState(job_id, "RUNNING");
+
+        // Also wait until job is running and url file is written
+        waitForFile("./urls/url-" + job_id + ".txt");
+
+        std::cout << "Job " << job_id << " started." << std::endl;
+
+        return job_id;
+    }
+
+    // state = ["WAITING", "RUNNING", "FINISHED", "CANCELED"]
+    bool waitForHQJobState(const std::string &job_id, const std::string &state)
+    {
+        const std::string command = "hq job info " + job_id + " | grep State | awk '{print $4}'";
+        // std::cout << "Checking runtime: " << command << std::endl;
+        std::string job_status;
+
+        do
+        {
+            job_status = getCommandOutput(command);
+
+            // Delete the line break
+            if (!job_status.empty())
+                job_status.pop_back();
+
+            // Don't wait if there is an error or the job is ended
+            if (job_status == "" || (state != "FINISHED" && job_status == "FINISHED") || job_status == "FAILED" || job_status == "CANCELED")
+            {
+                std::cerr << "Wait for job status failure, status : " << job_status << std::endl;
+                return false;
+            }
+
+            sleep(1);
+        } while (job_status != state);
+
+        return true;
+    }
+
     std::string job_id;
 };
 
@@ -269,31 +186,23 @@ private:
 class LoadBalancer : public umbridge::Model
 {
 public:
-    LoadBalancer(std::string name = "forward") : umbridge::Model(name)
-    {
-        // Setup HyperQueue server
-        std::system("hq server start &");
-        sleep(1); // Workaround: give the HQ server enough time to start.
-
-        // Create allocation queue
-        std::system("hq_scripts/allocation_queue.sh");
-    }
+    LoadBalancer(std::string name) : umbridge::Model(name) {}
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->GetInputSizes(config_json);
     }
 
     std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->GetOutputSizes(config_json);
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->Evaluate(inputs, config_json);
     }
 
@@ -303,7 +212,7 @@ public:
                                  const std::vector<double> &sens,
                                  json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->Gradient(outWrt, inWrt, inputs, sens, config_json);
     }
 
@@ -313,7 +222,7 @@ public:
                                       const std::vector<double> &vec,
                                       json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
     }
 
@@ -325,28 +234,28 @@ public:
                                      const std::vector<double> &vec,
                                      json config_json = json::parse("{}"))
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
     }
 
     bool SupportsEvaluate() override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->SupportsEvaluate();
     }
     bool SupportsGradient() override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->SupportsGradient();
     }
     bool SupportsApplyJacobian() override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->SupportsApplyJacobian();
     }
     bool SupportsApplyHessian() override
     {
-        HyperQueueJob hq_job;
+        HyperQueueJob hq_job(name);
         return hq_job.client_ptr->SupportsApplyHessian();
     }
 };

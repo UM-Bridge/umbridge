@@ -135,6 +135,28 @@ This server can be connected to by any client at port 4242.
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/models/testmodel)
 
+### Julia server
+
+In order to provide a Julia model via UM-Bridge, the "UMBridge" package can be installed using Julia’s builtin package manager Pkg. The model needs to be defined by specifying its input and output sizes as well as the actual model evaluation. 
+
+Since UM-Bridge allows the model input to be a list of (potentially) multiple vectors, input and output dimensions are specified `inputSizes::AbstractArray`. An input size `[4,2]` then indicates that the model expects a 4D vector and a 2D vector as input. The output size is specified analogously.
+
+The model evaluation is implemented in the `define_evaluate` function. It receives an input `parameters` of the dimensions specified in `inputSizes`, and returns an output whose dimensions are specified in `outputSizes`.
+
+Each feature supported by the model (evaluation, Jacobian action, Hessian action etc.) is optional. When implemented, `supports_*` should return `true` for the corresponding feature.
+
+Optionally, configuration options may be passed to the model by the client: `config` is a JSON-compatible Julia structure, so it is a dictionary that may contain lists, strings, numbers, and other dictionaries. The config options accepted by a particular model should be indicated in the model's documentation.
+
+For more flexibility, the model's input and output dimensions may optionally depend on `config`.
+
+```
+testmodel = UMBridge.Model(name="forward", inputSizes=[1], outputSizes=[1])
+
+UMBridge.define_evaluate(testmodel, (input, config) -> (2*input))
+
+UMBridge.serve_models([testmodel], 4242)
+```
+
 ## MUQ server
 
 The [MIT Uncertainty Quantification library (MUQ)](https://mituq.bitbucket.io), internally represents models as graphs of individual ModPiece instances each mapping input vectors to output vectors (supporting advanced handling of derivaties). Such a ModPiece, or a ModPiece representing the entire model graph, can easily be exposed via UM-Bridge.

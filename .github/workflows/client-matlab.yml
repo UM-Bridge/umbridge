@@ -2,6 +2,7 @@ name: client-matlab
 
 on:
   push:
+  pull_request:
     branches:
       - 'main'
       
@@ -11,7 +12,7 @@ jobs:
 
     services:
       model:
-        image: linusseelinger/benchmark-analytic-funnel:latest
+        image: linusseelinger/benchmark-analytic-gaussian-mixture:latest
         ports:
         - 4243:4243
 

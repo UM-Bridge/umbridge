@@ -88,7 +88,7 @@ std::vector<std::vector<double>> inputs {{100.0, 18.0}};
 The input vector can then be passed into the model.
 
 ```
-std::vector<std::vector<double>> outputs = client.Evaluate(input);
+std::vector<std::vector<double>> outputs = client.Evaluate(inputs);
 ```
 
 The output of the model evaluation is a `std::vector<std::vector<double>>` containing the output defined by the model.
@@ -228,6 +228,7 @@ Note that `webwrite` handles all HTTP statuses internally, and is unable to filt
 The Julia integration can be installed using Julia's builtin package manager Pkg
 
 ```
+import Pkg
 Pkg.add("UMBridge")
 ```
 
@@ -519,3 +520,46 @@ The remaining arguments are the stopping tolerance (`1e-5`) and a vectorization 
 We can notice the total number of model evaluations as `cum#evals=449` in the printout of `greedy2_cross`, and the Tensor-Train rank `max_rank=3`. A neat reduction compared to 1089 points in the full 2D grid!
 
 [Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/ttClient.m)
+
+
+## Sparse Grids Matlab Kit client
+
+The Sparse Grids Matlab Kit (SGMK) provides a Matlab implementation of sparse grids, and can be used for approximating high-dimensional functions and, in particular, for surrogate-model-based uncertainty quantification; for more info, see the [SGMK website](https://sites.google.com/view/sparse-grids-kit).
+
+The SGMK integrates in a very straightforward way with the Matlab UM-Bridge client (it literally takes 1 line!), see e.g. the script [sgmkClient.m](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/sgmkClient.m) that can be found in the folder [clients/matlab](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab).
+
+The script begins by checking whether the SGMK is already in our path, and if not downloads it from the Github repo [here](https://github.com/lorenzo-tamellini/sparse-grids-matlab-kit) and adds it to the path:
+```matlab
+check_sgmk()
+```
+The goal of this simple script is to use the SGMK as a high-dimensional quadrature tool to compute the integral of the posterior density function (pdf) defined in the benchmark **analytic-gaussian-mixture**. The pdf in the benchmark is actually not normalized so the integral should be around 3.
+
+To this end, create a model as before:
+```matlab
+uri = 'http://localhost:4243';
+model = HTTPModel(uri, 'posterior','webwrite');
+```
+then simply  wrap `model.evaluate()` in an `@-function` and **you're done**!
+```matlab
+f = @(y) model.evaluate(y);
+```
+The script then goes on creating a sparse grid and evaluating `f` over the sparse grid points:
+```matlab
+N=2;
+w=7;
+domain = [-5.5 -5;  
+           5    5.5];
+knots = {@(n) knots_CC(n,domain(1,1),domain(2,1),'nonprob'), @(n) knots_CC(n,domain(1,2),domain(2,2),'nonprob')};
+S = create_sparse_grid(N,w,knots,@lev2knots_doubling); 
+Sr = reduce_sparse_grid(S); 
+f_evals = evaluate_on_sparse_grid(f,Sr); 
+```
+and finally, computing the integral given the values of `f` just obtained. Note that the values returned by the container and stored in `f_evals` are actually the log-posterior, so we need to take their exponent before computing the integral:
+```matlab
+Ev = quadrature_on_sparse_grid(exp(f_evals),Sr)
+```
+which indeed returns `Ev = 2.9948`, i.e., close to 3 as expected. The script then ends by plotting the sparse grids interpolant of `f` and of `exp(f)`. 
+
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/sgmkClient.m)
+
+

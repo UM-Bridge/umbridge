@@ -2,6 +2,7 @@ name: client-python-qmcpy
 
 on:
   push:
+  pull_request:
     branches:
       - 'main'
 

@@ -2,6 +2,7 @@ name: client-python-tinyDA
 
 on:
   push:
+  pull_request:
     branches:
       - 'main'
 
