@@ -150,11 +150,15 @@ Optionally, configuration options may be passed to the model by the client: `con
 For more flexibility, the model's input and output dimensions may optionally depend on `config`.
 
 ```
+# Define the model behavior
+function evaluate(input::Vector{Any}, config::Dict{String, Any})
+    output = 2 * input
+    return [output]
+end
+
 testmodel = UMBridge.Model(name="forward", inputSizes=[1], outputSizes=[1])
-
-UMBridge.define_evaluate(testmodel, (input, config) -> (2*input))
-
-UMBridge.serve_models([testmodel], 4242)
+UMBridge.define_evaluate(testmodel, evaluate)
+UMBridge.serve_models([testmodel], 4232)
 ```
 
 ## MUQ server
