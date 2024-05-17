@@ -8,4 +8,4 @@ RUN apt update && \
     . venv/bin/activate && \
     pip install umbridge
 
-CMD python3 minimal-server.py
+CMD . venv/bin/activate && python3 minimal-server.py

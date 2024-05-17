@@ -8,4 +8,4 @@ RUN apt update && \
     . venv/bin/activate && \
     pip install umbridge scipy
 
-CMD ./server/minimal-server & python3 /benchmark-server/benchmark-server.py
+CMD ./server/minimal-server & . venv/bin/activate && python3 /benchmark-server/benchmark-server.py
