@@ -27,4 +27,4 @@ jobs:
        -
         name: Build and run
         run: |
-          cd clients/julia && julia -e 'using Pkg; Pkg.add("UMBridge)' juliaClient.jl
+          cd clients/julia && julia -e 'using Pkg; Pkg.add("UMBridge")' juliaClient.jl
