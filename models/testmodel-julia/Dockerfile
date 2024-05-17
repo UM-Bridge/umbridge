@@ -10,4 +10,4 @@ ENV PATH $JULIA_PATH/bin:$PATH
 
 RUN curl -fsSL https://install.julialang.org | sh -s -- -y
 
-#CMD julia minimal-server.jl
+CMD julia minimal-server.jl
