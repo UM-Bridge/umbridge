@@ -23,11 +23,8 @@ jobs:
         name: Checkout
         uses: actions/checkout@v2
        -
-        name: Dependencies
-        run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y curl
-          curl -fsSL https://install.julialang.org | sh -s -- -y
+        uses: julia-actions/setup-julia@latest
        -
         name: Build and run
         run: |
-          cd clients/julia && julia juliaClient.jl
+          cd clients/julia && julia -e 'using Pkg; Pkg.add("UMBridge)' juliaClient.jl
