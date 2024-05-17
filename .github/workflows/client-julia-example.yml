@@ -1,0 +1,30 @@
+name: client-julia-example
+
+on:
+  push:
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    container: ubuntu:latest
+
+    services:
+      model:
+        image: linusseelinger/model-exahype-tsunami:latest
+        ports:
+        - 4242:4242
+
+    steps:
+       -
+        name: Checkout
+        uses: actions/checkout@v2
+       -
+        uses: julia-actions/setup-julia@latest
+       -
+        name: Build and run
+        run: |
+          cd clients/julia && julia -e 'using Pkg; Pkg.add("UMBridge")' juliaClient.jl
