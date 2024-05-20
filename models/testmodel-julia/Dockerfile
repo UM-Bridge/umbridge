@@ -1,13 +1,7 @@
-FROM ubuntu:latest
+FROM julia:latest
 
-COPY minimal-server.jl /
+COPY minimal-server.jl /minimal-server.jl 
 
-RUN apt update && \
-    DEBIAN_FRONTEND="noninteractive" apt install -y curl
+RUN julia -O3 -e 'using Pkg; Pkg.REPLMode.pkgstr("add UMBridge   ;precompile"); using UMBridge'
 
-ENV JULIA_PATH /usr/local/julia
-ENV PATH $JULIA_PATH/bin:$PATH
-
-RUN curl -fsSL https://install.julialang.org | sh -s -- -y
-
-CMD julia minimal-server.jl
+CMD julia /minimal-server.jl
