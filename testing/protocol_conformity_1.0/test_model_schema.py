@@ -35,8 +35,7 @@ def test_evaluate(model_url, input_value):
       if input_value_len == 1:
         inputParams["input"].append([input_value] * inputSizesJSON["inputSizes"][i])
       else:
-        inputParams["input"].append(input_value[i])
-
+        inputParams["input"].append([input_value][i])
 
     resp = requests.post(f'{model_url}/Evaluate', headers={}, data=json.dumps(inputParams,indent=4))
 
