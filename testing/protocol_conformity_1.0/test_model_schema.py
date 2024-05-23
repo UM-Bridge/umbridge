@@ -29,14 +29,21 @@ def test_evaluate(model_url, input_value):
     inputSizesJSON = requests.post(f'{model_url}/InputSizes', json=input_model_name).json()
 
     inputParams = {"input": [], "name": model_name, "config": {}}
-    input_value_len = getattr(input_value, '__len__', lambda:1)()
-    for i in range(0,len(inputSizesJSON["inputSizes"])):
-      assert input_value_len == 1 or input_value_len == inputSizesJSON["inputSizes"][i]
-      if input_value_len == 1:
-        inputParams["input"].append([input_value] * inputSizesJSON["inputSizes"][i])
-      else:
+    for i in range(0, len(inputSizesJSON["inputSizes"])):
+      inputSizesJSON_i = inputSizesJSON["inputSizes"][i]
+      inputSizesJSON_len = len(inputSizesJSON["inputSizes"])
+      # Handles the case for one input vector
+      if hasattr(input_value, '__len__') and inputSizesJSON_len == 1:
+        assert len(input_value) == inputSizesJSON_i
+        inputParams["input"].append(input_value)
+      # The case where there are multiple input vector
+      elif hasattr(input_value, '__len__') and inputSizesJSON_len != 1:
+        assert len(input_value[i]) == inputSizesJSON_i
         inputParams["input"].append(input_value[i])
-
+      # Single number entered, will be expanded if sizes unmatched
+      else:
+        inputParams["input"].append([input_value] * inputSizesJSON_i)
+        assert len(inputParams["input"][i]) == inputSizesJSON_i
 
     resp = requests.post(f'{model_url}/Evaluate', headers={}, data=json.dumps(inputParams,indent=4))
 
