@@ -163,6 +163,6 @@ int main(int argc, char *argv[])
     std::transform(LB_vector.begin(), LB_vector.end(), LB_ptr_vector.begin(),
                    [](LoadBalancer& obj) { return &obj; });
 
-    std::cout << "Load balancer running port" << port << std::endl;
+    std::cout << "Load balancer running port " << port << std::endl;
     umbridge::serveModels(LB_ptr_vector, "0.0.0.0", port, true, false);
 }

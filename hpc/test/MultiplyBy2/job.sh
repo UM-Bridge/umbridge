@@ -3,48 +3,50 @@
 #HQ --cpus=1
 #HQ --time-request=1m
 #HQ --time-limit=2m
-#HQ --stdout none
-#HQ --stderr none
-
-# Remove "#HQ --stdout none" and "#HQ --stderr none" if you want to see the output of the job.
+#HQ --stdout %{CWD}/test/MultiplyBy2/logs/job-%{JOB_ID}.out
+#HQ --stderr %{CWD}/test/MultiplyBy2/logs/job-%{JOB_ID}.err
 
 # Launch model server, send back server URL
 # and wait to ensure that HQ won't schedule any more jobs to this allocation.
 
-function get_avaliable_port {
-    # Define the range of ports to select from
-    MIN_PORT=49152
-    MAX_PORT=65535
 
-    # Generate a random port number
+# Define the range of ports to select from
+MIN_PORT=49152
+MAX_PORT=65535
+# Generate a random port number
+port=$(shuf -i $MIN_PORT-$MAX_PORT -n 1)
+# Check if the port is in use
+try_count=0
+echo "$(lsof -Pi :$port -sTCP:LISTEN -t )"
+while [ -n  "$(lsof -Pi :$port -sTCP:LISTEN -t )" ]
+do
+    echo "Port $port is in use, trying another port"
+    # If the port is in use, generate a new port number
     port=$(shuf -i $MIN_PORT-$MAX_PORT -n 1)
 
-    # Check if the port is in use
-    while lsof -Pi :$port -sTCP:LISTEN -t >/dev/null; do
-        # If the port is in use, generate a new random port number
-        port=$(shuf -i $MIN_PORT-$MAX_PORT -n 1)
-    done
+    try_count=$((try_count+1))
 
-    echo $port
-}
+    echo "$HQ_JOB_ID" > "./test/MultiplyBy2/retry-port-job_id.txt"
+done
+echo "Selected port $port after $try_count tries"
 
-port=$(get_avaliable_port)
+echo "Starting server on port $port"
 export PORT=$port
 
 # Assume that server sets the port according to the environment variable 'PORT'.
-/your/model/server/call & # CHANGE ME!
+./test/MultiplyBy2/server & # CHANGE ME!
 
-load_balancer_dir="/load/balancer/directory" # CHANGE ME!
+load_balancer_dir="./" # CHANGE ME!
 
 host=$(hostname -I | awk '{print $1}')
 
-timeout=60 # timeout in seconds, might need to be increased if the model server takes longer to start
+timeout=30 # timeout in seconds
 echo "Waiting for model server to respond at $host:$port..."
 if timeout $timeout sh -c 'while ! curl -s "http://'"$host"':'"$port"'/Info" > /dev/null ; do :; done'; then
     echo "Model server responded within $timeout seconds"
 else
     echo "Timeout: Model server did not respond within $timeout seconds"
-    echo "$HQ_JOB_ID" > "$load_balancer_dir/retry-respond-job_id.txt"
+    echo "$HQ_JOB_ID" > "./test/MultiplyBy2/retry-respond-job_id.txt"
     
     # clear the server here if needed
 
