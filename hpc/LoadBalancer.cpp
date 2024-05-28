@@ -26,9 +26,9 @@ void clear_url(std::string directory) {
 }
 
 void launch_hq_with_alloc_queue() {
-    std::system("hq server stop &> /dev/null");
+    std::system("./hq server stop &> /dev/null");
 
-    std::system("hq server start &");
+    std::system("./hq server start &");
     sleep(1); // Workaround: give the HQ server enough time to start.
 
     // Create HQ allocation queue
