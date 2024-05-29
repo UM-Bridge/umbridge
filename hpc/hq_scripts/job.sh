@@ -30,9 +30,8 @@ port=$(get_avaliable_port)
 export PORT=$port
 
 # Assume that server sets the port according to the environment variable 'PORT'.
-/your/model/server/call & # CHANGE ME!
-
-load_balancer_dir="/load/balancer/directory" # CHANGE ME!
+# Otherwise the job script will be stuck waiting for model server's response.
+./testmodel & # CHANGE ME!
 
 
 host=$(hostname -I | awk '{print $1}')
@@ -44,6 +43,7 @@ done
 echo "Model server responded"
 
 # Write server URL to file identified by HQ job ID.
+load_balancer_dir="."
 mkdir -p "$load_balancer_dir/urls"
 echo "http://$host:$port" > "$load_balancer_dir/urls/url-$HQ_JOB_ID.txt"
 

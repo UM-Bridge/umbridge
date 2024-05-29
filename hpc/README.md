@@ -5,19 +5,19 @@ This load balancer allows any scaling up UM-Bridge applications to HPC systems. 
 ## Installation
 
 1. **Build the load balancer**
-  
+
    Clone the UM-Bridge repository.
- 
+
    ```
    git clone https://github.com/UM-Bridge/umbridge.git
    ```
-   
+
    Then navigate to the `hpc` directory.
 
    ```
    cd umbridge/hpc
    ```
-   
+
    Finally, compile the load balancer. Depending on your HPC system, you likely have to load a module providing a recent c++ compiler.
 
    ```
@@ -25,7 +25,7 @@ This load balancer allows any scaling up UM-Bridge applications to HPC systems. 
    ```
 
 2. **Download HyperQueue**
-   
+
    Download HyperQueue from the most recent release at https://github.com/It4innovations/hyperqueue/releases and place the `hq` binary in the `hpc` directory next to the load balancer.
 
 ## Usage
@@ -35,7 +35,7 @@ The load balancer is primarily intended to run on a login node.
 1. **Configure resource allocation**
 
    The load balancer instructs HyperQueue to allocate batches of resources on the HPC system, depending on demand for model evaluations. HyperQueue will submit SLURM or PBS jobs on the HPC system when needed, scheduling requested model runs within those jobs. When demand decreases, HyperQueue will cancel some of those jobs again.
-  
+
    Adapt the configuration in ``hpc/hq_scripts/allocation_queue.sh`` to your needs.
 
    For example, when running a very fast UM-Bridge model on an HPC cluster, it is advisable to choose medium-sized jobs for resource allocation. That will avoid submitting large numbers of jobs to the HPC system's scheduler, while HyperQueue itself will handle large numbers of small model runs within those allocated jobs.
@@ -44,8 +44,7 @@ The load balancer is primarily intended to run on a login node.
 
    Adapt the configuration in ``hpc/hq_scripts/job.sh`` to your needs:
    * Specify what UM-Bridge model server to run,
-   * set `#HQ` variables at the top to specify what resources each instance should receive,
-   * and set the directory of your load balancer binary in `load_balancer_dir`.
+   * and set `#HQ` variables at the top to specify what resources each instance should receive.
 
    Importantly, the UM-Bridge model server must serve its models at the port specified by the environment variable `PORT`. The value of `PORT` is automatically determined by `job.sh`, avoiding potential conflicts if multiple servers run on the same compute node.
 
