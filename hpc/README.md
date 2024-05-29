@@ -26,7 +26,7 @@ This load balancer allows any scaling up UM-Bridge applications to HPC systems. 
 
 2. **Download HyperQueue**
 
-   Download HyperQueue from the most recent release at https://github.com/It4innovations/hyperqueue/releases and place the `hq` binary in the `hpc` directory next to the load balancer.
+   Download HyperQueue from the most recent release at [https://github.com/It4innovations/hyperqueue/releases](https://github.com/It4innovations/hyperqueue/releases) and place the `hq` binary in the `hpc` directory next to the load balancer.
 
 ## Usage
 
