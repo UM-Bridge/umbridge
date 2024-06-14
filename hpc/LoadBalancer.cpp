@@ -35,6 +35,10 @@ void launch_hq_with_alloc_queue() {
     std::system("hq_scripts/allocation_queue.sh");
 }
 
+bool file_exists(const std::string& path) {
+    return std::filesystem::exists(path);
+}
+
 const std::vector<std::string> get_model_names() {
     // Don't start a client, always use the default job submission script.
     HyperQueueJob hq_job("", false, true); 
@@ -121,6 +125,13 @@ int main(int argc, char *argv[])
     create_directory_if_not_existing("urls");
     create_directory_if_not_existing("sub-jobs");
     clear_url("urls");
+
+    // Check if the hq binary exists
+    std::string hq_binary_path = "./hq"; 
+    if (!file_exists(hq_binary_path)) {
+        std::cerr << "Error: hq binary does not exist at " << hq_binary_path << std::endl;
+        return 1; 
+    }
 
     launch_hq_with_alloc_queue();
 
