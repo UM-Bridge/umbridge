@@ -37,7 +37,7 @@ void launch_hq_with_alloc_queue() {
 
 const std::vector<std::string> get_model_names() {
     // Don't start a client, always use the default job submission script.
-    HyperQueueJob hq_job("", false, true); 
+    HyperQueueJob hq_job("", false, true);
 
     return umbridge::SupportedModels(hq_job.server_url);
 }
@@ -49,7 +49,7 @@ void print_model_and_job_script_information(const std::vector<std::string>& mode
 
     const std::string SECTION_START_DELIMITER = "==============================MODEL INFO==============================";
     const std::string SECTION_END_DELIMITER   = "======================================================================";
-    
+
     // Sort the model names in alphabetical order for cleaner output.
     std::vector<std::string> model_names_sorted = model_names;
     std::sort(model_names_sorted.begin(), model_names_sorted.end());
@@ -69,7 +69,7 @@ void print_model_and_job_script_information(const std::vector<std::string>& mode
         std::cout << "* Model '" << model_name << "' --> '" << used_job_script << "'\n";
     }
     std::cout << std::endl;
-    
+
 
     // Check if there are job scripts that are unused and print a warning.
     std::vector<std::string> unused_job_scripts;
@@ -87,7 +87,7 @@ void print_model_and_job_script_information(const std::vector<std::string>& mode
         std::smatch match_result;
         if (std::regex_search(filename, match_result, format_regex)) {
             // Extract first matched subexpression, i.e. the model name.
-            const std::string model_name = match_result[1].str(); 
+            const std::string model_name = match_result[1].str();
             // Check if a corresponding model exists. If not, mark job script as unused.
             if (!std::binary_search(model_names_sorted.begin(), model_names_sorted.end(), model_name)) {
                 unused_job_scripts.push_back(filename);
@@ -122,7 +122,8 @@ int main(int argc, char *argv[])
     create_directory_if_not_existing("sub-jobs");
     clear_url("urls");
 
-    launch_hq_with_alloc_queue();
+    // SLURM version
+    //launch_hq_with_alloc_queue();
 
     // Read environment variables for configuration
     char const *port_cstr = std::getenv("PORT");

@@ -72,7 +72,7 @@ class HyperQueueJob
 {
 public:
     static std::atomic<int32_t> job_count;
-    HyperQueueJob(std::string model_name, bool start_client=true, 
+    HyperQueueJob(std::string model_name, bool start_client=true,
                                           bool force_default_submission_script=false)
     {
         job_id = submitHQJob(model_name, force_default_submission_script);
@@ -90,7 +90,9 @@ public:
     ~HyperQueueJob()
     {
         // Cancel the SLURM job
-        std::system(("./hq job cancel " + job_id).c_str());
+        // SLURM version
+        //std::system(("./hq job cancel " + job_id).c_str());
+        std::system(("scancel " + job_id).c_str());
 
         // Delete the url text file
         std::system(("rm ./urls/url-" + job_id + ".txt").c_str());
@@ -107,19 +109,23 @@ private:
             std::lock_guard<std::mutex> lock(job_submission_mutex);
             std::this_thread::sleep_for(std::chrono::milliseconds(hq_submit_delay_ms));
         }
-        
+
         // Use model specific job script if available, default otherwise.
-        const std::filesystem::path submission_script_dir("./hq_scripts");
+        // SLURM version
+        //const std::filesystem::path submission_script_dir("./hq_scripts");
+        const std::filesystem::path submission_script_dir("./slurm_scripts");
         const std::filesystem::path submission_script_generic("job.sh");
         const std::filesystem::path submission_script_model_specific("job_" + model_name + ".sh");
 
-        std::string hq_command = "./hq submit --output-mode=quiet ";
-        hq_command += "--priority=" + std::to_string(job_count) + " ";
+        // SLURM version
+        //std::string hq_command = "./hq submit --output-mode=quiet ";
+        //hq_command += "--priority=" + std::to_string(job_count) + " ";
+        std::string hq_command = "sbatch ";
         if (std::filesystem::exists(submission_script_dir / submission_script_model_specific) && !force_default_submission_script)
         {
             hq_command += (submission_script_dir / submission_script_model_specific).string();
         }
-        else if (std::filesystem::exists(submission_script_dir / submission_script_generic)) 
+        else if (std::filesystem::exists(submission_script_dir / submission_script_generic))
         {
             hq_command += (submission_script_dir / submission_script_generic).string();
         }
@@ -130,6 +136,11 @@ private:
 
         // Submit the HQ job and retrieve the HQ job ID.
         std::string job_id = getCommandOutput(hq_command);
+        // SLURM version
+        // Get job ID from sbatch output (last word in the output)
+        // Example: Submitted batch job 4010093                                                      │
+        job_id = job_id.substr(job_id.find_last_of(" ") + 1);
+
         job_count--;
 
         // Delete the line break.
@@ -141,7 +152,8 @@ private:
         std::cout << "Waiting for job " << job_id << " to start." << std::endl;
 
         // Wait for the HQ Job to start
-        waitForHQJobState(job_id, "RUNNING");
+        // SLURM version
+        //waitForHQJobState(job_id, "RUNNING");
 
         // Also wait until job is running and url file is written
         waitForFile("./urls/url-" + job_id + ".txt");
