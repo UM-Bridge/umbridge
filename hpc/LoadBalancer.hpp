@@ -65,15 +65,33 @@ std::string readUrl(const std::string &filename)
     return url;
 }
 
+class JobManager
+{
+public:
+    virtual std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) = 0;
+    virtual std::vector<std::string> getModelNames() = 0;
+    virtual ~JobManager() {};
+};
+
+class HyperQueueJobManager : public JobManager
+{
+public:
+    virtual std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override
+    {
+        return std::make_unique<HyperQueueJob>(model_name);
+    }
+};
+
 std::mutex job_submission_mutex;
 int hq_submit_delay_ms = 0;
 
-class HyperQueueJob
+class HyperQueueJob : public umbridge::Model
 {
 public:
     static std::atomic<int32_t> job_count;
     HyperQueueJob(std::string model_name, bool start_client=true, 
                                           bool force_default_submission_script=false)
+    : Model(model_name)
     {
         job_id = submitHQJob(model_name, force_default_submission_script);
 
