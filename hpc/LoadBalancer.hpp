@@ -42,15 +42,15 @@ bool waitForFile(const std::string &filename)
     return true;
 }
 
-std::string readUrl(const std::string &filename)
+std::string readLineFromFile(const std::string &filename)
 {
     std::ifstream file(filename);
-    std::string url;
+    std::string line;
     if (file.is_open())
     {
         std::string file_contents((std::istreambuf_iterator<char>(file)),
                                   (std::istreambuf_iterator<char>()));
-        url = file_contents;
+        line = file_contents;
         file.close();
     }
     else
@@ -59,31 +59,140 @@ std::string readUrl(const std::string &filename)
     }
 
     // delete the line break
-    if (!url.empty())
-        url.pop_back();
+    if (!line.empty())
+        line.pop_back();
 
-    return url;
+    return line;
 }
 
 class JobManager
 {
 public:
-    virtual std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) = 0;
+    // Grant exclusive ownership of a model (with a given name) to a caller.
+    // The returned object MUST release any resources that it holds once it goes out of scope in the code of the caller.
+    // This can be achieved by returning a unique pointer with an appropriate deleter.
+    // This method may return a nullptr to deny a request.
+    virtual std::unique_ptr<umbridge::Model, void(*)(umbridge::Model*)> requestModelAccess(const std::string& model_name) = 0;
+
+    // To initialize the load balancer we first need a list of model names that are available on a server.
+    // Typically, this can be achieved by simply running the model code and requesting the model names from the server.
+    // Therefore, the implementation can most likely use the same mechanism that is also used for granting model access,
+    // which is why this method was placed in this class to avoid code duplication.
     virtual std::vector<std::string> getModelNames() = 0;
+
     virtual ~JobManager() {};
 };
 
-class HyperQueueJobManager : public JobManager
+class FileBasedModelDeleter
 {
 public:
-    virtual std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override
-    {
-        return std::make_unique<HyperQueueJob>(model_name);
+    FileBasedModelDeleter(std::string cancelation_command, std::string file_to_delete)
+    : cancelation_command(cancelation_command), file_to_delete(file_to_delete) {}
+
+    void operator()(umbridge::Model* model) {
+        delete model;
+        std::filesystem::remove(file_to_delete);
+        std::system(cancelation_command.c_str());
     }
+
+protected:
+    std::string cancelation_command;
+    std::string file_to_delete;
 };
 
-std::mutex job_submission_mutex;
-int hq_submit_delay_ms = 0;
+class FileBasedJobManager : public JobManager
+{
+public:
+    virtual std::unique_ptr<umbridge::Model, void(*)(umbridge::Model*)> requestModelAccess(const std::string& model_name) override
+    {
+        
+    }
+protected:
+    virtual std::string getSubmissionCommand() = 0;
+
+    std::unique_ptr<umbridge::HTTPModel, FileBasedModelDeleter> setDeleter(std::unique_ptr<umbridge::HTTPModel> client)
+    {
+        FileBasedModelDeleter deleter("","");
+        return {client, deleter};
+    }
+    std::unique_ptr<umbridge::HTTPModel> submitJobAndStartClient(const std::string& model_name) {
+        std::string submission_command = getSubmissionCommand();
+        std::string job_id = submitJob(submission_command);
+        std::string server_url = readURL(job_id);
+        auto client = connectToServer(server_url, model_name);
+        return client;
+    }
+
+    std::unique_ptr<umbridge::HTTPModel> connectToServer(const std::string& server_url, const std::string& model_name) 
+    {
+        return std::make_unique<umbridge::HTTPModel>(server_url, model_name);
+    }
+
+    std::string readURL(const std::string& job_id)
+    {
+        std::filesystem::path url_file(url_file_prefix + job_id + url_file_suffix);
+        return readLineFromFile(url_file.string());
+    }
+
+    std::string submitJob(const std::string& command)
+    {
+        // Add optional delay to job submissions to prevent issues in some cases.
+        if (submission_delay_ms) {
+            std::lock_guard<std::mutex> lock(submission_mutex);
+            std::this_thread::sleep_for(std::chrono::milliseconds(submission_delay_ms));
+        }
+        // Submit job and increase job count
+        std::string command_output = getCommandOutput(command);
+        job_count++;
+
+        // Extract the actual job id from the command output
+        return parseJobID(command_output);
+    }
+
+    virtual std::string parseJobID(const std::string& unparsed_job_id) {
+        return unparsed_job_id;
+    }
+
+    std::string selectJobScript(const std::string& model_name, bool force_default_submission_script = false)
+    {
+        namespace fs = std::filesystem;
+
+        const fs::path submission_script_model_specific(
+            submission_script_model_specific_prefix + model_name + submission_script_model_specific_suffix);
+        std::string job_script = "";
+
+        // Use model specific job script if available, default otherwise.
+        if (fs::exists(submission_script_dir / submission_script_model_specific) && !force_default_submission_script)
+        {
+            std::string job_script = (submission_script_dir / submission_script_model_specific).string();
+        }
+        else if (fs::exists(submission_script_dir / submission_script_default)) 
+        {
+            std::string job_script = (submission_script_dir / submission_script_default).string();
+        }
+        else
+        {
+            const std::string error_msg = "Job submission script not found: Check that file '" 
+                + (submission_script_dir / submission_script_default).string() + "' exists.";
+            throw std::runtime_error(error_msg);
+        }
+        return job_script;
+    }
+    
+    const std::filesystem::path submission_script_dir;
+    const std::filesystem::path submission_script_default;
+    const std::string submission_script_model_specific_prefix;
+    const std::string submission_script_model_specific_suffix;
+
+    const std::filesystem::path url_dir;
+    const std::string url_file_prefix;
+    const std::string url_file_suffix;
+
+    int submission_delay_ms = 0;
+    std::mutex submission_mutex;
+    
+    std::atomic<int32_t> job_count = 0;
+};
 
 class HyperQueueJob : public umbridge::Model
 {
@@ -204,24 +313,25 @@ private:
 class LoadBalancer : public umbridge::Model
 {
 public:
-    LoadBalancer(std::string name) : umbridge::Model(name) {}
+    LoadBalancer(std::string name, std::shared_ptr<JobManager> job_manager) 
+    : umbridge::Model(name), job_manager(std::move(job_manager)) {}
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->GetInputSizes(config_json);
+        auto model = job_manager->requestModelAccess(name);
+        return model->GetInputSizes(config_json);
     }
 
     std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->GetOutputSizes(config_json);
+        auto model = job_manager->requestModelAccess(name);
+        return model->GetOutputSizes(config_json);
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->Evaluate(inputs, config_json);
+        auto model = job_manager->requestModelAccess(name);
+        return model->Evaluate(inputs, config_json);
     }
 
     std::vector<double> Gradient(unsigned int outWrt,
@@ -230,8 +340,8 @@ public:
                                  const std::vector<double> &sens,
                                  json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        auto model = job_manager->requestModelAccess(name);
+        return model->Gradient(outWrt, inWrt, inputs, sens, config_json);
     }
 
     std::vector<double> ApplyJacobian(unsigned int outWrt,
@@ -240,8 +350,8 @@ public:
                                       const std::vector<double> &vec,
                                       json config_json = json::parse("{}")) override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+        auto model = job_manager->requestModelAccess(name);
+        return model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
     }
 
     std::vector<double> ApplyHessian(unsigned int outWrt,
@@ -252,28 +362,31 @@ public:
                                      const std::vector<double> &vec,
                                      json config_json = json::parse("{}"))
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+        auto model = job_manager->requestModelAccess(name);
+        return model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
     }
 
     bool SupportsEvaluate() override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->SupportsEvaluate();
+        auto model = job_manager->requestModelAccess(name);
+        return model->SupportsEvaluate();
     }
     bool SupportsGradient() override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->SupportsGradient();
+        auto model = job_manager->requestModelAccess(name);
+        return model->SupportsGradient();
     }
     bool SupportsApplyJacobian() override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->SupportsApplyJacobian();
+        auto model = job_manager->requestModelAccess(name);
+        return model->SupportsApplyJacobian();
     }
     bool SupportsApplyHessian() override
     {
-        HyperQueueJob hq_job(name);
-        return hq_job.client_ptr->SupportsApplyHessian();
+        auto model = job_manager->requestModelAccess(name);
+        return model->SupportsApplyHessian();
     }
+
+private:
+    std::shared_ptr<JobManager> job_manager;
 };
