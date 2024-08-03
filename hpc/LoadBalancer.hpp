@@ -42,25 +42,19 @@ bool waitForFile(const std::string &filename)
     return true;
 }
 
-std::string readLineFromFile(const std::string &filename)
+std::string readLineFromFile(const std::string& filename)
 {
     std::ifstream file(filename);
-    std::string line;
+    std::string line = "";
+
     if (file.is_open())
     {
-        std::string file_contents((std::istreambuf_iterator<char>(file)),
-                                  (std::istreambuf_iterator<char>()));
-        line = file_contents;
-        file.close();
+        std::getline(file, line);
     }
     else
     {
-        std::cerr << "Unable to open file " << filename << " ." << std::endl;
+        std::cerr << "Unable to open file: " << filename << std::endl;
     }
-
-    // delete the line break
-    if (!line.empty())
-        line.pop_back();
 
     return line;
 }
@@ -72,7 +66,7 @@ public:
     // The returned object MUST release any resources that it holds once it goes out of scope in the code of the caller.
     // This can be achieved by returning a unique pointer with an appropriate deleter.
     // This method may return a nullptr to deny a request.
-    virtual std::unique_ptr<umbridge::Model, void(*)(umbridge::Model*)> requestModelAccess(const std::string& model_name) = 0;
+    virtual std::unique_ptr<umbridge::Model, void(*)(void*)> requestModelAccess(const std::string& model_name) = 0;
 
     // To initialize the load balancer we first need a list of model names that are available on a server.
     // Typically, this can be achieved by simply running the model code and requesting the model names from the server.
@@ -99,28 +93,30 @@ protected:
     std::string cancelation_command;
     std::string file_to_delete;
 };
+using unique_file_based_model_ptr = std::unique_ptr<umbridge::Model, FileBasedModelDeleter>;
 
 class FileBasedJobManager : public JobManager
 {
 public:
-    virtual std::unique_ptr<umbridge::Model, void(*)(umbridge::Model*)> requestModelAccess(const std::string& model_name) override
+    virtual std::unique_ptr<umbridge::Model, void(*)(void*)> requestModelAccess(const std::string& model_name) override
     {
-        
-    }
-protected:
-    virtual std::string getSubmissionCommand() = 0;
-
-    std::unique_ptr<umbridge::HTTPModel, FileBasedModelDeleter> setDeleter(std::unique_ptr<umbridge::HTTPModel> client)
-    {
-        FileBasedModelDeleter deleter("","");
-        return {client, deleter};
-    }
-    std::unique_ptr<umbridge::HTTPModel> submitJobAndStartClient(const std::string& model_name) {
         std::string submission_command = getSubmissionCommand();
         std::string job_id = submitJob(submission_command);
         std::string server_url = readURL(job_id);
-        auto client = connectToServer(server_url, model_name);
+        FileBasedModelDeleter deleter(getCancelationCommand(job_id), getURLFileName(job_id));
+        unique_file_based_model_ptr client(new umbridge::HTTPModel(server_url, model_name), deleter);
         return client;
+    }
+protected:
+    virtual std::string getSubmissionCommand() = 0;
+    virtual std::string getCancelationCommand(const std::string& job_id) = 0;
+
+    std::unique_ptr<umbridge::HTTPModel, FileBasedModelDeleter> setDeleter(std::unique_ptr<umbridge::HTTPModel> client)
+    {
+
+    }
+    std::unique_ptr<umbridge::HTTPModel> submitJobAndStartClient(const std::string& model_name) {
+
     }
 
     std::unique_ptr<umbridge::HTTPModel> connectToServer(const std::string& server_url, const std::string& model_name) 
@@ -128,10 +124,14 @@ protected:
         return std::make_unique<umbridge::HTTPModel>(server_url, model_name);
     }
 
+    std::string getURLFileName(const std::string& job_id)
+    {
+        return url_file_prefix + job_id + url_file_suffix;
+    }
+
     std::string readURL(const std::string& job_id)
     {
-        std::filesystem::path url_file(url_file_prefix + job_id + url_file_suffix);
-        return readLineFromFile(url_file.string());
+        return readLineFromFile(getURLFileName(job_id));
     }
 
     std::string submitJob(const std::string& command)
@@ -181,9 +181,11 @@ protected:
     
     const std::filesystem::path submission_script_dir;
     const std::filesystem::path submission_script_default;
+    // Model-specifc job-script format: <prefix><model_name><suffix>
     const std::string submission_script_model_specific_prefix;
     const std::string submission_script_model_specific_suffix;
 
+    // URL file format: <prefix><job-id><suffix>
     const std::filesystem::path url_dir;
     const std::string url_file_prefix;
     const std::string url_file_suffix;
@@ -314,7 +316,7 @@ class LoadBalancer : public umbridge::Model
 {
 public:
     LoadBalancer(std::string name, std::shared_ptr<JobManager> job_manager) 
-    : umbridge::Model(name), job_manager(std::move(job_manager)) {}
+    : umbridge::Model(name), job_manager(job_manager) {}
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override
     {
