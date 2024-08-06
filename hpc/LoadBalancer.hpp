@@ -75,8 +75,39 @@ public:
     // Therefore, the implementation can most likely use the same mechanism that is also used for granting model access.
     virtual std::vector<std::string> getModelNames() = 0;
 
-    virtual ~JobManager() {};
+    virtual ~JobManager() = default;
 };
+
+class FileBasedJob
+{
+public:
+    FileBasedJob()
+    {
+
+    }
+
+    FileBaseJob~()
+    {
+
+    }
+
+    FileBasedJob(const FileBasedJob& other) = delete;
+
+    std::string getJobID() const 
+    {
+        return job_id;
+    }
+private:
+    std::string job_id;
+};
+
+template<typename T>
+void deleteFileBased(T* t, std::string file_to_delete, std::string cancellation_command)
+{
+    delete t;
+    std::filesystem::remove(file_to_delete);
+    std::system(cancelation_command.c_str());
+}
 
 class FileBasedJobManager : public JobManager
 {
@@ -118,7 +149,7 @@ protected:
     std::string submitJob()
     {
         // Add optional delay to job submissions to prevent issues in some cases.
-        if (submission_delay_ms) {
+        if (submission_delay_ms > 0) {
             std::lock_guard<std::mutex> lock(submission_mutex);
             std::this_thread::sleep_for(std::chrono::milliseconds(submission_delay_ms));
         }
