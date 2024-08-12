@@ -78,37 +78,45 @@ public:
     virtual ~JobManager() = default;
 };
 
-class FileBasedJob
+class Job
 {
 public:
-    FileBasedJob()
+    virtual ~Job() = default;
+
+    virtual std::string getJobId() const = 0;
+};
+
+
+class FileBasedJob : public Job
+{
+public:
+    FileBasedJob(const std::string& command, std::function<std::string (const std::string&)> extract_job_id)
+    {
+        std::string command_output = getCommandOutput(command);
+        id = extract_job_id(command_output);
+    }
+
+    ~FileBasedJob()
     {
 
     }
-
-    FileBaseJob~()
-    {
-
-    }
-
-    FileBasedJob(const FileBasedJob& other) = delete;
-
-    std::string getJobID() const 
-    {
-        return job_id;
-    }
-private:
-    std::string job_id;
+protected:
+    std::string id;
 };
 
 template<typename T>
-void deleteFileBased(T* t, std::string file_to_delete, std::string cancellation_command)
+void deleteFileBased(T* t, std::string file_to_delete, std::string cancel_command)
 {
     delete t;
     std::filesystem::remove(file_to_delete);
-    std::system(cancelation_command.c_str());
+    std::system(cancel_command.c_str());
 }
 
+// Basic idea:
+// 1. Run some command to request a resource allocation on the HPC cluster.
+// 2. Launch a model server in the resource allocation.
+// 3. Retrieve the URL of the model server.
+// 4. Connect to the model server using the URL.
 class FileBasedJobManager : public JobManager
 {
 public:
