@@ -59,6 +59,32 @@ std::string readLineFromFile(const std::string& filename)
     return line;
 }
 
+struct Command
+{
+    std::string exec;
+    std::vector<std::string> options;
+    std::string target;
+
+    void addOption(const std::string& option)
+    {
+        options.push_back(option);
+    }
+
+    std::string toString() const
+    {
+        std::string result = exec;
+        for (const std::string& s : options)
+        {
+            result += " " + s;
+        }
+        result += " " + target;
+
+        return result;
+    }
+};
+
+
+
 class JobManager
 {
 public:
@@ -84,6 +110,9 @@ void remove_trailing_newline(std::string& s)
     }
 }
 
+// A Job instance escaping its scope would cause the destructor of the temporary to prematurely cancel the system resource allocation.
+// Therefore, copy/move-constructor/assignment are marked as deleted.
+// Instead, use explicit ownership mechanisms like std::unique_ptr.
 class Job
 {
 public:
@@ -100,11 +129,15 @@ public:
 class HyperQueueJob : public Job
 {
 public:
-    explicit HyperQueueJob(const std::string& command)
+    explicit HyperQueueJob(const std::vector<std::string>& options)
     {
-        std::string output = getCommandOutput(command);
-        remove_trailing_newline(output);
-        id = output;
+        Command command {"./hq", options, "hq_scripts/job.sh"};
+
+        // Makes HQ output "<job id>\n"
+        command.addOption("--output-mode=quiet");
+        id = getCommandOutput(command.toString());
+
+        remove_trailing_newline(id);
     }
 
     ~HyperQueueJob() override
@@ -124,10 +157,16 @@ private:
 class SlurmJob : public Job
 {
 public:
-    explicit SlurmJob(const std::string& command)
+    explicit SlurmJob(const std::vector<std::string>& options)
     {
-        std::string output = getCommandOutput(command);
+        Command command {"sbatch", options, "slurm_scripts/job.sh"};
+
+        // Makes SLURM output "<job id>[;<cluster name>]\n"
+        command.addOption("--parsable");
+        std::string output = getCommandOutput(command.toString());
+
         id = output.substr(0, output.find(';'));
+        remove_trailing_newline(id);
     }
 
     ~SlurmJob() override
@@ -144,58 +183,10 @@ private:
     std::string id;
 };
 
-/*
-std::string submit_hyperqueue_job(const std::string& command)
+class JobCommunicator
 {
-    std::string id = getCommandOutput(command);
-    remove_trailing_newline(id);
-    return id;
-}
 
-std::string submit_slurm_job(const std::string& command)
-{
-    std::string id = getCommandOutput(command);
-    return id.substr(0, id.find(';'));
-}
-
-void cancel_hyperqueue_job(const std::string& id)
-{
-    std::system(("./hq job cancel " + id).c_str());
-}
-
-void cancel_slurm_job(const std::string& id)
-{
-    std::system(("scancel " + id).c_str());
-}
-
-template <typename SubmitFunction, typename CancelFunction>
-class Job
-{
-public:
-    Job(std::string submit_command, SubmitFunction submit, CancelFunction cancel) : id(submit(submit_command)), cancel(cancel) {}
-    Job(Job &other) = delete;
-    Job(Job &&other) = delete;
-    Job &operator=(Job &other) = delete;
-    Job &operator=(Job &&other) = delete;
-    ~Job()
-    {
-        cancel(id);
-    }
-
-private:
-    std::string id;
-    CancelFunction cancel;
 };
-
-class HyperQueueJob : public Job
-{
-    HyperQueueJob()
-};
-
-
-using SlurmJob = Job<decltype(&submit_slurm_job), decltype(&cancel_slurm_job)>;
-using HyperQueueJob = Job<decltype(&submit_hyperqueue_job), decltype(&cancel_hyperqueue_job)>;
-*/
 
 // Basic idea:
 // 1. Run some command to request a resource allocation on the HPC cluster.
