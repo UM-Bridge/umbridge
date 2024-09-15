@@ -6,8 +6,15 @@
 #include <cstdlib>
 #include <tuple>
 #include <memory>
+#include <map>
 #include <filesystem>
 #include "../lib/umbridge.h"
+
+void create_directory_if_not_existing(const std::filesystem::path& directory) {
+    if (!std::filesystem::is_directory(directory) || !std::filesystem::exists(directory)) {
+        std::filesystem::create_directory(directory);
+    }
+}
 
 // run and get the result of command
 std::string getCommandOutput(const std::string& command)
@@ -31,20 +38,20 @@ std::string getCommandOutput(const std::string& command)
 }
 
 // wait until file is created
-bool waitForFile(const std::string &filename)
+bool wait_for_file(const std::filesystem::path& file_path, std::chrono::milliseconds polling_cycle)
 {
     // Check if the file exists
-    while (!std::filesystem::exists(filename)) {
+    while (!std::filesystem::exists(file_path)) {
         // If the file doesn't exist, wait for a certain period
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(polling_cycle);
     }
 
     return true;
 }
 
-std::string readLineFromFile(const std::string& filename)
+std::string read_line_from_file(const std::filesystem::path& file_path)
 {
-    std::ifstream file(filename);
+    std::ifstream file(file_path);
     std::string line = "";
 
     if (file.is_open())
@@ -53,7 +60,7 @@ std::string readLineFromFile(const std::string& filename)
     }
     else
     {
-        std::cerr << "Unable to open file: " << filename << std::endl;
+        std::cerr << "Unable to open file: " << file_path.string() << std::endl;
     }
 
     return line;
@@ -84,10 +91,11 @@ struct Command
 };
 
 
-
 class JobManager
 {
 public:
+    virtual ~JobManager() = default;
+
     // Grant exclusive ownership of a model (with a given name) to a caller.
     // The returned object MUST release any resources that it holds once it goes out of scope in the code of the caller.
     // This can be achieved by returning a unique pointer with an appropriate deleter.
@@ -98,8 +106,6 @@ public:
     // Typically, this can be achieved by simply running the model code and requesting the model names from the server.
     // Therefore, the implementation can most likely use the same mechanism that is also used for granting model access.
     virtual std::vector<std::string> getModelNames() = 0;
-
-    virtual ~JobManager() = default;
 };
 
 void remove_trailing_newline(std::string& s)
@@ -110,28 +116,28 @@ void remove_trailing_newline(std::string& s)
     }
 }
 
-// A Job instance escaping its scope would cause the destructor of the temporary to prematurely cancel the system resource allocation.
+// A Job instance escaping its scope would cause the destructor to prematurely cancel the system resource allocation.
 // Therefore, copy/move-constructor/assignment are marked as deleted.
 // Instead, use explicit ownership mechanisms like std::unique_ptr.
 class Job
 {
 public:
     Job() = default;
-    Job(Job &other) = delete;
-    Job(Job &&other) = delete;
-    Job &operator=(Job &other) = delete;
-    Job &operator=(Job &&other) = delete;
+    Job(Job& other) = delete;
+    Job(Job&& other) = delete;
+    Job& operator=(Job& other) = delete;
+    Job& operator=(Job&& other) = delete;
     virtual ~Job() = default;
 
     virtual std::string getJobId() const = 0;
 };
-
+// Environment vars: --env KEY1=VAL1 --env KEY2=VAL2
 class HyperQueueJob : public Job
 {
 public:
-    explicit HyperQueueJob(const std::vector<std::string>& options)
+    explicit HyperQueueJob(const std::vector<std::string>& options, const std::string& target)
     {
-        Command command {"./hq", options, "hq_scripts/job.sh"};
+        Command command {"./hq", options, target};
 
         // Makes HQ output "<job id>\n"
         command.addOption("--output-mode=quiet");
@@ -153,13 +159,13 @@ public:
 private:
     std::string id;
 };
-
+// Environment vars: --export=KEY1=VAL1,KEY2=VAL2
 class SlurmJob : public Job
 {
 public:
-    explicit SlurmJob(const std::vector<std::string>& options)
+    explicit SlurmJob(const std::vector<std::string>& options, const std::string& target)
     {
-        Command command {"sbatch", options, "slurm_scripts/job.sh"};
+        Command command {"sbatch", options, target};
 
         // Makes SLURM output "<job id>[;<cluster name>]\n"
         command.addOption("--parsable");
@@ -183,9 +189,146 @@ private:
     std::string id;
 };
 
-class JobCommunicator
+class JobSubmitter
+{
+public:
+    virtual ~JobSubmitter() = default;
+
+    virtual std::unique_ptr<Job> submit(const std::string& model_name, const std::map<std::string, std::string>& env) = 0;
+};
+
+class HyperQueueSubmitter : public JobSubmitter
+{
+public:
+    HyperQueueSubmitter(std::filesystem::path submission_script_dir, std::chrono::milliseconds submission_delay) 
+    : submission_delay(submission_delay) 
+    {
+        
+    }
+
+    std::unique_ptr<Job> submit(const std::string& model_name, const std::map<std::string, std::string>& env) override 
+    {
+        // Add optional delay to job submissions to prevent issues in some cases.
+        if (submission_delay > std::chrono::milliseconds::zero()) {
+            std::lock_guard lock(submission_mutex);
+            std::this_thread::sleep_for(submission_delay);
+        }
+
+        // Submit job and increase job count
+        std::vector<std::string> options = env_to_options(env);
+        options.push_back("--priority=-" + job_count);
+        std::unique_ptr<Job> job = std::make_unique<HyperQueueJob>(options, target);
+        job_count++;
+        return job;
+    }
+private:
+    std::vector<std::string> env_to_options(const std::map<std::string, std::string>& env) const
+    {
+        std::vector<std::string> options;
+        options.reserve(env.size());
+
+        for (const auto& [key, val] : env)
+        {
+            options.push_back("--env " + key + "=" + val);
+        }
+        return options;
+    }
+
+    std::chrono::milliseconds submission_delay = std::chrono::milliseconds::zero();
+    std::mutex submission_mutex;
+
+    std::atomic<int32_t> job_count = 0;
+
+    std::filesystem::path submission_script_dir;
+    std::filesystem::path submission_script_default;
+    // Model-specific job-script format: <prefix><model_name><suffix>
+    std::string submission_script_model_specific_prefix;
+    std::string submission_script_model_specific_suffix;
+};
+
+class SlurmSubmitter : public JobSubmitter
 {
 
+};
+
+class JobCommunicator
+{
+public:
+    virtual ~JobCommunicator() = default;
+
+    virtual std::map<std::string, std::string> getInitMessage() = 0;
+
+    virtual std::string getModelUrl(const std::string& job_id) = 0;
+};
+
+class JobCommunicatorFactory
+{
+public:
+    virtual ~JobCommunicatorFactory() = default;
+
+    virtual std::unique_ptr<JobCommunicator> create() = 0;
+};
+
+class FilesystemCommunicatorFactory : public JobCommunicatorFactory
+{
+    FilesystemCommunicatorFactory(std::filesystem::path file_dir, std::chrono::milliseconds polling_cycle)
+    : file_dir(file_dir), polling_cycle(polling_cycle)
+    {
+        create_directory_if_not_existing(file_dir);
+    }
+    std::unique_ptr<JobCommunicator> create() override
+    {
+        return std::make_unique<FilesystemCommunicator>(file_dir, polling_cycle);
+    }
+
+private:
+    std::filesystem::path file_dir;
+
+    std::chrono::milliseconds polling_cycle;
+};
+
+class FilesystemCommunicator : public JobCommunicator
+{
+public:
+    FilesystemCommunicator(std::filesystem::path file_dir, std::chrono::milliseconds polling_cycle) 
+    : file_dir(file_dir), polling_cycle(polling_cycle) {}
+
+    ~FilesystemCommunicator() override
+    {
+        if(!file_path.empty())
+        {
+            std::filesystem::remove(file_path);
+        }
+    }
+
+    std::map<std::string, std::string> getInitMessage() override
+    {
+        std::map<std::string, std::string> msg {{"UMBRIDGE_LOADBALANCER_COMM_FILEDIR", file_dir.string()}};
+        return msg;
+    }
+
+    std::string getModelUrl(const std::string& job_id) override
+    {
+        file_path = file_dir / getUrlFileName(job_id);
+
+        std::cout << "Waiting for URL file: " << file_path.string() << std::endl;
+        wait_for_file(file_path, polling_cycle);
+
+        // TODO: What if opening the file fails?
+        std::string url = read_line_from_file(file_path);
+        return url;
+    }
+
+private:
+    std::string getUrlFileName(const std::string& job_id) const
+    {
+        return "url-" + job_id + ".txt";
+    }
+
+    std::filesystem::path file_dir;
+    std::filesystem::path file_path;
+
+    std::chrono::milliseconds polling_cycle;
 };
 
 // Basic idea:
@@ -193,10 +336,10 @@ class JobCommunicator
 // 2. Launch a model server in the resource allocation.
 // 3. Retrieve the URL of the model server.
 // 4. Connect to the model server using the URL.
-template <typename Job>
 class CommandJobManager : public JobManager
 {
 public:
+    CommandJobManager(std::shared_ptr<JobSubmitter> job_submitter, std::shared_ptr<JobCommunicatorFactory> job_comm_factory) {}
     std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override
     {
         std::string job_id = submitJob();
@@ -207,17 +350,6 @@ public:
     }
 private:
     virtual std::string getSubmissionCommand() = 0;
-
-    std::string getURLFileName(const std::string& job_id) const
-    {
-        std::filesystem::path url_file_name(url_file_prefix + job_id + url_file_suffix);
-        return (url_dir / url_file_name).string();
-    }
-
-    std::string readURL(const std::string& job_id)
-    {
-        return readLineFromFile(getURLFileName(job_id));
-    }
 
     std::string submitJob()
     {
@@ -262,131 +394,6 @@ private:
     // Model-specific job-script format: <prefix><model_name><suffix>
     std::string submission_script_model_specific_prefix;
     std::string submission_script_model_specific_suffix;
-
-    // URL file format: <prefix><job-id><suffix>
-    std::filesystem::path url_dir;
-    std::string url_file_prefix;
-    std::string url_file_suffix;
-
-    int submission_delay_ms = 0;
-    std::mutex submission_mutex;
-    
-    std::atomic<int32_t> job_count = 0;
-};
-
-class HyperQueueJob
-{
-public:
-    static std::atomic<int32_t> job_count;
-    HyperQueueJob(std::string model_name, bool start_client=true, 
-                                          bool force_default_submission_script=false)
-    : Model(model_name)
-    {
-        job_id = submitHQJob(model_name, force_default_submission_script);
-
-        // Get the server URL
-        server_url = readUrl("./urls/url-" + job_id + ".txt");
-
-        // Start a client, using unique pointer
-        if(start_client)
-        {
-            client_ptr = std::make_unique<umbridge::HTTPModel>(server_url, model_name);
-        }
-    }
-
-    ~HyperQueueJob()
-    {
-        // Cancel the SLURM job
-        std::system(("./hq job cancel " + job_id).c_str());
-
-        // Delete the url text file
-        std::system(("rm ./urls/url-" + job_id + ".txt").c_str());
-    }
-
-    std::string server_url;
-    std::unique_ptr<umbridge::HTTPModel> client_ptr;
-
-private:
-    std::string submitHQJob(const std::string &model_name, bool force_default_submission_script=false)
-    {
-        // Add optional delay to job submissions to prevent issues in some cases.
-        if (hq_submit_delay_ms) {
-            std::lock_guard<std::mutex> lock(job_submission_mutex);
-            std::this_thread::sleep_for(std::chrono::milliseconds(hq_submit_delay_ms));
-        }
-        
-        // Use model specific job script if available, default otherwise.
-        const std::filesystem::path submission_script_dir("./hq_scripts");
-        const std::filesystem::path submission_script_generic("job.sh");
-        const std::filesystem::path submission_script_model_specific("job_" + model_name + ".sh");
-
-        std::string hq_command = "./hq submit --output-mode=quiet ";
-        hq_command += "--priority=" + std::to_string(job_count) + " ";
-        if (std::filesystem::exists(submission_script_dir / submission_script_model_specific) && !force_default_submission_script)
-        {
-            hq_command += (submission_script_dir / submission_script_model_specific).string();
-        }
-        else if (std::filesystem::exists(submission_script_dir / submission_script_generic)) 
-        {
-            hq_command += (submission_script_dir / submission_script_generic).string();
-        }
-        else
-        {
-            throw std::runtime_error("Job submission script not found: Check that file 'hq_script/job.sh' exists.");
-        }
-
-        // Submit the HQ job and retrieve the HQ job ID.
-        std::string job_id = getCommandOutput(hq_command);
-        job_count--;
-
-        // Delete the line break.
-        if (!job_id.empty())
-        {
-            job_id.pop_back();
-        }
-
-        std::cout << "Waiting for job " << job_id << " to start." << std::endl;
-
-        // Wait for the HQ Job to start
-        waitForHQJobState(job_id, "RUNNING");
-
-        // Also wait until job is running and url file is written
-        waitForFile("./urls/url-" + job_id + ".txt");
-
-        std::cout << "Job " << job_id << " started." << std::endl;
-
-        return job_id;
-    }
-
-    // state = ["WAITING", "RUNNING", "FINISHED", "CANCELED"]
-    bool waitForHQJobState(const std::string &job_id, const std::string &state)
-    {
-        const std::string command = "./hq job info " + job_id + " | grep State | awk '{print $4}'";
-        // std::cout << "Checking runtime: " << command << std::endl;
-        std::string job_status;
-
-        do
-        {
-            job_status = getCommandOutput(command);
-
-            // Delete the line break
-            if (!job_status.empty())
-                job_status.pop_back();
-
-            // Don't wait if there is an error or the job is ended
-            if (job_status == "" || (state != "FINISHED" && job_status == "FINISHED") || job_status == "FAILED" || job_status == "CANCELED")
-            {
-                std::cerr << "Wait for job status failure, status : " << job_status << std::endl;
-                return false;
-            }
-
-            sleep(1);
-        } while (job_status != state);
-
-        return true;
-    }
-
-    std::string job_id;
 };
 
 
