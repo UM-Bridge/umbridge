@@ -10,14 +10,8 @@
 #include <filesystem>
 #include "../lib/umbridge.h"
 
-void create_directory_if_not_existing(const std::filesystem::path& directory) {
-    if (!std::filesystem::is_directory(directory) || !std::filesystem::exists(directory)) {
-        std::filesystem::create_directory(directory);
-    }
-}
-
 // run and get the result of command
-std::string getCommandOutput(const std::string& command)
+std::string get_command_output(const std::string& command)
 {
     FILE *pipe = popen(command.c_str(), "r"); // execute the command and return the output as stream
     if (!pipe)
@@ -90,24 +84,6 @@ struct Command
     }
 };
 
-
-class JobManager
-{
-public:
-    virtual ~JobManager() = default;
-
-    // Grant exclusive ownership of a model (with a given name) to a caller.
-    // The returned object MUST release any resources that it holds once it goes out of scope in the code of the caller.
-    // This can be achieved by returning a unique pointer with an appropriate deleter.
-    // This method may return a nullptr to deny a request.
-    virtual std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) = 0;
-
-    // To initialize the load balancer we first need a list of model names that are available on a server.
-    // Typically, this can be achieved by simply running the model code and requesting the model names from the server.
-    // Therefore, the implementation can most likely use the same mechanism that is also used for granting model access.
-    virtual std::vector<std::string> getModelNames() = 0;
-};
-
 void remove_trailing_newline(std::string& s)
 {
     if (!s.empty() && s.back() == '\n')
@@ -141,7 +117,7 @@ public:
 
         // Makes HQ output "<job id>\n"
         command.addOption("--output-mode=quiet");
-        id = getCommandOutput(command.toString());
+        id = get_command_output(command.toString());
 
         remove_trailing_newline(id);
     }
@@ -169,7 +145,7 @@ public:
 
         // Makes SLURM output "<job id>[;<cluster name>]\n"
         command.addOption("--parsable");
-        std::string output = getCommandOutput(command.toString());
+        std::string output = get_command_output(command.toString());
 
         id = output.substr(0, output.find(';'));
         remove_trailing_newline(id);
@@ -194,19 +170,16 @@ class JobSubmitter
 public:
     virtual ~JobSubmitter() = default;
 
-    virtual std::unique_ptr<Job> submit(const std::string& model_name, const std::map<std::string, std::string>& env) = 0;
+    virtual std::unique_ptr<Job> submit(const std::string& job_script, const std::map<std::string, std::string>& env) = 0;
 };
 
 class HyperQueueSubmitter : public JobSubmitter
 {
 public:
-    HyperQueueSubmitter(std::filesystem::path submission_script_dir, std::chrono::milliseconds submission_delay) 
-    : submission_delay(submission_delay) 
-    {
-        
-    }
+    HyperQueueSubmitter(std::chrono::milliseconds submission_delay) 
+    : submission_delay(submission_delay) {}
 
-    std::unique_ptr<Job> submit(const std::string& model_name, const std::map<std::string, std::string>& env) override 
+    std::unique_ptr<Job> submit(const std::string& job_script, const std::map<std::string, std::string>& env) override 
     {
         // Add optional delay to job submissions to prevent issues in some cases.
         if (submission_delay > std::chrono::milliseconds::zero()) {
@@ -216,8 +189,8 @@ public:
 
         // Submit job and increase job count
         std::vector<std::string> options = env_to_options(env);
-        options.push_back("--priority=-" + job_count);
-        std::unique_ptr<Job> job = std::make_unique<HyperQueueJob>(options, target);
+        options.emplace_back("--priority=-" + job_count);
+        std::unique_ptr<Job> job = std::make_unique<HyperQueueJob>(options, job_script);
         job_count++;
         return job;
     }
@@ -238,12 +211,6 @@ private:
     std::mutex submission_mutex;
 
     std::atomic<int32_t> job_count = 0;
-
-    std::filesystem::path submission_script_dir;
-    std::filesystem::path submission_script_default;
-    // Model-specific job-script format: <prefix><model_name><suffix>
-    std::string submission_script_model_specific_prefix;
-    std::string submission_script_model_specific_suffix;
 };
 
 class SlurmSubmitter : public JobSubmitter
@@ -267,24 +234,6 @@ public:
     virtual ~JobCommunicatorFactory() = default;
 
     virtual std::unique_ptr<JobCommunicator> create() = 0;
-};
-
-class FilesystemCommunicatorFactory : public JobCommunicatorFactory
-{
-    FilesystemCommunicatorFactory(std::filesystem::path file_dir, std::chrono::milliseconds polling_cycle)
-    : file_dir(file_dir), polling_cycle(polling_cycle)
-    {
-        create_directory_if_not_existing(file_dir);
-    }
-    std::unique_ptr<JobCommunicator> create() override
-    {
-        return std::make_unique<FilesystemCommunicator>(file_dir, polling_cycle);
-    }
-
-private:
-    std::filesystem::path file_dir;
-
-    std::chrono::milliseconds polling_cycle;
 };
 
 class FilesystemCommunicator : public JobCommunicator
@@ -331,6 +280,174 @@ private:
     std::chrono::milliseconds polling_cycle;
 };
 
+class FilesystemCommunicatorFactory : public JobCommunicatorFactory
+{
+public:
+    FilesystemCommunicatorFactory(std::filesystem::path file_dir, std::chrono::milliseconds polling_cycle)
+    : file_dir(file_dir), polling_cycle(polling_cycle)
+    {
+        std::filesystem::create_directory(file_dir);
+    }
+    std::unique_ptr<JobCommunicator> create() override
+    {
+        return std::make_unique<FilesystemCommunicator>(file_dir, polling_cycle);
+    }
+
+private:
+    std::filesystem::path file_dir;
+
+    std::chrono::milliseconds polling_cycle;
+};
+
+
+struct JobScriptLocator
+{
+    std::filesystem::path selectJobScript(const std::string& model_name)
+    {
+        std::filesystem::path script_default = script_dir / script_default_name;
+        std::filesystem::path script_model_specific = script_dir / (model_prefix + model_name + model_suffix);
+
+        // Use model specific job script if available, default otherwise.
+        if (std::filesystem::exists(script_model_specific))
+        {
+            return script_model_specific;
+        }
+        else if (std::filesystem::exists(script_default) )
+        {
+            return script_default;
+        }
+        else
+        {
+            std::string error_msg = "Job script not found: Check that file '" + script_default.string() + "' exists.";
+            throw std::runtime_error(error_msg);
+        }
+    }
+
+    std::filesystem::path getDefaultJobScript()
+    {
+        return script_dir / script_default_name;
+    }
+
+    void printModelJobScripts(std::vector<std::string> model_names) {
+        const std::string section_start_delimiter = "==============================MODEL INFO==============================";
+        const std::string section_end_delimiter   = "======================================================================";
+        
+        // Sort the model names in alphabetical order for cleaner output.
+        std::sort(model_names.begin(), model_names.end());
+
+        std::cout << section_start_delimiter << std::endl;
+
+        std::cout << "Available models and corresponding job-scripts:\n";
+        for (const std::string& model_name : model_names) {
+            std::filesystem::path used_job_script = selectJobScript(model_name);
+            std::cout << "* Model '" << model_name << "' --> '" << used_job_script << std::endl;
+        }
+        std::cout << std::endl;
+
+        std::cout << section_end_delimiter << std::endl;
+    }
+
+
+    std::filesystem::path script_dir;
+
+    std::string script_default_name;
+
+    // Model-specific job-script format: <prefix><model_name><suffix>
+    std::string model_prefix;
+    std::string model_suffix;
+};
+
+class JobManager
+{
+public:
+    virtual ~JobManager() = default;
+
+    // Grant exclusive ownership of a model (with a given name) to a caller.
+    // The returned object MUST release any resources that it holds once it goes out of scope in the code of the caller.
+    // This can be achieved by returning a unique pointer with an appropriate deleter.
+    // This method may return a nullptr to deny a request.
+    virtual std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) = 0;
+
+    // To initialize the load balancer we first need a list of model names that are available on a server.
+    // Typically, this can be achieved by simply running the model code and requesting the model names from the server.
+    // Therefore, the implementation can most likely use the same mechanism that is also used for granting model access.
+    virtual std::vector<std::string> getModelNames() = 0;
+};
+
+
+// TODO: Ugly repetition, maybe there is a better way to wrap a job and a model?
+class JobModel : public umbridge::Model
+{
+public:
+    JobModel(std::unique_ptr<Job> job, std::unique_ptr<umbridge::Model> model)
+    : umbridge::Model(model->GetName()), job(std::move(job)), model(std::move(model)) {}
+
+    std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override
+    {
+        return model->GetInputSizes(config_json);
+    }
+
+    std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override
+    {
+        return model->GetOutputSizes(config_json);
+    }
+
+    std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, json config_json = json::parse("{}")) override
+    {
+        return model->Evaluate(inputs, config_json);
+    }
+
+    std::vector<double> Gradient(unsigned int outWrt,
+                                 unsigned int inWrt,
+                                 const std::vector<std::vector<double>> &inputs,
+                                 const std::vector<double> &sens,
+                                 json config_json = json::parse("{}")) override
+    {
+        return model->Gradient(outWrt, inWrt, inputs, sens, config_json);
+    }
+
+    std::vector<double> ApplyJacobian(unsigned int outWrt,
+                                      unsigned int inWrt,
+                                      const std::vector<std::vector<double>> &inputs,
+                                      const std::vector<double> &vec,
+                                      json config_json = json::parse("{}")) override
+    {
+        return model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+    }
+
+    std::vector<double> ApplyHessian(unsigned int outWrt,
+                                     unsigned int inWrt1,
+                                     unsigned int inWrt2,
+                                     const std::vector<std::vector<double>> &inputs,
+                                     const std::vector<double> &sens,
+                                     const std::vector<double> &vec,
+                                     json config_json = json::parse("{}")) override
+    {
+        return model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+    }
+
+    bool SupportsEvaluate() override
+    {
+        return model->SupportsEvaluate();
+    }
+    bool SupportsGradient() override
+    {
+        return model->SupportsGradient();
+    }
+    bool SupportsApplyJacobian() override
+    {
+        return model->SupportsApplyJacobian();
+    }
+    bool SupportsApplyHessian() override
+    {
+        return model->SupportsApplyHessian();
+    }
+
+private:
+    std::unique_ptr<Job> job;
+    std::unique_ptr<umbridge::Model> model;
+};
+
 // Basic idea:
 // 1. Run some command to request a resource allocation on the HPC cluster.
 // 2. Launch a model server in the resource allocation.
@@ -339,63 +456,36 @@ private:
 class CommandJobManager : public JobManager
 {
 public:
-    CommandJobManager(std::shared_ptr<JobSubmitter> job_submitter, std::shared_ptr<JobCommunicatorFactory> job_comm_factory) {}
+    CommandJobManager(
+        std::unique_ptr<JobSubmitter> job_submitter, 
+        std::unique_ptr<JobCommunicatorFactory> job_comm_factory,
+        JobScriptLocator locator) 
+        : job_submitter(std::move(job_submitter)), job_comm_factory(std::move(job_comm_factory)), locator(std::move(locator)) {}
+
     std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override
     {
-        std::string job_id = submitJob();
-        std::string server_url = readURL(job_id);
-
-        std::unique_ptr<umbridge::Model> model = std::make_unique<umbridge::HTTPModel>(model_name, server_url);
-        return model;
-    }
-private:
-    virtual std::string getSubmissionCommand() = 0;
-
-    std::string submitJob()
-    {
-        // Add optional delay to job submissions to prevent issues in some cases.
-        if (submission_delay_ms > 0) {
-            std::lock_guard lock(submission_mutex);
-            std::this_thread::sleep_for(std::chrono::milliseconds(submission_delay_ms));
-        }
-        // Submit job and increase job count
-        Job job(getSubmissionCommand()); // getSubmissionCommand may depend on job_count. Possible race condition!
-        job_count++;
+        std::filesystem::path job_script = locator.selectJobScript(model_name);
+        std::unique_ptr<JobCommunicator> comm = job_comm_factory->create();
+        std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());
+        std::string url = comm->getModelUrl(job->getJobId());
+        auto model = std::make_unique<umbridge::HTTPModel>(url, model_name);
+        return std::make_unique<JobModel>(std::move(job), std::move(model));
     }
 
-    std::string selectJobScript(const std::string& model_name, bool force_default_submission_script = false)
+    std::vector<std::string> getModelNames() override 
     {
-        namespace fs = std::filesystem;
-
-        const fs::path submission_script_model_specific(
-            submission_script_model_specific_prefix + model_name + submission_script_model_specific_suffix);
-        std::string job_script = "";
-
-        // Use model specific job script if available, default otherwise.
-        if (fs::exists(submission_script_dir / submission_script_model_specific) && !force_default_submission_script)
-        {
-            std::string job_script = (submission_script_dir / submission_script_model_specific).string();
-        }
-        else if (fs::exists(submission_script_dir / submission_script_default)) 
-        {
-            std::string job_script = (submission_script_dir / submission_script_default).string();
-        }
-        else
-        {
-            const std::string error_msg = "Job submission script not found: Check that file '" 
-                + (submission_script_dir / submission_script_default).string() + "' exists.";
-            throw std::runtime_error(error_msg);
-        }
-        return job_script;
+        std::filesystem::path job_script = locator.getDefaultJobScript();
+        std::unique_ptr<JobCommunicator> comm = job_comm_factory->create();
+        std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());
+        std::string url = comm->getModelUrl(job->getJobId());
+        return umbridge::SupportedModels(url);
     }
     
-    std::filesystem::path submission_script_dir;
-    std::filesystem::path submission_script_default;
-    // Model-specific job-script format: <prefix><model_name><suffix>
-    std::string submission_script_model_specific_prefix;
-    std::string submission_script_model_specific_suffix;
+private:
+    std::unique_ptr<JobSubmitter> job_submitter;
+    std::unique_ptr<JobCommunicatorFactory> job_comm_factory;
+    JobScriptLocator locator;
 };
-
 
 class LoadBalancer : public umbridge::Model
 {
