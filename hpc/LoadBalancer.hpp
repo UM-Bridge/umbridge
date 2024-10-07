@@ -113,10 +113,11 @@ class HyperQueueJob : public Job
 public:
     explicit HyperQueueJob(const std::vector<std::string>& options, const std::string& target)
     {
-        Command command {"./hq", options, target};
+        Command command {"./hq submit", options, target};
 
         // Makes HQ output "<job id>\n"
         command.addOption("--output-mode=quiet");
+        std::cout << "Running command: " << command.toString() << std::endl;
         id = get_command_output(command.toString());
 
         remove_trailing_newline(id);
@@ -189,7 +190,7 @@ public:
 
         // Submit job and increase job count
         std::vector<std::string> options = env_to_options(env);
-        options.emplace_back("--priority=-" + job_count);
+        options.emplace_back("--priority=-" + std::to_string(job_count));
         std::unique_ptr<Job> job = std::make_unique<HyperQueueJob>(options, job_script);
         job_count++;
         return job;
