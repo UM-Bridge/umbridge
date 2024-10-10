@@ -41,7 +41,6 @@ done
 echo "Model server responded"
 
 # Write server URL to file identified by HQ job ID.
-load_balancer_dir="."
 mkdir -p $UMBRIDGE_LOADBALANCER_COMM_FILEDIR
 echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$SLURM_JOB_ID.txt"
 

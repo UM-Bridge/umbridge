@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
     
     // Assemble job manager
     std::unique_ptr<JobSubmitter> job_submitter;
-    std::string script_dir;
+    std::filesystem::path script_dir;
     if (scheduler == "hyperqueue") {
         launch_hq_with_alloc_queue();
         job_submitter = std::make_unique<HyperQueueSubmitter>(delay);
