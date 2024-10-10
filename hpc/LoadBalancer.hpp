@@ -117,7 +117,6 @@ public:
 
         // Makes HQ output "<job id>\n"
         command.addOption("--output-mode=quiet");
-        std::cout << "Running command: " << command.toString() << std::endl;
         id = get_command_output(command.toString());
 
         remove_trailing_newline(id);
@@ -196,6 +195,7 @@ public:
         return job;
     }
 private:
+    // HyperQueue environment variables: --env=KEY1=VAL1 --env=KEY2=VAL2 ...
     std::vector<std::string> env_to_options(const std::map<std::string, std::string>& env) const
     {
         std::vector<std::string> options;
@@ -216,7 +216,39 @@ private:
 
 class SlurmSubmitter : public JobSubmitter
 {
+public:
+    SlurmSubmitter(std::chrono::milliseconds submission_delay) 
+    : submission_delay(submission_delay) {}
 
+    std::unique_ptr<Job> submit(const std::string& job_script, const std::map<std::string, std::string>& env) override 
+    {
+        // Add optional delay to job submissions to prevent issues in some cases.
+        if (submission_delay > std::chrono::milliseconds::zero()) {
+            std::lock_guard lock(submission_mutex);
+            std::this_thread::sleep_for(submission_delay);
+        }
+
+        // Submit job
+        std::vector<std::string> options = env_to_options(env);
+        std::unique_ptr<Job> job = std::make_unique<SlurmJob>(options, job_script);
+        return job;
+    }
+private:
+    // SLURM environment variables: --export=KEY1=VAL1,KEY2=VAL2,...
+    std::vector<std::string> env_to_options(const std::map<std::string, std::string>& env) const
+    {
+        // By default include all SLURM_* and SPANK option environment variables.
+        std::string env_option = "--export=ALL";
+
+        for (const auto& [key, val] : env) {
+            env_option += "," + key + "=" + val;
+        }
+
+        return {env_option};
+    }
+
+    std::chrono::milliseconds submission_delay = std::chrono::milliseconds::zero();
+    std::mutex submission_mutex;
 };
 
 class JobCommunicator
@@ -341,7 +373,7 @@ struct JobScriptLocator
         std::cout << "Available models and corresponding job-scripts:\n";
         for (const std::string& model_name : model_names) {
             std::filesystem::path used_job_script = selectJobScript(model_name);
-            std::cout << "* Model '" << model_name << "' --> '" << used_job_script << std::endl;
+            std::cout << "* Model '" << model_name << "' --> '" << used_job_script.string() << "'" << std::endl;
         }
         std::cout << std::endl;
 
