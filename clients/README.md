@@ -567,19 +567,13 @@ which indeed returns `Ev = 2.9948`, i.e., close to 3 as expected. The script the
 
 UQLab is a general purpose Uncertainty Quantification framework based on Matlab. It is made of open-source scientific modules which are smoothly connected to perform uncertainty quantification through Monte Carlo simulation, sensitivity analysis, reliability analysis (computation of rare event probabilities), surrogate models (polynomial chaos expansions, Kriging, etc.), Bayesian inversion/calibration and many more.
 
-UQLab fully supports UM-Bridge models. After registering at `https://www.uqlab.com/`, downloading and installing UQLab as indicated on the UQLab website, you can start UQLab using
+UQLab fully supports UM-Bridge models. After registering at [UQLab](https://www.uqlab.com/), downloading and installing UQLab as indicated on the UQLab website, you can start UQLab using
 
 ```
 uqlab
 ```
 
-To run an UM-Bridge model, install Docker Desktop and start a docker model, e.g., the [Euler-Bernoulli beam model](https://um-bridge-benchmarks.readthedocs.io/en/docs/forward-benchmarks/muq-beam-propagation.html), using the terminal command
-
-```
->> docker run -it -p 4243:4243 linusseelinger/benchmark-muq-beam-propagation:latest
-```
-
-Add UM-Bridge to your Matlab path and create an UM-Bridge model as in the section ["Matlab client"](https://um-bridge-benchmarks.readthedocs.io/en/docs/umbridge/clients.html#matlab-client) above:
+Add UM-Bridge to your Matlab path and create an UM-Bridge model as in the section [Matlab client](https://um-bridge-benchmarks.readthedocs.io/en/docs/umbridge/clients.html#matlab-client) above:
 
 ```matlab
 addpath(fullfile('\YOUR\FULL\PATH\TO\UMBRIDGE\INSTALLATION', 'matlab')) % modify with the correct path
@@ -609,4 +603,4 @@ Then `X` has dimension `N x N_in`, and `Y` has dimension `N x N_out`.
 
 The UQLab model object can be used further for all types of UQ analyses, as explained in detail in the [UQLab documentation](https://www.uqlab.com/documentation).
 
-[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/main/clients/matlab/uqlabClient.m)
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/blob/UQLab/clients/matlab/uqlabClient.m)
