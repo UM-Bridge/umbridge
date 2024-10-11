@@ -20,7 +20,7 @@ void launch_hq_with_alloc_queue() {
     std::system("./hq server stop &> /dev/null");
 
     std::system("./hq server start &");
-
+    // Wait for the HQ server to start
     std::system("until ./hq server info &> /dev/null; do sleep 1; done");
 
     // Create HQ allocation queue
@@ -110,8 +110,7 @@ int main(int argc, char* argv[]) {
 
     // Prepare models and serve via network
     std::vector<LoadBalancer> LB_vector;
-    for (auto model_name : model_names)
-    {
+    for (auto model_name : model_names) {
         LB_vector.emplace_back(model_name, job_manager);
     }
 
