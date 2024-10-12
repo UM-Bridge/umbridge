@@ -21,6 +21,7 @@ namespace umbridge {
   class Model {
   public:
     Model(std::string name) : name(name) {}
+    virtual ~Model() {}
 
     virtual std::vector<std::size_t> GetInputSizes(const json& config_json = json::parse("{}")) const = 0;
     virtual std::vector<std::size_t> GetOutputSizes(const json& config_json = json::parse("{}")) const = 0;

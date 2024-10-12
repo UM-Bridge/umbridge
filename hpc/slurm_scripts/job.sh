@@ -1,13 +1,11 @@
 #! /bin/bash
 
-#HQ --cpus=1
-#HQ --time-request=1m
-#HQ --time-limit=2m
-#HQ --stdout none
-#HQ --stderr none
+#SBATCH --partition=devel
+#SBATCH --ntasks=1
+#SBATCH --time=00:05:00
 
-# Launch model server, send back server URL
-# and wait to ensure that HQ won't schedule any more jobs to this allocation.
+
+# Launch model server, send back server URL and wait so that SLURM does not cancel the allocation.
 
 function get_available_port {
     # Define the range of ports to select from
@@ -44,6 +42,6 @@ echo "Model server responded"
 
 # Write server URL to file identified by HQ job ID.
 mkdir -p $UMBRIDGE_LOADBALANCER_COMM_FILEDIR
-echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$HQ_JOB_ID.txt"
+echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$SLURM_JOB_ID.txt"
 
 sleep infinity # keep the job occupied
