@@ -210,7 +210,7 @@ def serve_models(models, port=4242, max_workers=1):
             output_future = model_executor.submit(model.__call__, parameters, config)
             output = await asyncio.wrap_future(output_future)
         except Exception as e:
-            print(f"An error occured during the evaluation: {e}")
+            return error_response("EvaluationError", str(e), 500)
 
         # Check if output is a list of lists
         if not isinstance(output, list):
