@@ -206,8 +206,11 @@ def serve_models(models, port=4242, max_workers=1):
             if len(parameters[i]) != input_sizes[i]:
                 return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {input_sizes[i]} but got {len(parameters[i])}.", 400)
 
-        output_future = model_executor.submit(model.__call__, parameters, config)
-        output = await asyncio.wrap_future(output_future)
+        try:
+            output_future = model_executor.submit(model.__call__, parameters, config)
+            output = await asyncio.wrap_future(output_future)
+        except Exception as e:
+            print(f"An error occured during the evaluation: {e}")
 
         # Check if output is a list of lists
         if not isinstance(output, list):
