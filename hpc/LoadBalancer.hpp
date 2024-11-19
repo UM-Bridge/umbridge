@@ -318,6 +318,30 @@ private:
 };
 
 
+class NetworkCommunicator : public JobCommunicator {
+public:
+    NetworkCommunicator() {
+        // Open TCP port for listening
+    }
+
+    std::map<std::string, std::string> getInitMessage() override {
+    }
+private:
+    std::string host;
+    int port;
+};
+
+class NetworkCommunicatorFactory : public JobCommunicatorFactory {
+public:
+    NetworkCommunicatorFactory() = default;
+
+    std::unique_ptr<JobCommunicator> create() override {
+        return std::make_unique<NetworkCommunicator>();
+    }
+private:
+};
+
+
 // A JobScriptLocator specifies where the job script for a particular model is located.
 struct JobScriptLocator {
     std::filesystem::path selectJobScript(const std::string& model_name) {
