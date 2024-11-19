@@ -8,7 +8,11 @@
 #include <string>
 
 
-void clear_url(const std::string& directory) {
+void clear_url(const std::filesystem::path& directory) {
+    if (!std::filesystem::exists(directory)) {
+        return;
+    }
+
     for (auto& file : std::filesystem::directory_iterator(directory)) {
         if (std::regex_match(file.path().filename().string(), std::regex("url-\\d+\\.txt"))) {
             std::filesystem::remove(file);
@@ -44,7 +48,8 @@ std::string get_arg(const std::vector<std::string>& args, const std::string& arg
 
 
 int main(int argc, char* argv[]) {
-    clear_url("urls");
+    const std::string url_directory = "urls";
+    clear_url(url_directory);
 
     // Process command line args
     std::vector<std::string> args(argv + 1, argv + argc);
@@ -93,7 +98,7 @@ int main(int argc, char* argv[]) {
     // Only filesystem communication is implemented. May implement network-based communication in the future.
     // Directory which stores URL files and polling cycle currently hard-coded.
     std::unique_ptr<JobCommunicatorFactory> comm_factory 
-        = std::make_unique<FilesystemCommunicatorFactory>("urls", std::chrono::milliseconds(500));
+        = std::make_unique<FilesystemCommunicatorFactory>(url_directory, std::chrono::milliseconds(500));
 
     // Location of job scripts and naming currently hard-corded.
     JobScriptLocator locator {script_dir, "job.sh", "job_", ".sh"};
