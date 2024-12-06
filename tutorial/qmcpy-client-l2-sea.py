@@ -15,6 +15,7 @@ print(f"Connecting to host URL {args.url}")
 l2sea_model = umbridge.HTTPModel(args.url, "benchmark_UQ")
 
 # Get input dimension from model
+config = {}
 d = l2sea_model.get_input_sizes(config)[0]
 
 # Froud [0.25,0.41]
