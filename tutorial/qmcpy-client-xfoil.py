@@ -18,8 +18,6 @@ l2sea_model = umbridge.HTTPModel(args.url, "forward")
 config = {}
 d = l2sea_model.get_input_sizes(config)[0]
 
-# Froud [0.25,0.41]
-# Draft [-6.6, -5.7]
 # Choose a distribution to sample via QMC
 dnb2 = qp.DigitalNetB2(d)
 
