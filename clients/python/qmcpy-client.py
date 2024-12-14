@@ -24,6 +24,6 @@ gauss_sobol = qp.Uniform(dnb2, lower_bound=[1]*d, upper_bound=[1.05]*d)
 
 integrand = UMBridgeWrapper(gauss_sobol, model, config, parallel=False)
 
-qmc_sobol_algorithm = qp.CubQMCSobolG(integrand, abs_tol=1e-1)
+qmc_sobol_algorithm = qp.CubQMCSobolG(integrand, n_init=256, abs_tol=1e-1)
 solution,data = qmc_sobol_algorithm.integrate()
 print(data)
