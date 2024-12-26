@@ -210,8 +210,9 @@ def serve_models(models, port=4242, max_workers=1):
             output_future = model_executor.submit(model.__call__, parameters, config)
             output = await asyncio.wrap_future(output_future)
         except Exception as e:
-            return error_response("EvaluationError", str(e), 500)
-
+            print(traceback.format_exc())
+            return error_response("InvalidEvaluation", str(traceback.format_exc()), 500)
+            
         # Check if output is a list of lists
         if not isinstance(output, list):
             return error_response("InvalidOutput", "Model output is not a list of lists!", 500)
@@ -269,8 +270,9 @@ def serve_models(models, port=4242, max_workers=1):
             output_future = model_executor.submit(model.gradient, out_wrt, in_wrt, parameters, sens, config)
             output = await asyncio.wrap_future(output_future)
         except Exception as e:
-            return error_response("GradientComputationError", str(e), 500) 
-
+            print(traceback.format_exc())
+            return error_response("InvalidGradient", str(traceback.format_exc()), 500)
+        
         # Check if output is a list
         if not isinstance(output, list):
             return error_response("InvalidOutput", "Model output is not a list!", 500)
@@ -323,7 +325,8 @@ def serve_models(models, port=4242, max_workers=1):
             output_future = model_executor.submit(model.apply_jacobian, out_wrt, in_wrt, parameters, vec, config)
             output = await asyncio.wrap_future(output_future)
         except Exception as e:
-            return error_response("JacobianComputationError", str(e), 500)
+            print(traceback.format_exc())
+            return error_response("InvalidJacobian", str(traceback.format_exc()), 500)
 
         # Check if output is a list
         if not isinstance(output, list):
@@ -379,8 +382,9 @@ def serve_models(models, port=4242, max_workers=1):
             output_future = model_executor.submit(model.apply_hessian, out_wrt, in_wrt1, in_wrt2, parameters, sens, vec, config)
             output = await asyncio.wrap_future(output_future)
          except Exception as e:
-            return error_response("HessianComputationError", str(e), 500)
-
+            print(traceback.format_exc())
+            return error_response("InvalidHessian", str(traceback.format_exc()), 500)
+    
         # Check if output is a list
         if not isinstance(output, list):
             return error_response("InvalidOutput", "Model output is not a list!", 500)
