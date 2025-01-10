@@ -17,22 +17,31 @@
 // Using an external library (e.g. Boost) would be cleaner, but not worth the effort of managing another dependency.
 std::string get_command_output(const std::string& command) {
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), &pclose);
-
+  
     if (!pipe) {
         std::string error_msg = "Failed to run command: " + command + "\n"
-                              + "popen failed with error: " + std::strerror(errno) + "\n"; 
+                            + "popen failed with error: " + std::strerror(errno) + "\n";
         throw std::runtime_error(error_msg);
     }
-
+  
     // Buffer size can be small and is largely unimportant since most commands we use only return a single line.
     std::array<char, 128> buffer;
-    std::string output;
+    std::string output, line;
+    std::regex job_id_regex(R"(^\d+$)");
     while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get())) {
-        output += buffer.data();
+        line = buffer.data();
+        line.erase(line.find_last_not_of(" \n\r\t") + 1);
+        if(std::regex_match(line, job_id_regex)){
+                output = line;
+        }
     }
-
+  
+    if(output.empty()){
+        throw std::runtime_error("no Job ID found");
+    }
     return output;
 }
+
 
 // Wait until a file exists using polling.
 void wait_for_file(const std::filesystem::path& file_path, std::chrono::milliseconds polling_cycle) {
