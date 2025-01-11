@@ -466,7 +466,32 @@ namespace umbridge {
       if (!enable_parallel) {
           model_lock.lock();
       }
-      std::vector<std::vector<double>> outputs = model.Evaluate(inputs, config_json);
+      std::vector<std::vector<double>> outputs;
+      try{
+          outputs = model.Evaluate(inputs, config_json);
+      }
+      catch(const std::exception& e){
+
+          std::cerr << "Exception caught: " << e.what() << std::endl;
+          
+          json response_body;
+          response_body["error"]["type"] = "InvalidEvaluation";
+          response_body["error"]["message"] = std::string("Model was unable to provide a valid evaluation due to ") + e.what();
+          res.set_content(response_body.dump(), "application/json");
+          res.status = 500;
+          return;
+      }
+      catch (...) {
+
+          std::cerr << "Caught an unknown error during evaluation." << std::endl;
+
+          json response_body;
+          response_body["error"]["type"] = "InvalidEvaluation";
+          response_body["error"]["message"] = std::string("Model was unable to provide a valid evaluation due to an unknown error");
+          res.set_content(response_body.dump(), "application/json");
+          res.status = 500;
+          return;
+      }
 
       if (model_lock.owns_lock()) {
         model_lock.unlock();  // for safety, although should unlock after request finished
@@ -521,7 +546,32 @@ namespace umbridge {
       if (!enable_parallel) {
           model_lock.lock();
       }
-      std::vector<double> gradient = model.Gradient(outWrt, inWrt, inputs, sens, config_json);
+      std::vector<double> gradient;
+      try{
+          gradient = model.Gradient(outWrt, inWrt, inputs, sens, config_json);
+      }
+      catch(const std::exception& e){
+
+          std::cerr << "Exception caught: " << e.what() << std::endl;
+          
+          json response_body;
+          response_body["error"]["type"] = "InvalidGradient";
+          response_body["error"]["message"] = std::string("Model was unable to provide a valid gradient due to ") + e.what();
+          res.set_content(response_body.dump(), "application/json");
+          res.status = 500;
+          return;
+      }
+      catch (...) {
+
+          std::cerr << "Caught an unknown error during the evaluation of gradient." << std::endl;
+
+          json response_body;
+          response_body["error"]["type"] = "InvalidGradient";
+          response_body["error"]["message"] = std::string("Model was unable to provide a valid gradient due to an unknown error");
+          res.set_content(response_body.dump(), "application/json");
+          res.status = 500;
+          return;
+      }
 
       if (model_lock.owns_lock()) {
         model_lock.unlock();  // for safety, although should unlock after request finished
@@ -570,7 +620,32 @@ namespace umbridge {
       if (!enable_parallel) {
           model_lock.lock();
       }
-      std::vector<double> jacobian_action = model.ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+      std::vector<double> jacobian_action;
+      try{
+          jacobian_action = model.ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+      }
+      catch(const std::exception& e){
+
+          std::cerr << "Exception caught: " << e.what() << std::endl;
+          
+          json response_body;
+          response_body["error"]["type"] = "InvalidJacobian";
+          response_body["error"]["message"] = std::string("Model was unable to provide a valid jacobian due to ") + e.what();
+          res.set_content(response_body.dump(), "application/json");
+          res.status = 500;
+          return;
+      }
+      catch (...) {
+
+          std::cerr << "Caught an unknown error during the evaluation of jacobian." << std::endl;
+
+          json response_body;
+          response_body["error"]["type"] = "InvalidJacobian";
+          response_body["error"]["message"] = std::string("Model was unable to provide a valid jacobian due to an unknown error");
+          res.set_content(response_body.dump(), "application/json");
+          res.status = 500;
+          return;
+      }
 
       if (model_lock.owns_lock()) {
         model_lock.unlock();  // for safety, although should unlock after request finished
@@ -623,7 +698,32 @@ namespace umbridge {
       if (!enable_parallel) {
           model_lock.lock();
       }
-      std::vector<double> hessian_action = model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+      std::vector<double> hessian_action;
+      try{
+          hessian_action = model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+      }
+      catch(const std::exception& e){
+
+          std::cerr << "Exception caught: " << e.what() << std::endl;
+        
+          json response_body;
+          response_body["error"]["type"] = "InvalidHessian";
+          response_body["error"]["message"] = std::string("Model was unable to provide a valid hessian due to ") + e.what();
+          res.set_content(response_body.dump(), "application/json");
+          res.status = 500;
+          return;
+      }
+      catch (...) {
+
+          std::cerr << "Caught an unknown error during the evaluation of hessian." << std::endl;
+        
+          json response_body;
+          response_body["error"]["type"] = "InvalidHessian";
+          response_body["error"]["message"] = std::string("Model was unable to provide a valid hessian due to an unknown error");
+          res.set_content(response_body.dump(), "application/json");
+          res.status = 500;
+          return;
+      }
 
       if (model_lock.owns_lock()) {
         model_lock.unlock();  // for safety, although should unlock after request finished
