@@ -42,8 +42,18 @@ while ! curl -s "http://$host:$port/Info" > /dev/null; do
 done
 echo "Model server responded"
 
-# Write server URL to file identified by HQ job ID.
-mkdir -p $UMBRIDGE_LOADBALANCER_COMM_FILEDIR
-echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$HQ_JOB_ID.txt"
+# Send back the model server URL to the loadbalancer.
+if [ -n "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR" ]; then
+    # Using the shared filesystem
+    mkdir -p $UMBRIDGE_LOADBALANCER_COMM_FILEDIR
+    echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$HQ_JOB_ID.txt"
+elif [ -n "$UMBRIDGE_LOADBALANCER_COMM_URL" ] && [ -n "$UMBRIDGE_LOADBALANCER_COMM_ENDPOINT" ]; then
+    # Using HTTP
+    ./http_post "$UMBRIDGE_LOADBALANCER_COMM_URL" "$UMBRIDGE_LOADBALANCER_COMM_ENDPOINT" "http://$host:$port"
+else
+    echo "Error: Environment variable required to send model server URL back to load balancer not set!"
+    exit 1
+fi
+
 
 sleep infinity # keep the job occupied

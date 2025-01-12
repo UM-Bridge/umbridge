@@ -78,6 +78,26 @@ int main(int argc, char* argv[]) {
         port = std::stoi(port_str);
     }
 
+    // Transfer method for model URL (currently either via filesystem or HTTP)
+    // TODO: Should it be optional? If so, which default value?
+    std::string url_transfer = get_arg(args, "url-transfer");
+    if (url_transfer.empty()) {
+        std::cerr << "Missing required argument: --url-transfer=[filesystem | http]" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+
+    // URL transfer method
+    std::unique_ptr<JobCommunicatorFactory> comm_factory;
+    if (url_transfer == "filesystem") {
+        comm_factory = std::make_unique<FilesystemCommunicatorFactory>(url_directory, std::chrono::milliseconds(500));
+    } else if (url_transfer == "http") {
+        comm_factory = std::make_unique<NetworkCommunicatorFactory>();
+    } else {
+        std::cerr << "Unrecognized value for argument --url-transfer: "
+                  << "Expected filesystem or http but got " << url_transfer << " instead." << std::endl;
+        std::exit(-1);
+    }
     
     // Assemble job manager
     std::unique_ptr<JobSubmitter> job_submitter;
@@ -94,11 +114,6 @@ int main(int argc, char* argv[]) {
                   << "Expected hyperqueue or slurm but got " << scheduler << " instead." << std::endl;
         std::exit(-1);
     }
-
-    // Only filesystem communication is implemented. May implement network-based communication in the future.
-    // Directory which stores URL files and polling cycle currently hard-coded.
-    std::unique_ptr<JobCommunicatorFactory> comm_factory 
-        = std::make_unique<FilesystemCommunicatorFactory>(url_directory, std::chrono::milliseconds(500));
 
     // Location of job scripts and naming currently hard-corded.
     JobScriptLocator locator {script_dir, "job.sh", "job_", ".sh"};

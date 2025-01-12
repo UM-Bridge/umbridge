@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <future>
 
 
 // Run a shell command and get the result.
@@ -59,6 +60,16 @@ void remove_trailing_newline(std::string& s) {
     if (!s.empty() && s.back() == '\n') {
         s.pop_back();
     }
+}
+
+// Getting the IP Address/Hostname in a portable way is difficult.
+// For now we rely on the 'hostname' command being available on the cluster.
+// Note that the same mechanism is used by the job script to determine the hostname of the compute node.
+std::string get_hostname() {
+    std::string command = "hostname -I | awk '{print $1}'";
+    std::string hostname = get_command_output(command);
+    remove_trailing_newline(hostname);
+    return hostname;
 }
 
 struct Command {
@@ -321,14 +332,53 @@ private:
 class NetworkCommunicator : public JobCommunicator {
 public:
     NetworkCommunicator() {
-        // Open TCP port for listening
+        svr.Post(endpoint, [this](const httplib::Request& req, httplib::Response& res) {
+            this->model_url_promise.set_value(req.body);
+            svr.stop();
+        });
+
+        port = svr.bind_to_any_port("0.0.0.0");
+        std::cout << "Running server on port " << port << std::endl;
+
+        model_url_future = model_url_promise.get_future();
+        server_thread = std::thread([this]{ svr.listen_after_bind(); });
+    }
+
+    ~NetworkCommunicator() override {
+        if (server_thread.joinable()) {
+            server_thread.join();
+        }
     }
 
     std::map<std::string, std::string> getInitMessage() override {
+        // Getting the IP Address/Hostname in a portable way is difficult.
+        // For now we rely on the 'hostname' command being available on the cluster.
+        // Note that the same mechanism is used by the job script to determine the hostname of the compute node.
+        std::string hostname = get_hostname();
+        std::string url = "http://" + hostname + ":" + std::to_string(port);
+        std::map<std::string, std::string> msg {
+            {"UMBRIDGE_LOADBALANCER_COMM_URL", url},
+            {"UMBRIDGE_LOADBALANCER_COMM_ENDPOINT", endpoint}
+        };
+        return msg;
     }
+
+    std::string getModelUrl(const std::string& job_id) override {
+        std::string model_url = model_url_future.get();
+
+        server_thread.join();
+        return model_url;
+    }
+
 private:
-    std::string host;
+    std::promise<std::string> model_url_promise;
+    std::future<std::string> model_url_future;
+    std::thread server_thread;
+
+    httplib::Server svr;
     int port;
+
+    const std::string endpoint = "/url";
 };
 
 class NetworkCommunicatorFactory : public JobCommunicatorFactory {
@@ -338,7 +388,6 @@ public:
     std::unique_ptr<JobCommunicator> create() override {
         return std::make_unique<NetworkCommunicator>();
     }
-private:
 };
 
 
