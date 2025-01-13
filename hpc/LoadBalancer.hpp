@@ -135,13 +135,14 @@ public:
         command.addOption("--parsable");
         std::string output = get_command_output(command.toString());
 
-    	std::regex job_id_regex(R"(^\d+$)");
+	std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
 	std::istringstream stream(output);
     	std::string line;
 
     	while (std::getline(stream, line)) {
-		if (std::regex_match(line, job_id_regex)) {
-			id = line;
+		std::smatch match;
+		if (std::regex_match(line, match, job_id_regex)) {
+			id = match[1];
                 }
         }
 	remove_trailing_newline(id);
