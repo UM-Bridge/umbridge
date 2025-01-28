@@ -3,6 +3,9 @@ import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
+import traceback
+import json
+
 class Model(object):
 
     def __init__(self, name):
@@ -52,12 +55,23 @@ class HTTPModel(Model):
         self.__supports_apply_jacobian = response["support"].get("ApplyJacobian", False)
         self.__supports_apply_hessian = response["support"].get("ApplyHessian", False)
 
+        if not isinstance(self.get_input_sizes(), list):
+            print("Input Size is not a list!")
+            raise Exception("Input Size is not a list!")
+        if not all(isinstance(x, int) for x in self.get_input_sizes()):
+            print("Input sizes must be of type int")
+            raise Exception("Input sizes must be of type int")
+
     def get_input_sizes(self, config={}):
         input = {}
         input["name"] = self.name
         input["config"] = config
         response = requests.post(f"{self.url}/InputSizes", json=input).json()
-        return response["inputSizes"]
+        try:
+            return response["inputSizes"]
+        except Exception as e:
+            print(response["errorMessage"])
+            raise Exception(f"Invalid input size.")
 
     def get_output_sizes(self, config={}):
         input = {}
@@ -195,9 +209,13 @@ def serve_models(models, port=4242, max_workers=1):
         config = {}
         if "config" in req_json:
             config = req_json["config"]
-
+        
         input_sizes = model.get_input_sizes(config)
-        output_sizes = model.get_output_sizes(config)
+        try:
+            output_sizes = model.get_output_sizes(config)
+        except Exception as e: 
+            print(traceback.format_exc())
+            return error_response("InvalidOutputSizes", str(traceback.format_exc()), 500)
 
         # Check if parameter dimensions match model input sizes
         if len(parameters) != len(input_sizes):
@@ -212,7 +230,7 @@ def serve_models(models, port=4242, max_workers=1):
         except Exception as e:
             print(traceback.format_exc())
             return error_response("InvalidEvaluation", str(traceback.format_exc()), 500)
-            
+
         # Check if output is a list of lists
         if not isinstance(output, list):
             return error_response("InvalidOutput", "Model output is not a list of lists!", 500)
@@ -248,7 +266,11 @@ def serve_models(models, port=4242, max_workers=1):
             config = req_json["config"]
 
         input_sizes = model.get_input_sizes(config)
-        output_sizes = model.get_output_sizes(config)
+        try:
+            output_sizes = model.get_output_sizes(config)
+        except Exception as e: 
+            print(traceback.format_exc())
+            return error_response("InvalidOutputSizes", str(traceback.format_exc()), 500)
 
         # Check if parameter dimensions match model input sizes
         if len(parameters) != len(input_sizes):
@@ -272,7 +294,8 @@ def serve_models(models, port=4242, max_workers=1):
         except Exception as e:
             print(traceback.format_exc())
             return error_response("InvalidGradient", str(traceback.format_exc()), 500)
-        
+            
+
         # Check if output is a list
         if not isinstance(output, list):
             return error_response("InvalidOutput", "Model output is not a list!", 500)
@@ -303,7 +326,11 @@ def serve_models(models, port=4242, max_workers=1):
             config = req_json["config"]
 
         input_sizes = model.get_input_sizes(config)
-        output_sizes = model.get_output_sizes(config)
+        try:
+            output_sizes = model.get_output_sizes(config)
+        except Exception as e: 
+            print(traceback.format_exc())
+            return error_response("InvalidOutputSizes", str(traceback.format_exc()), 500)
 
         # Check if parameter dimensions match model input sizes
         if len(parameters) != len(input_sizes):
@@ -360,7 +387,11 @@ def serve_models(models, port=4242, max_workers=1):
             config = req_json["config"]
 
         input_sizes = model.get_input_sizes(config)
-        output_sizes = model.get_output_sizes(config)
+        try:
+            output_sizes = model.get_output_sizes(config)
+        except Exception as e: 
+            print(traceback.format_exc())
+            return error_response("InvalidOutputSizes", str(traceback.format_exc()), 500)
 
         # Check if parameter dimensions match model input sizes
         if len(parameters) != len(input_sizes):
@@ -381,10 +412,10 @@ def serve_models(models, port=4242, max_workers=1):
         try:
             output_future = model_executor.submit(model.apply_hessian, out_wrt, in_wrt1, in_wrt2, parameters, sens, vec, config)
             output = await asyncio.wrap_future(output_future)
-         except Exception as e:
+        except Exception as e:
             print(traceback.format_exc())
             return error_response("InvalidHessian", str(traceback.format_exc()), 500)
-    
+
         # Check if output is a list
         if not isinstance(output, list):
             return error_response("InvalidOutput", "Model output is not a list!", 500)
@@ -406,7 +437,13 @@ def serve_models(models, port=4242, max_workers=1):
         model = get_model_from_name(model_name)
         if model is None:
             return model_not_found_response(req_json["name"])
-        return web.Response(text=f"{{\"inputSizes\": {model.get_input_sizes(config)} }}")
+        try:
+            return web.Response(text=f"{{\"inputSizes\": {model.get_input_sizes(config)} }}")
+        except Exception as e:
+            print(traceback.format_exc())
+            tb = traceback.format_exc()
+            error_message = {"error": "An exception occurred","traceback": tb}
+            return web.Response(text=f"{{\"errorMessage\": {json.dumps(error_message)} }}", content_type='application/json')
 
     @routes.post('/OutputSizes')
     async def get_output_sizes(request):
@@ -419,7 +456,13 @@ def serve_models(models, port=4242, max_workers=1):
         model = get_model_from_name(model_name)
         if model is None:
             return model_not_found_response(req_json["name"])
-        return web.Response(text=f"{{\"outputSizes\": {model.get_output_sizes(config)} }}")
+        try:
+            return web.Response(text=f"{{\"outputSizes\": {model.get_output_sizes(config)} }}")
+        except Exception as e:
+            print(traceback.format_exc())
+            tb = traceback.format_exc()
+            error_message = {"error": "An exception occurred","traceback": tb}
+            return web.Response(text=f"{{\"errorMessage\": {json.dumps(error_message)} }}", content_type='application/json')
 
     @routes.post('/ModelInfo')
     async def modelinfo(request):
