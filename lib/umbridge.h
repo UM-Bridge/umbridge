@@ -14,6 +14,10 @@
 #include "json.hpp"
 #include "httplib.h"
 
+#include <boost/stacktrace.hpp>
+#include <iostream>
+#include <stdexcept>
+
 using json = nlohmann::json;
 
 namespace umbridge {
@@ -121,37 +125,37 @@ namespace umbridge {
     }
 
     std::vector<std::size_t> GetInputSizes(const json& config_json = json::parse("{}")) const override {
-
       json request_body;
       request_body["name"] = name;
       if (!config_json.empty())
         request_body["config"] = config_json;
 
-      if (auto res = cli.Post("/InputSizes", headers, request_body.dump(), "application/json")) {
-        json response_body = parse_result_with_error_handling(res);
-        std::vector<std::size_t> outputvec = response_body["inputSizes"].get<std::vector<std::size_t>>();
-        return outputvec;
-      } else {
-        throw std::runtime_error("POST InputSizes failed with error type '" + to_string(res.error()) + "'");
-        return std::vector<std::size_t>(0);
-      }
+          if (auto res = cli.Post("/InputSizes", headers, request_body.dump(), "application/json")) {
+              json response_body = parse_result_with_error_handling(res);
+              std::vector<std::size_t> outputvec = response_body["inputSizes"].get<std::vector<std::size_t>>();
+              return outputvec;
+              
+              
+          } else {
+              throw std::runtime_error("POST InputSizes failed with error type '" + to_string(res.error()) + "'");
+              return std::vector<std::size_t>(0);
+          }
     }
 
     std::vector<std::size_t> GetOutputSizes(const json& config_json = json::parse("{}")) const override {
-
       json request_body;
       request_body["name"] = name;
       if (!config_json.empty())
         request_body["config"] = config_json;
-
-      if (auto res = cli.Post("/OutputSizes", headers, request_body.dump(), "application/json")) {
-        json response_body = parse_result_with_error_handling(res);
-        std::vector<std::size_t> outputvec = response_body["outputSizes"].get<std::vector<std::size_t>>();
-        return outputvec;
-      } else {
-        throw std::runtime_error("POST OutputSizes failed with error type '" + to_string(res.error()) + "'");
-        return std::vector<std::size_t>(0);
-      }
+    
+          if (auto res = cli.Post("/OutputSizes", headers, request_body.dump(), "application/json")) {
+            json response_body = parse_result_with_error_handling(res);
+            std::vector<std::size_t> outputvec = response_body["outputSizes"].get<std::vector<std::size_t>>();
+            return outputvec;
+          } else {
+            throw std::runtime_error("POST OutputSizes failed with error type '" + to_string(res.error()) + "'");
+            return std::vector<std::size_t>(0);
+          }
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config_json = json::parse("{}")) override {
@@ -298,6 +302,34 @@ namespace umbridge {
 
   // Check if inputs dimensions match model's expected input size and return error in httplib response
   bool check_input_sizes(const std::vector<std::vector<double>>& inputs, const json& config_json, const Model& model, httplib::Response& res) {
+    try{
+        model.GetInputSizes(config_json).size();
+    }
+    catch(const std::exception& e){
+        // error message server
+        std::cerr << "Exception caught during GetInputSizes: " << e.what() << std::endl;
+          
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidInputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid input size due to ") + e.what();
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
+    catch (...) {
+        // error message server
+        std::cerr << "Caught an unknown error cau during GetInputSizes." << std::endl;
+
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidInputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid input size due to an unknown error");
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
+        
     if (inputs.size() != model.GetInputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -306,6 +338,7 @@ namespace umbridge {
       res.status = 400;
       return false;
     }
+
     for (std::size_t i = 0; i < inputs.size(); i++) {
       if (inputs[i].size() != model.GetInputSizes(config_json)[i]) {
         json response_body;
@@ -321,6 +354,34 @@ namespace umbridge {
 
   // Check if sensitivity vector's dimension matches correct model output size and return error in httplib response
   bool check_sensitivity_size(const std::vector<double>& sens, int outWrt, const json& config_json, const Model& model, httplib::Response& res) {
+    try{
+        model.GetOutputSizes(config_json)[outWrt];
+    }
+    catch(const std::exception& e){
+        // error message server
+        std::cerr << "Exception caught during GetOutputSizes: " << e.what() << std::endl;
+          
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidOutputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid output size due to ") + e.what();
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
+    catch (...) {
+        // error message server
+        std::cerr << "Caught an unknown error cau during GetOutputSizes." << std::endl;
+
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidOutputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid output size due to an unknown error");
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
+      
     if (sens.size() != model.GetOutputSizes(config_json)[outWrt]) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -334,6 +395,34 @@ namespace umbridge {
 
   // Check if vector's dimension matches correct model output size and return error in httplib response
   bool check_vector_size(const std::vector<double>& vec, int inWrt, const json& config_json, const Model& model, httplib::Response& res) {
+    try{
+        model.GetInputSizes(config_json)[inWrt];
+    }
+    catch(const std::exception& e){
+        // error message server
+        std::cerr << "Exception caught during GetInputSizes: " << e.what() << std::endl;
+          
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidInputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid input size due to ") + e.what();
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
+    catch (...) {
+        // error message server
+        std::cerr << "Caught an unknown error cau during GetInputSizes." << std::endl;
+
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidInputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid input size due to an unknown error");
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
+      
     if (vec.size() != model.GetInputSizes(config_json)[inWrt]) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -347,6 +436,33 @@ namespace umbridge {
 
   // Check if outputs dimensions match model's expected output size and return error in httplib response
   bool check_output_sizes(const std::vector<std::vector<double>>& outputs, const json& config_json, const Model& model, httplib::Response& res) {
+    try{
+        model.GetOutputSizes(config_json).size();
+    }
+    catch(const std::exception& e){
+        // error message server
+        std::cerr << "Exception caught during GetOutputSizes: " << e.what() << std::endl;
+          
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidOutputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid output size due to ") + e.what();
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
+    catch (...) {
+        // error message server
+        std::cerr << "Caught an unknown error cau during GetOutputSizes." << std::endl;
+
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidOutputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid output size due to an unknown error");
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
     if (outputs.size() != model.GetOutputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidOutput";
@@ -370,6 +486,33 @@ namespace umbridge {
 
   // Check if inWrt is between zero and model's input size inWrt and return error in httplib response
   bool check_input_wrt(int inWrt, const json& config_json, const Model& model, httplib::Response& res) {
+    try{
+        (int)model.GetInputSizes(config_json).size();
+    }
+    catch(const std::exception& e){
+        // error message server
+        std::cerr << "Exception caught during GetInputSizes: " << e.what() << std::endl;
+          
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidInputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid input size due to ") + e.what();
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
+    catch (...) {
+        // error message server
+        std::cerr << "Caught an unknown error cau during GetInputSizes." << std::endl;
+
+        // error message client
+        json response_body;
+        response_body["error"]["type"] = "InvalidInputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid input size due to an unknown error");
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
     if (inWrt < 0 || inWrt >= (int)model.GetInputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -383,6 +526,33 @@ namespace umbridge {
 
   // Check if outWrt is between zero and model's output size outWrt and return error in httplib response
   bool check_output_wrt(int outWrt, const json& config_json, const Model& model, httplib::Response& res) {
+    try{
+        (int)model.GetOutputSizes(config_json).size();
+    }
+    catch(const std::exception& e){
+        // das wird beim server ausgegeben 
+        std::cerr << "Exception caught during GetOutputSizes: " << e.what() << std::endl;
+          
+        // das hier wird beim client ausgegeben
+        json response_body;
+        response_body["error"]["type"] = "InvalidOutputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid output size due to ") + e.what();
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
+    catch (...) {
+        // das wird beim server ausgegeben
+        std::cerr << "Caught an unknown error cau during GetOutputSizes." << std::endl;
+
+        // das hier wird beim client ausgegeben
+        json response_body;
+        response_body["error"]["type"] = "InvalidOutputSizes";
+        response_body["error"]["message"] = std::string("Model was unable to provide a valid output size due to an unknown error");
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 500;
+        return false;
+    }
     if (outWrt < 0 || outWrt >= (int)model.GetOutputSizes(config_json).size()) {
       json response_body;
       response_body["error"]["type"] = "InvalidInput";
@@ -441,6 +611,7 @@ namespace umbridge {
     std::mutex model_mutex; // Ensure the underlying model is only called sequentially
 
     svr.Post("/Evaluate", [&](const httplib::Request &req, httplib::Response &res) {
+      
       json request_body = json::parse(req.body);
       if (error_checks && !check_model_exists(models, request_body["name"], res))
         return;
@@ -466,14 +637,17 @@ namespace umbridge {
       if (!enable_parallel) {
           model_lock.lock();
       }
+        
       std::vector<std::vector<double>> outputs;
       try{
           outputs = model.Evaluate(inputs, config_json);
       }
       catch(const std::exception& e){
 
+          // error message server
           std::cerr << "Exception caught: " << e.what() << std::endl;
           
+          // error message client
           json response_body;
           response_body["error"]["type"] = "InvalidEvaluation";
           response_body["error"]["message"] = std::string("Model was unable to provide a valid evaluation due to ") + e.what();
@@ -483,8 +657,10 @@ namespace umbridge {
       }
       catch (...) {
 
+          // error message server
           std::cerr << "Caught an unknown error during evaluation." << std::endl;
 
+          // error message client
           json response_body;
           response_body["error"]["type"] = "InvalidEvaluation";
           response_body["error"]["message"] = std::string("Model was unable to provide a valid evaluation due to an unknown error");
@@ -499,7 +675,7 @@ namespace umbridge {
 
       if (error_checks && !check_output_sizes(outputs, config_json, model, res))
         return;
-
+      
       json response_body;
       response_body["output"] = json::parse("[]");
       for (std::size_t i = 0; i < outputs.size(); i++) {
@@ -546,14 +722,17 @@ namespace umbridge {
       if (!enable_parallel) {
           model_lock.lock();
       }
+
       std::vector<double> gradient;
       try{
           gradient = model.Gradient(outWrt, inWrt, inputs, sens, config_json);
       }
       catch(const std::exception& e){
 
+          // error message server 
           std::cerr << "Exception caught: " << e.what() << std::endl;
           
+          // error message client
           json response_body;
           response_body["error"]["type"] = "InvalidGradient";
           response_body["error"]["message"] = std::string("Model was unable to provide a valid gradient due to ") + e.what();
@@ -563,8 +742,10 @@ namespace umbridge {
       }
       catch (...) {
 
+          // error message server
           std::cerr << "Caught an unknown error during the evaluation of gradient." << std::endl;
 
+          // error message client
           json response_body;
           response_body["error"]["type"] = "InvalidGradient";
           response_body["error"]["message"] = std::string("Model was unable to provide a valid gradient due to an unknown error");
@@ -620,14 +801,17 @@ namespace umbridge {
       if (!enable_parallel) {
           model_lock.lock();
       }
+
       std::vector<double> jacobian_action;
       try{
           jacobian_action = model.ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
       }
       catch(const std::exception& e){
 
+          // error message server
           std::cerr << "Exception caught: " << e.what() << std::endl;
           
+          // error message client
           json response_body;
           response_body["error"]["type"] = "InvalidJacobian";
           response_body["error"]["message"] = std::string("Model was unable to provide a valid jacobian due to ") + e.what();
@@ -637,8 +821,10 @@ namespace umbridge {
       }
       catch (...) {
 
+          // error message server
           std::cerr << "Caught an unknown error during the evaluation of jacobian." << std::endl;
 
+          // error message client
           json response_body;
           response_body["error"]["type"] = "InvalidJacobian";
           response_body["error"]["message"] = std::string("Model was unable to provide a valid jacobian due to an unknown error");
@@ -698,14 +884,17 @@ namespace umbridge {
       if (!enable_parallel) {
           model_lock.lock();
       }
+
       std::vector<double> hessian_action;
       try{
           hessian_action = model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
       }
       catch(const std::exception& e){
 
+          // error message server
           std::cerr << "Exception caught: " << e.what() << std::endl;
-        
+          
+          // error message client
           json response_body;
           response_body["error"]["type"] = "InvalidHessian";
           response_body["error"]["message"] = std::string("Model was unable to provide a valid hessian due to ") + e.what();
@@ -715,8 +904,10 @@ namespace umbridge {
       }
       catch (...) {
 
+          // error message server
           std::cerr << "Caught an unknown error during the evaluation of hessian." << std::endl;
-        
+
+          // error message client
           json response_body;
           response_body["error"]["type"] = "InvalidHessian";
           response_body["error"]["message"] = std::string("Model was unable to provide a valid hessian due to an unknown error");
@@ -773,10 +964,25 @@ namespace umbridge {
       json config_json = request_body.value("config", empty_default_config);
 
       json response_body;
-      response_body["inputSizes"] = model.GetInputSizes(config_json);
-
-      res.set_content(response_body.dump(), "application/json");
+      
+      try {
+          response_body["inputSizes"] = model.GetInputSizes(config_json);
+          std::cout << model.GetInputSizes(config_json)[0] << std::endl;
+          res.set_content(response_body.dump(), "application/json");
+      }
+      catch(const std::exception& e){
+          std::string errorMessage = e.what();
+          std::cerr << "An exception occurred in GetInputSizes: '" << e.what() << "'" << std::endl;
+          response_body["errorMessage"] = "An exception occurred in GetInputSizes: '" + errorMessage + "'";
+          res.set_content(response_body.dump(), "application/json");
+      }
+      catch (...) {
+          std::cerr << "An unknown error occurred in GetInputSizes" << std::endl;
+          response_body["errorMessage"] = "An unknown error occurred in GetInputSizes";
+          res.set_content(response_body.dump(), "application/json");
+      }
     });
+      
 
     svr.Post("/OutputSizes", [&](const httplib::Request &req, httplib::Response &res) {
       json request_body = json::parse(req.body);
@@ -788,9 +994,22 @@ namespace umbridge {
       json config_json = request_body.value("config", empty_default_config);
 
       json response_body;
-      response_body["outputSizes"] = model.GetOutputSizes(config_json);
-
-      res.set_content(response_body.dump(), "application/json");
+      try {
+          response_body["outputSizes"] = model.GetOutputSizes(config_json);
+          res.set_content(response_body.dump(), "application/json");
+      }
+      catch(const std::exception& e){
+          std::string errorMessage = e.what();
+          std::cerr << "An exception occurred in GetOutputSizes: '" << e.what() << "'" << std::endl;
+          response_body["errorMessage"] = "An exception occurred in GetOutputSizes: '" + errorMessage + "'";
+          res.set_content(response_body.dump(), "application/json");
+      }
+      catch (...) {
+          std::cerr << "An unknown error occurred in GetOutputSizes" << std::endl;
+          response_body["errorMessage"] = "An unknown error occurred in GetOutputSizes";
+          res.set_content(response_body.dump(), "application/json");
+      }
+          
     });
 
     std::cout << "Listening on port " << port << "..." << std::endl;
