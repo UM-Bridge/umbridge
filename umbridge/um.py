@@ -93,7 +93,8 @@ class HTTPModel(Model):
         inputParams["name"] = self.name
         inputParams["input"] = parameters
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/Evaluate", json=inputParams).json()
+        response = requests.post(f"{self.url}/Evaluate", json=inputParams)
+        response = response.json()
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
