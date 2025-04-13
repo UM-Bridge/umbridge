@@ -1,0 +1,38 @@
+name: shared-mem-test-python
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    container: ubuntu:latest
+
+    services:
+      model:
+        image: linusseelinger/model-exahype-tsunami:latest
+        ports:
+        - 4242:4242
+        options: --ipc=host
+
+    steps:
+       -
+        name: Checkout
+        uses: actions/checkout@v2
+       -
+        name: Dependencies
+        run: |
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install umbridge
+       -
+        name: Build and run
+        run: |
+          cd clients/python && checkShMem=$(python3 umbridge-client.py http://model:4242 | grep -o "not accessible"); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
+       - 
+        name: Check if Shared Memory is used
+        if: env.CheckShMem == 'not accessible'
+        run: |
+            echo "Shared Memory not available, failed"; exit 1
+       

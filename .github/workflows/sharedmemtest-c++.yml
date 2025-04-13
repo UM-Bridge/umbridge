@@ -1,0 +1,39 @@
+name: shared-mem-test-c++
+
+env:
+  usingSharedMem: ''
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    container: ubuntu:latest
+
+    services:
+      model:
+        image: linusseelinger/model-exahype-tsunami
+        ports:
+        - 4242:4242
+        options: --ipc=host
+
+    steps:
+       -
+        name: Checkout
+        uses: actions/checkout@v2
+       -
+        name: Dependencies
+        run: |
+          apt update; DEBIAN_FRONTEND="noninteractive" apt install -y g++ libssl-dev
+       -
+        name: Build and run
+        run: |
+          cd clients/c++ && ./build.sh && checkShMem=$(./http-client model:4242 | grep -o "not accessible"); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
+       -
+        name: Check if Shared Memory is used
+        if: env.CheckShMem == 'not accessible'
+        run: |
+            echo "Shared Memory not available, failed"; exit 1
