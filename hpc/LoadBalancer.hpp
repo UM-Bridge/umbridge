@@ -9,7 +9,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-
+#include <regex>
+#include <sstream>
 
 // Run a shell command and get the result.
 // Warning: Prone to injection, do not call with user-supplied arguments.
@@ -134,8 +135,17 @@ public:
         command.addOption("--parsable");
         std::string output = get_command_output(command.toString());
 
-        id = output.substr(0, output.find(';'));
-        remove_trailing_newline(id);
+	std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
+	std::istringstream stream(output);
+    	std::string line;
+
+    	while (std::getline(stream, line)) {
+		std::smatch match;
+		if (std::regex_match(line, match, job_id_regex)) {
+			id = match[1];
+                }
+        }
+	remove_trailing_newline(id);
     }
 
     ~SlurmJob() override {
