@@ -28,7 +28,7 @@ jobs:
           apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip python3-venv
           python3 -m venv venv
           . venv/bin/activate
-          pip3 install papermill umbridge tinyDA ipykernel
+          pip3 install papermill umbridge tinyDA ipykernel ray
        -
         name: Build and run
         run: |
