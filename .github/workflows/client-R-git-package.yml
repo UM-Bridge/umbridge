@@ -25,7 +25,7 @@ jobs:
        -
         name: APT Dependencies
         run: |
-          apt update --fix-missing && DEBIAN_FRONTEND="noninteractive" apt install -y r-base libcurl4-gnutls-dev libxml2-dev libfontconfig1-dev libfreetype6 libharfbuzz-dev libfribidi-dev libtiff-dev libssl-dev
+          apt-get update --fix-missing && DEBIAN_FRONTEND="noninteractive" apt-get install -y r-base libcurl4-gnutls-dev libxml2-dev libfontconfig1-dev libfreetype6 libharfbuzz-dev libfribidi-dev libtiff-dev libssl-dev
        -
         name: R Dependencies
         run: |
