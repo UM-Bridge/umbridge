@@ -9,6 +9,8 @@
 
 #include <string>
 #include <vector>
+#include <msgpack.hpp>
+#include <iostream>
 
 
 #include "json.hpp"
@@ -65,6 +67,7 @@ namespace umbridge {
     virtual bool SupportsGradient() {return false;}
     virtual bool SupportsApplyJacobian() {return false;}
     virtual bool SupportsApplyHessian() {return false;}
+    virtual bool SupportsBinary() {return false;}
 
     std::string GetName() const {return name;}
 
@@ -115,6 +118,7 @@ namespace umbridge {
         supportsGradient = supported_features.value("Gradient", false);
         supportsApplyJacobian = supported_features.value("ApplyJacobian", false);
         supportsApplyHessian = supported_features.value("ApplyHessian", false);
+        supportsBinary = supported_features.value("Binary", false);
       } else {
         throw std::runtime_error("POST ModelInfo failed with error type '" + to_string(res.error()) + "'");
       }
@@ -156,25 +160,74 @@ namespace umbridge {
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config_json = json::parse("{}")) override {
 
-      json request_body;
-      request_body["name"] = name;
+      if (SupportsBinary()){
+          std::map<std::string, msgpack::object> request_map;
+          msgpack::zone z;
+          request_map["name"]  = msgpack::object(name, z);
+          request_map["input"] = msgpack::object(inputs, z);
+      
+          // Convert config_json to msgpack
+          std::map<std::string, msgpack::object> config_map;
+          for (auto& [key, value] : config_json.items()) {
+              if (value.is_boolean()) {
+                  config_map[key] = msgpack::object(value.get<bool>(), z);
+              } else if (value.is_number_integer()) {
+                  config_map[key] = msgpack::object(value.get<int>(), z);
+              } else if (value.is_number_float()) {
+                  config_map[key] = msgpack::object(value.get<double>(), z);
+              } else if (value.is_string()) {
+                  config_map[key] = msgpack::object(value.get<std::string>(), z);
+              } else {
+                  std::cerr << "Unsupported JSON value type for key: " << key << std::endl;
+              }
+          } 
+          for (const auto& [key, obj] : config_map) {
+              std::cout << key << ": " << obj << std::endl;
+          }
+          request_map["config"] = msgpack::object(config_map, z);
 
-      request_body["input"] = json::parse("[]");
-      for (std::size_t i = 0; i < inputs.size(); i++) {
-        request_body["input"][i] = inputs[i];
+          std::stringstream packed;
+          msgpack::pack(packed, request_map);
+
+          std::string msgpack_body = packed.str();
+
+          if (auto res = cli.Post("/Evaluate", headers, msgpack_body, "application/x-msgpack")){
+              // Unpack MessagePack response
+              msgpack::object_handle oh = msgpack::unpack(res->body.data(), res->body.size());
+              msgpack::object deserialized = oh.get();
+
+              std::map<std::string, msgpack::object> response_map;
+              deserialized.convert(response_map);
+
+              std::vector<std::vector<double>> outputs;
+              response_map["output"].convert(outputs);
+            
+              return outputs;
+          } else {
+              throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
+          }
       }
-      request_body["config"] = config_json;
 
-      if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "application/json")) {
-        json response_body = parse_result_with_error_handling(res);
+      else {
+          json request_body;
+          request_body["name"] = name;
+          request_body["config"] = config_json;   
 
-        std::vector<std::vector<double>> outputs(response_body["output"].size());
-        for (std::size_t i = 0; i < response_body["output"].size(); i++) {
-          outputs[i] = response_body["output"][i].get<std::vector<double>>();
-        }
-        return outputs;
-      } else {
-        throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
+          request_body["input"] = json::parse("[]");
+          for (std::size_t i = 0; i < inputs.size(); i++) {
+              request_body["input"][i] = inputs[i];
+          }
+          if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "application/json")) {
+              json response_body = parse_result_with_error_handling(res);
+
+              std::vector<std::vector<double>> outputs(response_body["output"].size());
+              for (std::size_t i = 0; i < response_body["output"].size(); i++) {
+                  outputs[i] = response_body["output"][i].get<std::vector<double>>();
+              }
+              return outputs;
+          } else {
+              throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
+          }
       }
     }
 
@@ -270,6 +323,9 @@ namespace umbridge {
     bool SupportsApplyHessian() override {
       return supportsApplyHessian;
     }
+    bool SupportsBinary() override {
+        return supportsBinary;
+    }
 
   private:
 
@@ -280,6 +336,7 @@ namespace umbridge {
     bool supportsGradient = false;
     bool supportsApplyJacobian = false;
     bool supportsApplyHessian = false;
+    bool supportsBinary = false;
 
     json parse_result_with_error_handling(const httplib::Result& res) const {
       json response_body;
@@ -441,23 +498,62 @@ namespace umbridge {
     std::mutex model_mutex; // Ensure the underlying model is only called sequentially
 
     svr.Post("/Evaluate", [&](const httplib::Request &req, httplib::Response &res) {
-      json request_body = json::parse(req.body);
-      if (error_checks && !check_model_exists(models, request_body["name"], res))
+
+        std::string name;
+        std::vector<std::vector<double>> inputs;
+        json config_json;
+        
+        if (req.get_header_value("Content-Type") == "application/x-msgpack"){
+            // Unpack the binary body
+            msgpack::object_handle oh = msgpack::unpack(req.body.data(), req.body.size());
+            msgpack::object deserialized = oh.get();
+
+            std::map<std::string, msgpack::object> request_map;
+            deserialized.convert(request_map);
+
+            name = request_map["name"].as<std::string>();
+            request_map["input"].convert(inputs);
+
+            std::map<std::string, msgpack::object> config_map;
+            request_map["config"].convert(config_map);
+
+            for (const auto& [key, value] : config_map) {
+                // Convert each msgpack::object to a json-compatible type
+                if (value.type == msgpack::type::BOOLEAN) {
+                    config_json[key] = value.as<bool>();
+                } else if (value.type == msgpack::type::POSITIVE_INTEGER || value.type == msgpack::type::NEGATIVE_INTEGER) {
+                    config_json[key] = value.as<int64_t>();
+                } else if (value.type == msgpack::type::FLOAT32 || value.type == msgpack::type::FLOAT64) {
+                    config_json[key] = value.as<double>();
+                } else if (value.type == msgpack::type::STR) {
+                    config_json[key] = value.as<std::string>();
+                } else {
+                    std::cerr << "Unhandled type for key: " << key << std::endl;
+                }
+            }
+      }
+
+      if (req.get_header_value("Content-Type") == "application/json"){
+          json request_body = json::parse(req.body);
+          name = request_body["name"];
+        
+          inputs.resize(request_body["input"].size());
+          for (std::size_t i = 0; i < inputs.size(); i++) {
+            inputs[i] = request_body["input"][i].get<std::vector<double>>();
+          }
+          
+          json empty_default_config;
+          json config_json = request_body.value("config", empty_default_config);
+      }
+      
+      if (error_checks && !check_model_exists(models, name, res))
         return;
-      Model& model = get_model_from_name(models, request_body["name"]);
+      Model& model = get_model_from_name(models, name);
 
       if (error_checks && !model.SupportsEvaluate()) {
         write_unsupported_feature_response(res, "Evaluate");
         return;
       }
-
-      std::vector<std::vector<double>> inputs(request_body["input"].size());
-      for (std::size_t i = 0; i < inputs.size(); i++) {
-        inputs[i] = request_body["input"][i].get<std::vector<double>>();
-      }
-
-      json empty_default_config;
-      json config_json = request_body.value("config", empty_default_config);
 
       if (error_checks && !check_input_sizes(inputs, config_json, model, res))
         return;
@@ -475,13 +571,27 @@ namespace umbridge {
       if (error_checks && !check_output_sizes(outputs, config_json, model, res))
         return;
 
-      json response_body;
-      response_body["output"] = json::parse("[]");
-      for (std::size_t i = 0; i < outputs.size(); i++) {
-        response_body["output"][i] = outputs[i];
+      if (req.get_header_value("Content-Type") == "application/x-msgpack"){
+          std::map<std::string, msgpack::object> response_map;
+          msgpack::zone z;
+
+          response_map["output"] = msgpack::object(outputs, z);
+
+          std::stringstream packed;
+          msgpack::pack(packed, response_map);
+
+          std::string msgpack_body = packed.str();
+          res.set_content(msgpack_body, "application/x-msgpack");
       }
 
-      res.set_content(response_body.dump(), "application/json");
+      if (req.get_header_value("Content-Type") == "application/json"){
+          json response_body;
+          response_body["output"] = json::parse("[]");
+          for (std::size_t i = 0; i < outputs.size(); i++) {
+            response_body["output"][i] = outputs[i];
+          }
+          res.set_content(response_body.dump(), "application/json");
+      }
     });
 
     svr.Post("/Gradient", [&](const httplib::Request &req, httplib::Response &res) {
@@ -659,6 +769,7 @@ namespace umbridge {
       response_body["support"]["Gradient"] = model.SupportsGradient();
       response_body["support"]["ApplyJacobian"] = model.SupportsApplyJacobian();
       response_body["support"]["ApplyHessian"] = model.SupportsApplyHessian();
+      response_body["support"]["Binary"] = true;
 
       res.set_content(response_body.dump(), "application/json");
     });

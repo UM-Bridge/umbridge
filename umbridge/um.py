@@ -3,6 +3,9 @@ import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
+import numpy as np
+import msgpack
+
 class Model(object):
 
     def __init__(self, name):
@@ -29,6 +32,8 @@ class Model(object):
         return False
     def supports_apply_hessian(self):
         return False
+    def supports_binary(self):
+        return False
 
 def supported_models(url):
   response = requests.get(f"{url}/Info").json()
@@ -46,11 +51,13 @@ class HTTPModel(Model):
 
         input = {}
         input["name"] = name
+        # frag bei server nach, welche funktionen unterstützt werden
         response = requests.post(f"{self.url}/ModelInfo", json=input).json()
         self.__supports_evaluate = response["support"].get("Evaluate", False)
         self.__supports_gradient = response["support"].get("Gradient", False)
         self.__supports_apply_jacobian = response["support"].get("ApplyJacobian", False)
         self.__supports_apply_hessian = response["support"].get("ApplyHessian", False)
+        self.__supports_binary = response["support"].get("Binary", False)
 
     def get_input_sizes(self, config={}):
         input = {}
@@ -78,27 +85,68 @@ class HTTPModel(Model):
     def supports_apply_hessian(self):
         return self.__supports_apply_hessian
 
-    def __check_input_is_list_of_lists(self,parameters):
-        if not isinstance(parameters, list):
-            raise Exception("Parameters must be a list of lists!")
-        if not all(isinstance(x, list) for x in parameters):
-            raise Exception("Parameters must be a list of lists!")
+    def supports_binary(self):
+        return self.__supports_binary
 
+    def __check_input_is_list_of_lists(self,parameters):
+        if self.supports_binary():
+            if not isinstance(parameters, list):
+                raise Exception("Parameters must be a list of np.array!")
+            if not all(isinstance(x, np.ndarray) for x in parameters):
+                raise Exception("Parameters must be a list of np.array!")
+        else:
+            if not isinstance(parameters, list):
+                raise Exception("Parameters must be a list of lists!")
+            if not all(isinstance(x, list) for x in parameters):
+                raise Exception("Parameters must be a list of lists!")
+
+    
     def __call__(self, parameters, config={}):
         if not self.supports_evaluate():
             raise Exception('Evaluation not supported by model!')
         self.__check_input_is_list_of_lists(parameters)
-
+        
         inputParams = {}
         inputParams["name"] = self.name
-        inputParams["input"] = parameters
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/Evaluate", json=inputParams)
-        response = response.json()
 
-        if "error" in response:
-            raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
-        return response["output"]
+        if self.supports_binary():
+            # create single Bytestream
+            data_bytes = b''.join(arr.tobytes() for arr in parameters)
+            lengths = np.array([len(arr) for arr in parameters], dtype=np.int32).tobytes()
+            inputParams["input"] = data_bytes
+            inputParams["lengths"] = lengths
+
+            msgpack_data = msgpack.packb(inputParams)
+        
+            headers = {'Content-Type': 'application/x-msgpack'}  # Content-Type
+            response = requests.post(f"{self.url}/Evaluate", data=msgpack_data, headers=headers)
+
+            if "error" in response:
+                raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
+
+            # Decode MessagePack data
+            response_data = msgpack.unpackb(response.content)  
+            output_b = response_data.get("output")
+            lengths_b = response_data.get("lengths")
+            
+            lengths_restored = np.frombuffer(lengths_b, dtype=np.int32)
+            data_restored = np.frombuffer(output_b, dtype=np.float64)
+            
+            # Reconstruct the list of arrays
+            output = []
+            index = 0
+            for length in lengths_restored:
+                output.append(data_restored[index:index+length])
+                index += length
+            return output
+            
+        else:
+            inputParams["input"] = parameters
+            response = requests.post(f"{self.url}/Evaluate", json=inputParams).json()
+            if "error" in response:
+                raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
+            return response["output"]
 
     def gradient(self, out_wrt, in_wrt, parameters, sens, config={}):
         if not self.supports_gradient():
@@ -117,6 +165,7 @@ class HTTPModel(Model):
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
         return response["output"]
+        
 
     def apply_jacobian(self, out_wrt, in_wrt, parameters, vec, config={}):
         if not self.supports_apply_jacobian():
@@ -156,7 +205,7 @@ class HTTPModel(Model):
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
         return response["output"]
 
-def serve_models(models, port=4242, max_workers=1, error_checks=True):
+def serve_models(models, port=4242, max_workers=1):
 
     model_executor = ThreadPoolExecutor(max_workers=max_workers)
 
@@ -183,49 +232,95 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
 
     @routes.post('/Evaluate')
     async def evaluate(request):
+        
+        if request.content_type == 'application/json':
+            req_json = await request.json()
+            model_name = req_json["name"]
+            model = get_model_from_name(model_name)
+            if model is None:
+                return model_not_found_response(req_json["name"])
+            if not model.supports_evaluate():
+                return error_response("UnsupportedFeature", "Evaluate not supported by model!", 400)
+            config = {}
+            if "config" in req_json:
+                config = req_json["config"]
+            parameters = req_json["input"]
 
-        req_json = await request.json()
-        model_name = req_json["name"]
-        model = get_model_from_name(model_name)
-        if model is None:
-            return model_not_found_response(req_json["name"])
-        if not model.supports_evaluate():
-            return error_response("UnsupportedFeature", "Evaluate not supported by model!", 400)
-
-        parameters = req_json["input"]
-        config = {}
-        if "config" in req_json:
-            config = req_json["config"]
-
-        if error_checks:
-            input_sizes = model.get_input_sizes(config)
-            output_sizes = model.get_output_sizes(config)
-
-            # Check if parameter dimensions match model input sizes
-            if len(parameters) != len(input_sizes):
-                return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
-            for i in range(len(parameters)):
-                if len(parameters[i]) != input_sizes[i]:
-                    return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {input_sizes[i]} but got {len(parameters[i])}.", 400)
-
+        if request.content_type == 'application/x-msgpack':
+            raw_data = await request.read()
+            data = msgpack.unpackb(raw_data, raw=False)
+            model_name = data.get("name")
+            model = get_model_from_name(model_name)
+            if model is None:
+                return model_not_found_response(data.get("name"))
+            if not model.supports_evaluate():
+                return error_response("UnsupportedFeature", "Evaluate not supported by model!", 400)
+            config = {}
+            if "config" in data:
+                config = data.get("config")
+            parameters_b = data.get("input")
+            lengths_b = data.get("lengths")
+            lengths_restored = np.frombuffer(lengths_b, dtype=np.int32)
+            data_restored = np.frombuffer(parameters_b, dtype=np.float64)
+            
+            # Reconstruct the list of arrays
+            parameters = []
+            index = 0
+            for length in lengths_restored:
+                parameters.append(data_restored[index:index+length])
+                index += length
+        
+        input_sizes = model.get_input_sizes(config)
+        output_sizes = model.get_output_sizes(config)
+        
+        # Check if parameter dimensions match model input sizes
+        if len(parameters) != len(input_sizes):
+            return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
+        
+        for i in range(len(parameters)):
+            if len(parameters[i]) != input_sizes[i]:
+                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {input_sizes[i]} but got {len(parameters[i])}.", 400)
+       
         output_future = model_executor.submit(model.__call__, parameters, config)
-        output = await asyncio.wrap_future(output_future)
-
-        if error_checks:
+        output_raw = await asyncio.wrap_future(output_future)
+       
+        if request.content_type == 'application/x-msgpack':
+            output = [np.array(arr, dtype=np.float64) for arr in output_raw]
+            # Check if output is a list of ndarray
+            if not all (isinstance(x, np.ndarray) for x in output):
+                return error_response("InvalidOutput", "Model output is not a list of np.ndarray!", 500)
+        else: 
+            output = [[float(x) for x in sublist] for sublist in output_raw]
             # Check if output is a list of lists
-            if not isinstance(output, list):
-                return error_response("InvalidOutput", "Model output is not a list of lists!", 500)
             if not all (isinstance(x, list) for x in output):
                 return error_response("InvalidOutput", "Model output is not a list of lists!", 500)
+        
+        # Check if output is a list of something
+        if not isinstance(output, list):
+            return error_response("InvalidOutput", "Model output is not a list of lists!", 500)
+        
+        # Check if output dimensions match model output sizes
+        if len(output) != len(output_sizes):
+            return error_response("InvalidOutput", "Number of output vectors returned by model does not match number of model outputs declared by model!", 500)
+        for i in range(len(output)):
+            if len(output[i]) != output_sizes[i]:
+                return error_response("InvalidOutput", f"Output vector {i} has invalid length! Model declared {output_sizes[i]} but returned {len(output[i])}.", 500)
+        
 
-            # Check if output dimensions match model output sizes
-            if len(output) != len(output_sizes):
-                return error_response("InvalidOutput", "Number of output vectors returned by model does not match number of model outputs declared by model!", 500)
-            for i in range(len(output)):
-                if len(output[i]) != output_sizes[i]:
-                    return error_response("InvalidOutput", f"Output vector {i} has invalid length! Model declared {output_sizes[i]} but returned {len(output[i])}.", 500)
+        if request.content_type == 'application/x-msgpack':
+            # Create single Bytestream
+            response_data = {}
+            data_bytes = b''.join(arr.tobytes() for arr in output)
+            lengths = np.array([len(arr) for arr in output], dtype=np.int32).tobytes()
+            response_data["output"] = data_bytes
+            response_data["lengths"] = lengths
 
-        return web.Response(text=f"{{\"output\": {output} }}")
+            msgpack_data = msgpack.packb(response_data)
+            return web.Response(body=msgpack_data, content_type="application/msgpack")
+
+        else:
+            return web.Response(text=f"{{\"output\": {output} }}")
+
 
     @routes.post('/Gradient')
     async def gradient(request):
@@ -246,37 +341,35 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
         if "config" in req_json:
             config = req_json["config"]
 
-        if error_checks:
-            input_sizes = model.get_input_sizes(config)
-            output_sizes = model.get_output_sizes(config)
+        input_sizes = model.get_input_sizes(config)
+        output_sizes = model.get_output_sizes(config)
 
-            # Check if parameter dimensions match model input sizes
-            if len(parameters) != len(input_sizes):
-                return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
-            for i in range(len(parameters)):
-                if len(parameters[i]) != input_sizes[i]:
-                    return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {input_sizes[i]} but got {len(parameters[i])}.", 400)
-            # Check if outWrt is not between zero and number of outputs
-            if out_wrt < 0 or out_wrt >= len(output_sizes):
-                return error_response("InvalidInput", "Invalid outWrt index! Expected between 0 and number of outputs minus one, but got " + str(out_wrt), 400)
-            # Check if inWrt is between zero and number of inputs
-            if in_wrt < 0 or in_wrt >= len(input_sizes):
-                return error_response("InvalidInput", "Invalid inWrt index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt), 400)
-            # Check if sensitivity vector length matches model output outWrt
-            if len(sens) != output_sizes[out_wrt]:
-                return error_response("InvalidInput", f"Sensitivity vector sens has invalid length! Expected {output_sizes[out_wrt]} but got {len(sens)}.", 400)
+        # Check if parameter dimensions match model input sizes
+        if len(parameters) != len(input_sizes):
+            return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
+        for i in range(len(parameters)):
+            if len(parameters[i]) != input_sizes[i]:
+                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {input_sizes[i]} but got {len(parameters[i])}.", 400)
+        # Check if outWrt is not between zero and number of outputs
+        if out_wrt < 0 or out_wrt >= len(output_sizes):
+            return error_response("InvalidInput", "Invalid outWrt index! Expected between 0 and number of outputs minus one, but got " + str(out_wrt), 400)
+        # Check if inWrt is between zero and number of inputs
+        if in_wrt < 0 or in_wrt >= len(input_sizes):
+            return error_response("InvalidInput", "Invalid inWrt index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt), 400)
+        # Check if sensitivity vector length matches model output outWrt
+        if len(sens) != output_sizes[out_wrt]:
+            return error_response("InvalidInput", f"Sensitivity vector sens has invalid length! Expected {output_sizes[out_wrt]} but got {len(sens)}.", 400)
 
         output_future = model_executor.submit(model.gradient, out_wrt, in_wrt, parameters, sens, config)
         output = await asyncio.wrap_future(output_future)
 
-        if error_checks:
-            # Check if output is a list
-            if not isinstance(output, list):
-                return error_response("InvalidOutput", "Model output is not a list!", 500)
+        # Check if output is a list
+        if not isinstance(output, list):
+            return error_response("InvalidOutput", "Model output is not a list!", 500)
 
-            # Check if output dimension matches model input size inWrt
-            if len(output) != input_sizes[in_wrt]:
-                return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {input_sizes[in_wrt]} but returned {len(output)}.", 500)
+        # Check if output dimension matches model ipuut size inWrt
+        if len(output) != input_sizes[in_wrt]:
+            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {input_sizes[in_wrt]} but returned {len(output)}.", 500)
 
         return web.Response(text=f"{{\"output\": {output} }}")
 
@@ -299,37 +392,35 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
         if "config" in req_json:
             config = req_json["config"]
 
-        if error_checks:
-            input_sizes = model.get_input_sizes(config)
-            output_sizes = model.get_output_sizes(config)
+        input_sizes = model.get_input_sizes(config)
+        output_sizes = model.get_output_sizes(config)
 
-            # Check if parameter dimensions match model input sizes
-            if len(parameters) != len(input_sizes):
-                return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
-            for i in range(len(parameters)):
-                if len(parameters[i]) != input_sizes[i]:
-                    return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {input_sizes[i]} but got {len(parameters[i])}.", 400)
-            # Check if outWrt is not between zero and number of outputs
-            if out_wrt < 0 or out_wrt >= len(output_sizes):
-                return error_response("InvalidInput", "Invalid outWrt index! Expected between 0 and number of outputs minus one, but got " + str(out_wrt), 400)
-            # Check if inWrt is between zero and number of inputs
-            if in_wrt < 0 or in_wrt >= len(input_sizes):
-                return error_response("InvalidInput", "Invalid inWrt index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt), 400)
-            # Check if vector length matches model input inWrt
-            if len(vec) != input_sizes[in_wrt]:
-                return error_response("InvalidInput", f"Vector vec has invalid length! Expected {input_sizes[in_wrt]} but got {len(vec)}.", 400)
+        # Check if parameter dimensions match model input sizes
+        if len(parameters) != len(input_sizes):
+            return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
+        for i in range(len(parameters)):
+            if len(parameters[i]) != input_sizes[i]:
+                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {input_sizes[i]} but got {len(parameters[i])}.", 400)
+        # Check if outWrt is not between zero and number of outputs
+        if out_wrt < 0 or out_wrt >= len(output_sizes):
+            return error_response("InvalidInput", "Invalid outWrt index! Expected between 0 and number of outputs minus one, but got " + str(out_wrt), 400)
+        # Check if inWrt is between zero and number of inputs
+        if in_wrt < 0 or in_wrt >= len(input_sizes):
+            return error_response("InvalidInput", "Invalid inWrt index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt), 400)
+        # Check if vector length matches model input inWrt
+        if len(vec) != input_sizes[in_wrt]:
+            return error_response("InvalidInput", f"Vector vec has invalid length! Expected {input_sizes[in_wrt]} but got {len(vec)}.", 400)
 
         output_future = model_executor.submit(model.apply_jacobian, out_wrt, in_wrt, parameters, vec, config)
         output = await asyncio.wrap_future(output_future)
 
-        if error_checks:
-            # Check if output is a list
-            if not isinstance(output, list):
-                return error_response("InvalidOutput", "Model output is not a list!", 500)
+        # Check if output is a list
+        if not isinstance(output, list):
+            return error_response("InvalidOutput", "Model output is not a list!", 500)
 
-            # Check if output dimension matches model output size outWrt
-            if len(output) != output_sizes[out_wrt]:
-                return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {output_sizes[out_wrt]} but returned {len(output)}.", 500)
+        # Check if output dimension matches model output size outWrt
+        if len(output) != output_sizes[out_wrt]:
+            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {output_sizes[out_wrt]} but returned {len(output)}.", 500)
 
         return web.Response(text=f"{{\"output\": {output} }}")
 
@@ -354,37 +445,35 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
         if "config" in req_json:
             config = req_json["config"]
 
-        if error_checks:
-            input_sizes = model.get_input_sizes(config)
-            output_sizes = model.get_output_sizes(config)
+        input_sizes = model.get_input_sizes(config)
+        output_sizes = model.get_output_sizes(config)
 
-            # Check if parameter dimensions match model input sizes
-            if len(parameters) != len(input_sizes):
-                return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
-            for i in range(len(parameters)):
-                if len(parameters[i]) != input_sizes[i]:
-                    return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {input_sizes[i]} but got {len(parameters[i])}.", 400)
-            # Check if outWrt is not between zero and number of outputs
-            if out_wrt < 0 or out_wrt >= len(output_sizes):
-                return error_response("InvalidInput", "Invalid outWrt index! Expected between 0 and number of outputs minus one, but got " + str(out_wrt), 400)
-            # Check if inWrt is between zero and number of inputs
-            if in_wrt1 < 0 or in_wrt1 >= len(input_sizes):
-                return error_response("InvalidInput", "Invalid inWrt1 index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt1), 400)
-            # Check if inWrt is between zero and number of inputs
-            if in_wrt2 < 0 or in_wrt2 >= len(input_sizes):
-                return error_response("InvalidInput", "Invalid inWrt2 index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt2), 400)
+        # Check if parameter dimensions match model input sizes
+        if len(parameters) != len(input_sizes):
+            return error_response("InvalidInput", "Number of input parameters does not match model number of model inputs!", 400)
+        for i in range(len(parameters)):
+            if len(parameters[i]) != input_sizes[i]:
+                return error_response("InvalidInput", f"Input parameter {i} has invalid length! Expected {input_sizes[i]} but got {len(parameters[i])}.", 400)
+        # Check if outWrt is not between zero and number of outputs
+        if out_wrt < 0 or out_wrt >= len(output_sizes):
+            return error_response("InvalidInput", "Invalid outWrt index! Expected between 0 and number of outputs minus one, but got " + str(out_wrt), 400)
+        # Check if inWrt is between zero and number of inputs
+        if in_wrt1 < 0 or in_wrt1 >= len(input_sizes):
+            return error_response("InvalidInput", "Invalid inWrt1 index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt1), 400)
+        # Check if inWrt is between zero and number of inputs
+        if in_wrt2 < 0 or in_wrt2 >= len(input_sizes):
+            return error_response("InvalidInput", "Invalid inWrt2 index! Expected between 0 and number of inputs minus one, but got " + str(in_wrt2), 400)
 
         output_future = model_executor.submit(model.apply_hessian, out_wrt, in_wrt1, in_wrt2, parameters, sens, vec, config)
         output = await asyncio.wrap_future(output_future)
 
-        if error_checks:
-            # Check if output is a list
-            if not isinstance(output, list):
-                return error_response("InvalidOutput", "Model output is not a list!", 500)
+        # Check if output is a list
+        if not isinstance(output, list):
+            return error_response("InvalidOutput", "Model output is not a list!", 500)
 
-            # Check if output dimension matches model output size outWrt
-            if len(output) != output_sizes[out_wrt]:
-                return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {output_sizes[out_wrt]} but returned {len(output)}.", 500)
+        # Check if output dimension matches model output size outWrt
+        if len(output) != output_sizes[out_wrt]:
+            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {output_sizes[out_wrt]} but returned {len(output)}.", 500)
 
         return web.Response(text=f"{{\"output\": {output} }}")
 
@@ -426,6 +515,7 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
         response_body["support"]["Gradient"] = model.supports_gradient()
         response_body["support"]["ApplyJacobian"] = model.supports_apply_jacobian()
         response_body["support"]["ApplyHessian"] = model.supports_apply_hessian()
+        response_body["support"]["Binary"] = True
 
         return web.json_response(response_body)
 
