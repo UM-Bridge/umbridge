@@ -1,8 +1,12 @@
 #! /bin/bash
 
-#SBATCH --partition=devel
-#SBATCH --ntasks=1
-#SBATCH --time=00:05:00
+#SBATCH -o ./logs-serial/%j.out       # Name of stderr error file
+#SBATCH -e ./logs-serial/%j.out
+#SBATCH -p gg         # Queue (partition) name
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=2
+#SBATCH -t 00:45:00        # Run time (hh:mm:ss)
+#SBATCH -A EAR24034      # Project/Allocation name (req'd if you have more than 1)
 
 
 # Launch model server, send back server URL and wait so that SLURM does not cancel the allocation.
@@ -29,8 +33,8 @@ export PORT=$port
 
 # Assume that server sets the port according to the environment variable 'PORT'.
 # Otherwise the job script will be stuck waiting for model server's response.
-./testmodel & # CHANGE ME!
-
+#./testmodel & # CHANGE ME!
+/scratch/09830/vikaskurapati/UQ/Seis-Bridge/ridgecrest/ridgecrest-server &
 
 host=$(hostname -I | awk '{print $1}')
 

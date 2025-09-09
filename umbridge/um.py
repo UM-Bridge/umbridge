@@ -93,11 +93,19 @@ class HTTPModel(Model):
         inputParams["name"] = self.name
         inputParams["input"] = parameters
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/Evaluate", json=inputParams)
-        response = response.json()
+        
+        for i in range(3):
+            try:
+                response = requests.post(f"{self.url}/Evaluate", json=inputParams)
+                response = response.json()
+                break
+
+            except Exception as e:
+                print(e)
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
+        
         return response["output"]
 
     def gradient(self, out_wrt, in_wrt, parameters, sens, config={}):
