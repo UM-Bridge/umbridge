@@ -11,6 +11,10 @@
 #include <vector>
 #include <regex>
 #include <sstream>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <chrono>
 
 // Run a shell command and get the result.
 // Warning: Prone to injection, do not call with user-supplied arguments.
@@ -82,7 +86,6 @@ struct Command {
         return result;
     }
 };
-
 
 // A Job represents a resource allocation on an HPC system and has a unique string ID.
 // Note: A Job instance escaping its scope would cause the destructor to prematurely cancel the system resource allocation.
@@ -501,22 +504,66 @@ private:
 class LoadBalancer : public umbridge::Model {
 public:
     LoadBalancer(std::string name, std::shared_ptr<JobManager> job_manager) 
-    : umbridge::Model(name), job_manager(job_manager) {}
+    : umbridge::Model(name), job_manager(job_manager), model_mutex(std::make_unique<std::mutex>()) {}
+
+    LoadBalancer(const LoadBalancer&) = delete;
+    LoadBalancer& operator=(const LoadBalancer&) = delete;
+
+    LoadBalancer(LoadBalancer &&other) noexcept : 
+    umbridge::Model(std::move(other)), job_manager(std::move(other.job_manager)), 
+    model_mutex(std::move(other.model_mutex)), cached_model(std::move(other.cached_model)) {}
+
+    LoadBalancer& operator=(LoadBalancer&& other) noexcept {
+        if (this != &other) {
+            umbridge::Model::operator=(std::move(other));
+            job_manager = std::move(other.job_manager);
+            model_mutex = std::move(other.model_mutex);
+            cached_model = std::move(other.cached_model);
+        }
+        return *this;
+    }
+
+    std::unique_ptr<umbridge::Model> getOrCreateModel() const {
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        if(cached_model){
+            try{
+                cached_model->GetInputSizes();
+                return std::move(cached_model);
+            } catch (...) {
+                cached_model.reset();
+            }
+        }
+
+        cached_model = job_manager->requestModelAccess(name);
+        return std::move(cached_model);
+    }
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->GetInputSizes(config_json);
+        auto model = getOrCreateModel();
+        auto result = model->GetInputSizes(config_json);
+
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;
     }
 
     std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->GetOutputSizes(config_json);
+        auto model = getOrCreateModel();
+        auto result = model->GetOutputSizes(config_json);
+
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, 
                                               json config_json = json::parse("{}")) override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->Evaluate(inputs, config_json);
+
+        auto model = getOrCreateModel();
+        auto result = model->Evaluate(inputs, config_json);
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;
     }
 
     std::vector<double> Gradient(unsigned int outWrt,
@@ -524,8 +571,11 @@ public:
                                  const std::vector<std::vector<double>> &inputs,
                                  const std::vector<double> &sens,
                                  json config_json = json::parse("{}")) override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        auto model = getOrCreateModel();
+        auto result = model->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;
     }
 
     std::vector<double> ApplyJacobian(unsigned int outWrt,
@@ -533,8 +583,12 @@ public:
                                       const std::vector<std::vector<double>> &inputs,
                                       const std::vector<double> &vec,
                                       json config_json = json::parse("{}")) override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+        auto model = getOrCreateModel();
+        auto result = model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;
     }
 
     std::vector<double> ApplyHessian(unsigned int outWrt,
@@ -544,27 +598,50 @@ public:
                                      const std::vector<double> &sens,
                                      const std::vector<double> &vec,
                                      json config_json = json::parse("{}")) override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+        auto model = getOrCreateModel();
+        auto result = model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;        
     }
 
     bool SupportsEvaluate() override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->SupportsEvaluate();
+        auto model = getOrCreateModel();
+        auto result = model->SupportsEvaluate();
+
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;
     }
+
     bool SupportsGradient() override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->SupportsGradient();
+        auto model = getOrCreateModel();
+        auto result = model->SupportsGradient();
+
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;
     }
     bool SupportsApplyJacobian() override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->SupportsApplyJacobian();
+        auto model = getOrCreateModel();
+        auto result = model->SupportsApplyJacobian();
+
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;
     }
     bool SupportsApplyHessian() override {
-        auto model = job_manager->requestModelAccess(name);
-        return model->SupportsApplyHessian();
+        auto model = getOrCreateModel();
+        auto result = model->SupportsApplyHessian();
+
+        std::lock_guard<std::mutex> lock(*model_mutex);
+        cached_model = std::move(model);
+        return result;
     }
 
 private:
     std::shared_ptr<JobManager> job_manager;
+    mutable std::unique_ptr<std::mutex> model_mutex;
+    mutable std::unique_ptr<umbridge::Model> cached_model;
 };
