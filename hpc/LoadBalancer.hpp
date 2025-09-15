@@ -37,7 +37,7 @@ std::string get_command_output(const std::string& command) {
 
 // Wait until a file exists using polling.
 void wait_for_file(const std::filesystem::path& file_path, std::chrono::milliseconds polling_cycle) {
-    while (!std::filesystem::exists(file_path)) {
+    while (!std::filesystem::exists(file_path) || std::filesystem::is_empty(file_path)) {
         std::this_thread::sleep_for(polling_cycle);
     }
 }

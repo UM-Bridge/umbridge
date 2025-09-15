@@ -1,4 +1,5 @@
 from aiohttp import web
+import time
 import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -94,14 +95,10 @@ class HTTPModel(Model):
         inputParams["input"] = parameters
         inputParams["config"] = config
         
-        for i in range(3):
-            try:
-                response = requests.post(f"{self.url}/Evaluate", json=inputParams)
-                response = response.json()
-                break
-
-            except Exception as e:
-                print(e)
+        print(f"{parameters} submitted")
+        response = requests.post(f"{self.url}/Evaluate", json=inputParams)
+        response = response.json()
+        print(f"{parameters} finished")
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
