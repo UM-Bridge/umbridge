@@ -275,9 +275,9 @@ public:
     : file_dir(std::move(file_dir)), polling_cycle(polling_cycle) {}
 
     ~FilesystemCommunicator() override {
-        if(!file_path.empty()) {
-            std::filesystem::remove(file_path);
-        }
+        // if(!file_path.empty()) {
+        //     std::filesystem::remove(file_path);
+        // }
     }
 
     // Tell the job script which directory the URL file should be written to.
@@ -402,16 +402,19 @@ public:
     : umbridge::Model(model->GetName()), job(std::move(job)), model(std::move(model)) {}
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override {
-        return model->GetInputSizes(config_json);
+        auto result = model->GetInputSizes(config_json);
+        return result;
     }
 
     std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override {
-        return model->GetOutputSizes(config_json);
+        auto result = model->GetOutputSizes(config_json);
+        return result;
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, 
                                               json config_json = json::parse("{}")) override {
-        return model->Evaluate(inputs, config_json);
+        auto result = model->Evaluate(inputs, config_json);
+        return result;
     }
 
     std::vector<double> Gradient(unsigned int outWrt,
@@ -419,7 +422,8 @@ public:
                                  const std::vector<std::vector<double>> &inputs,
                                  const std::vector<double> &sens,
                                  json config_json = json::parse("{}")) override {
-        return model->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        auto result = model->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        return result;
     }
 
     std::vector<double> ApplyJacobian(unsigned int outWrt,
@@ -427,7 +431,8 @@ public:
                                       const std::vector<std::vector<double>> &inputs,
                                       const std::vector<double> &vec,
                                       json config_json = json::parse("{}")) override {
-        return model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+        auto result = model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+        return result;
     }
 
     std::vector<double> ApplyHessian(unsigned int outWrt,
@@ -437,20 +442,25 @@ public:
                                      const std::vector<double> &sens,
                                      const std::vector<double> &vec,
                                      json config_json = json::parse("{}")) override {
-        return model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+        auto result = model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+        return result;
     }
 
     bool SupportsEvaluate() override {
-        return model->SupportsEvaluate();
+        auto result = model->SupportsEvaluate();
+        return result; 
     }
     bool SupportsGradient() override {
-        return model->SupportsGradient();
+        auto result = model->SupportsGradient();
+        return result;
     }
     bool SupportsApplyJacobian() override {
-        return model->SupportsApplyJacobian();
+        auto result = model->SupportsApplyJacobian();
+        return result;
     }
     bool SupportsApplyHessian() override {
-        return model->SupportsApplyHessian();
+        auto result = model->SupportsApplyHessian();
+        return result;
     }
 
 private:
@@ -477,7 +487,8 @@ public:
         std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());
         std::string url = comm->getModelUrl(job->getJobId());
         auto model = std::make_unique<umbridge::HTTPModel>(url, model_name);
-        return std::make_unique<JobModel>(std::move(job), std::move(model));
+        auto modelAccess = std::make_unique<JobModel>(std::move(job), std::move(model));
+        return modelAccess;
     }
 
     std::vector<std::string> getModelNames() override 
@@ -486,7 +497,8 @@ public:
         std::unique_ptr<JobCommunicator> comm = job_comm_factory->create();
         std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());
         std::string url = comm->getModelUrl(job->getJobId());
-        return umbridge::SupportedModels(url);
+        auto modelNames = umbridge::SupportedModels(url);
+        return modelNames;
     }
     
 private:
@@ -505,18 +517,21 @@ public:
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override {
         auto model = job_manager->requestModelAccess(name);
-        return model->GetInputSizes(config_json);
+        auto result = model->GetInputSizes(config_json);
+        return result;
     }
 
     std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override {
         auto model = job_manager->requestModelAccess(name);
-        return model->GetOutputSizes(config_json);
+        auto result = model->GetOutputSizes(config_json);
+        return result;
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, 
                                               json config_json = json::parse("{}")) override {
         auto model = job_manager->requestModelAccess(name);
-        return model->Evaluate(inputs, config_json);
+        auto result = model->Evaluate(inputs, config_json);
+        return result;
     }
 
     std::vector<double> Gradient(unsigned int outWrt,
@@ -525,7 +540,8 @@ public:
                                  const std::vector<double> &sens,
                                  json config_json = json::parse("{}")) override {
         auto model = job_manager->requestModelAccess(name);
-        return model->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        auto result = model->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        return result;
     }
 
     std::vector<double> ApplyJacobian(unsigned int outWrt,
@@ -534,7 +550,8 @@ public:
                                       const std::vector<double> &vec,
                                       json config_json = json::parse("{}")) override {
         auto model = job_manager->requestModelAccess(name);
-        return model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+        auto result = model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+        return result;
     }
 
     std::vector<double> ApplyHessian(unsigned int outWrt,
@@ -545,24 +562,29 @@ public:
                                      const std::vector<double> &vec,
                                      json config_json = json::parse("{}")) override {
         auto model = job_manager->requestModelAccess(name);
-        return model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+        auto result = model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+        return result;
     }
 
     bool SupportsEvaluate() override {
         auto model = job_manager->requestModelAccess(name);
-        return model->SupportsEvaluate();
+        auto result = model->SupportsEvaluate();
+        return result;
     }
     bool SupportsGradient() override {
         auto model = job_manager->requestModelAccess(name);
-        return model->SupportsGradient();
+        auto result = model->SupportsGradient();
+        return result;
     }
     bool SupportsApplyJacobian() override {
         auto model = job_manager->requestModelAccess(name);
-        return model->SupportsApplyJacobian();
+        auto result = model->SupportsApplyJacobian();
+        return result;
     }
     bool SupportsApplyHessian() override {
         auto model = job_manager->requestModelAccess(name);
-        return model->SupportsApplyHessian();
+        auto result = model->SupportsApplyHessian();
+        return result;
     }
 
 private:
