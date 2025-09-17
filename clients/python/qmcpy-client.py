@@ -1,6 +1,6 @@
 import argparse
 import qmcpy as qp
-from qmcpy.integrand.um_bridge_wrapper import UMBridgeWrapper
+from qmcpy.integrand import UMBridgeWrapper
 import numpy as np
 import umbridge
 
