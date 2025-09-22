@@ -33,6 +33,7 @@ class Model(object):
     
     def terminate(self):
         signal.raise_signal(signal.SIGTERM)
+        return 0
 
 def supported_models(url):
   response = requests.get(f"{url}/Info").json()
@@ -458,6 +459,7 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
 
         print("Sending SIGTERM to model server")
         model.terminate()
+        return web.Response(text="Model server closed")
 
 
 
