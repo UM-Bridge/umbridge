@@ -459,7 +459,8 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
             return model_not_found_response(req_json["name"])
 
         print("Sending SIGTERM to model server")
-        model.terminate()
+        signal.raise_signal(signal.SIGTERM)
+        # model.terminate()
         return web.Response(text="{\"status\": \"Model server terminated\"}")
 
 

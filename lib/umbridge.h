@@ -693,6 +693,19 @@ namespace umbridge {
       res.set_content(response_body.dump(), "application/json");
     });
 
+    svr.Post("/Terminate", [&](const httplib::Request &req, httplib::Response &res) {
+      json request_body = json::parse(req.body);
+      Model& model = get_model_from_name(models, request_body["name"]);
+      json empty_default_config;
+      json config_json = request_body.value("config", empty_default_config);
+
+      json response_body;
+      response_body["status"] = "done";
+      svr.stop();
+
+      res.set_content(response_body.dump(), "application/json");
+    });
+
     std::cout << "Listening on port " << port << "..." << std::endl;
 
 #ifdef LOGGING
