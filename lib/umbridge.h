@@ -271,6 +271,21 @@ namespace umbridge {
       return supportsApplyHessian;
     }
 
+    void terminate(const json& config_json = json::parse("{}")) {
+      json request_body;
+      request_body["name"] = name;
+      
+      if (!config_json.empty())
+        request_body["config"] = config_json;
+
+      if (auto res = cli.Post("/Terminate", headers, request_body.dump(), "application/json")) {
+        json response_body = parse_result_with_error_handling(res);
+        std::string status = response_body["status"].get<std::string>();
+        std::cout << status << std::endl;
+      } else {
+        throw std::runtime_error("POST Terminate failed with error type '" + to_string(res.error()) + "'");
+      }
+
   private:
 
     mutable httplib::Client cli;
@@ -700,8 +715,8 @@ namespace umbridge {
       json config_json = request_body.value("config", empty_default_config);
 
       json response_body;
-      response_body["status"] = "done";
       svr.stop();
+      response_body["status"] = "Model server terminated.";
 
       res.set_content(response_body.dump(), "application/json");
     });

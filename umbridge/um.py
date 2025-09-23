@@ -30,9 +30,6 @@ class Model(object):
         return False
     def supports_apply_hessian(self):
         return False
-    
-    def terminate(self):
-        signal.raise_signal(signal.SIGTERM)
 
 def supported_models(url):
   response = requests.get(f"{url}/Info").json()
@@ -460,8 +457,8 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
 
         print("Sending SIGTERM to model server")
         signal.raise_signal(signal.SIGTERM)
-        # model.terminate()
-        return web.Response(text="{\"status\": \"Model server terminated\"}")
+
+        return web.Response(text="{\"status\": \"Model server terminated.\"}")
 
 
 
