@@ -285,6 +285,7 @@ namespace umbridge {
       } else {
         throw std::runtime_error("POST Terminate failed with error type '" + to_string(res.error()) + "'");
       }
+    }
 
   private:
 
