@@ -33,7 +33,6 @@ class Model(object):
     
     def terminate(self):
         signal.raise_signal(signal.SIGTERM)
-        return 0
 
 def supported_models(url):
   response = requests.get(f"{url}/Info").json()
@@ -165,7 +164,9 @@ class HTTPModel(Model):
         inputParams = {}
         inputParams["name"] = self.name
 
-        requests.post(f"{self.url}/Terminate", json=inputParams)
+        response = requests.post(f"{self.url}/Terminate", json=inputParams).json()
+        print(response["status"])
+       
 
 def serve_models(models, port=4242, max_workers=1, error_checks=True):
 
@@ -459,7 +460,7 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
 
         print("Sending SIGTERM to model server")
         model.terminate()
-        return web.Response(text="Model server closed")
+        return web.Response(text="{\"status\": \"Model server terminated\"}")
 
 
 
