@@ -1,0 +1,15 @@
+html[data-theme="light"] {
+  /*****************************************************************************
+  * Change font colour to palatinate
+  */
+  --pst-color-primary: rgb(104 36 109);
+  --pst-color-secondary: rgb(104 36 109);
+}
+
+/*
+html[data-theme="dark"] {
+  --pst-color-primary: white;
+  --pst-color-secondary: white;
+  background: rgb(104 36 109);
+}
+*/
