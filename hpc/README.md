@@ -41,6 +41,8 @@ You must first decide which scheduling strategy the load balancer should use. He
 
 We recommend trying out the simple SLURM scheduler first, before switching to the HyperQueue scheduler, if the performance is not good enough.
 
+Regardless of the choice of scheduler, if you are running a containerised application across multiple nodes, you may wish to take a look at [launching containerised MPI applications in HPC](https://um-bridge-benchmarks.readthedocs.io/en/docs/mpi_container.html).
+
 ### (Option 1) SLURM scheduler
 
 The load balancer will submit a new SLURM job for each incoming model request. Note that this can incur a sizable overhead, especially if your cluster is busy, so consider switching to the HyperQueue scheduler if your individual model runs are very short.
