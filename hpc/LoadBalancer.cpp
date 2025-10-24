@@ -71,13 +71,13 @@ int main(int argc, char* argv[]) {
     }
 
     // Number of servers to spawn
-    std::string server_str = get_arg(args, "server-count");
-    int num_servers = 1;
+    std::string server_str = get_arg(args, "num-server");
+    int num_server = 1;
     if (server_str.empty()) {
-        std::cout << "Argument --server-count not set ! Spawning one model server as default." << std::endl;
+        std::cout << "Argument --num-server not set ! Spawning one model server as default." << std::endl;
     }
     else {
-        num_servers = std::stoi(server_str);
+        num_server = std::stoi(server_str);
     }
     
     // Assemble job manager

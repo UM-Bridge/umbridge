@@ -469,8 +469,16 @@ public:
     CommandJobManager(
         std::unique_ptr<JobSubmitter> job_submitter, 
         std::unique_ptr<JobCommunicatorFactory> job_comm_factory,
-        JobScriptLocator locator) 
-        : job_submitter(std::move(job_submitter)), job_comm_factory(std::move(job_comm_factory)), locator(std::move(locator)) {}
+        JobScriptLocator locator,
+        int num_server) 
+        : job_submitter(std::move(job_submitter)), job_comm_factory(std::move(job_comm_factory)), locator(std::move(locator)), num_server(num_server) {
+            // Submit slurm jobs to start model server
+            for (int i = 0; i < num_server; i++) {
+                job_submitter->submit(job_script, comm->getInitMessage());
+                server_array.emplace_back()
+            }
+            
+        }
 
     std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override {
         std::filesystem::path job_script = locator.selectJobScript(model_name);
@@ -494,6 +502,8 @@ private:
     std::unique_ptr<JobSubmitter> job_submitter;
     std::unique_ptr<JobCommunicatorFactory> job_comm_factory;
     JobScriptLocator locator;
+    int num_server;
+    std::vector<JobModel> server_array;
 };
 
 
