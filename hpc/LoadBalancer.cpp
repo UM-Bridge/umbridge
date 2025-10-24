@@ -54,14 +54,6 @@ int main(int argc, char* argv[]) {
     // Process command line args
     std::vector<std::string> args(argv + 1, argv + argc);
 
-    // Scheduler used by the load balancer (currently either SLURM or HyperQueue)
-    std::string scheduler = get_arg(args, "scheduler");
-    // Specifying a scheduler is mandatory since this should be a conscious choice by the user
-    if (scheduler.empty()) {
-        std::cerr << "Missing required argument: --scheduler=[hyperqueue | slurm]" << std::endl;
-        std::exit(-1);
-    }
-
     // Delay for job submissions in milliseconds
     std::string delay_str = get_arg(args, "delay-ms");
     std::chrono::milliseconds delay = std::chrono::milliseconds::zero();
@@ -78,22 +70,21 @@ int main(int argc, char* argv[]) {
         port = std::stoi(port_str);
     }
 
+    // Number of servers to spawn
+    std::string server_str = get_arg(args, "server-count");
+    int num_servers = 1;
+    if (server_str.empty()) {
+        std::cout << "Argument --server-count not set ! Spawning one model server as default." << std::endl;
+    }
+    else {
+        num_servers = std::stoi(server_str);
+    }
     
     // Assemble job manager
     std::unique_ptr<JobSubmitter> job_submitter;
     std::filesystem::path script_dir;
-    if (scheduler == "hyperqueue") {
-        launch_hq_with_alloc_queue();
-        job_submitter = std::make_unique<HyperQueueSubmitter>(delay);
-        script_dir = "hq_scripts";
-    } else if (scheduler == "slurm") {
-        job_submitter = std::make_unique<SlurmSubmitter>(delay);
-        script_dir = "slurm_scripts";
-    } else {
-        std::cerr << "Unrecognized value for argument --scheduler: "
-                  << "Expected hyperqueue or slurm but got " << scheduler << " instead." << std::endl;
-        std::exit(-1);
-    }
+    job_submitter = std::make_unique<SlurmSubmitter>(delay);
+    script_dir = "slurm_scripts";
 
     // Only filesystem communication is implemented. May implement network-based communication in the future.
     // Directory which stores URL files and polling cycle currently hard-coded.

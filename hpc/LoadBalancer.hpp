@@ -126,6 +126,7 @@ private:
     std::string id;
 };
 
+// Submits SLURM job to spawn model server in compute node
 class SlurmJob : public Job {
 public:
     SlurmJob(const std::vector<std::string>& options, const std::string& target) {
