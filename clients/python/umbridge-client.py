@@ -18,7 +18,7 @@ model = umbridge.HTTPModel(args.url, "forward")
 print(model.get_input_sizes())
 print(model.get_output_sizes())
 
-param = [[100.0, 18.0]]
+param = [[100.0]]
 
 # Simple model evaluation without config
 print(model(param))

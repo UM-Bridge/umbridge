@@ -1,4 +1,5 @@
 import umbridge
+import numpy as np
 import time
 import os
 
@@ -18,7 +19,7 @@ class TestModel(umbridge.Model):
         time.sleep(int(os.getenv("TEST_DELAY", 0)) / 1000)
 
         posterior = 2*parameters[0][0]
-        return [[posterior]]
+        return [["null"]]
 
     def supports_evaluate(self):
         return True

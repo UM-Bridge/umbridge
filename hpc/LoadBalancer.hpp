@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
 #include <regex>
 #include <sstream>
 
@@ -98,33 +99,10 @@ public:
     virtual ~Job() = default;
 
     virtual std::string getJobId() const = 0;
+    virtual void set_busyness(bool status) = 0;
+    virtual bool get_busyness() = 0;
 };
 
-// Note: The location of the HyperQueue binary is currently hard-coded.
-// If required, this can be changed easily by accepting a new parameter in the HyperQueueJob and HyperQueueSubmitter classes.
-class HyperQueueJob : public Job {
-public:
-    HyperQueueJob(const std::vector<std::string>& options, const std::string& target) {
-        Command command {"./hq submit", options, target};
-
-        // Makes HQ output "<job id>\n"
-        command.addOption("--output-mode=quiet");
-        id = get_command_output(command.toString());
-
-        remove_trailing_newline(id);
-    }
-
-    ~HyperQueueJob() override {
-        std::system(("./hq job cancel " + id).c_str());
-    }
-
-    std::string getJobId() const override {
-        return id;
-    }
-    
-private:
-    std::string id;
-};
 
 // Submits SLURM job to spawn model server in compute node
 class SlurmJob : public Job {
@@ -136,8 +114,8 @@ public:
         command.addOption("--parsable");
         std::string output = get_command_output(command.toString());
 
-	std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
-	std::istringstream stream(output);
+	    std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
+	    std::istringstream stream(output);
     	std::string line;
 
     	while (std::getline(stream, line)) {
@@ -146,7 +124,16 @@ public:
 			id = match[1];
                 }
         }
-	remove_trailing_newline(id);
+	    remove_trailing_newline(id);
+        set_busyness(false);
+    }
+
+    void set_busyness(bool status) override {
+        is_busy = status;
+    }
+    
+    bool get_busyness() override {
+        return is_busy;
     }
 
     ~SlurmJob() override {
@@ -159,6 +146,7 @@ public:
     
 private:
     std::string id;
+    bool is_busy;
 };
 
 
@@ -169,44 +157,6 @@ public:
     virtual ~JobSubmitter() = default;
 
     virtual std::unique_ptr<Job> submit(const std::string& job_script, const std::map<std::string, std::string>& env) = 0;
-};
-
-class HyperQueueSubmitter : public JobSubmitter {
-public:
-    explicit HyperQueueSubmitter(std::chrono::milliseconds submission_delay) 
-    : submission_delay(submission_delay) {}
-
-    std::unique_ptr<Job> submit(const std::string& job_script, const std::map<std::string, std::string>& env) override {
-        // Add optional delay to job submissions to prevent issues in some cases.
-        if (submission_delay > std::chrono::milliseconds::zero()) {
-            std::lock_guard lock(submission_mutex);
-            std::this_thread::sleep_for(submission_delay);
-        }
-
-        // Submit job and increase job count
-        std::vector<std::string> options = env_to_options(env);
-        options.emplace_back("--priority=-" + std::to_string(job_count));
-
-        std::unique_ptr<Job> job = std::make_unique<HyperQueueJob>(options, job_script);
-        job_count++;
-        return job;
-    }
-private:
-    // HyperQueue environment variables: --env=KEY1=VAL1 --env=KEY2=VAL2 ...
-    std::vector<std::string> env_to_options(const std::map<std::string, std::string>& env) const {
-        std::vector<std::string> options;
-        options.reserve(env.size());
-
-        for (const auto& [key, val] : env) {
-            options.push_back("--env " + key + "=" + val);
-        }
-        return options;
-    }
-
-    std::chrono::milliseconds submission_delay = std::chrono::milliseconds::zero();
-    std::mutex submission_mutex;
-
-    std::atomic<int32_t> job_count = 0;
 };
 
 class SlurmSubmitter : public JobSubmitter {
@@ -297,6 +247,13 @@ public:
         std::string url = read_line_from_file(file_path);
         return url;
     }
+    
+    // Potentially add a is_ready function to check if server is up
+    /*
+    bool is_ready() {
+        try to connect to model via url
+    }
+    */
 
 private:
     // Currently, the naming of the URL file is hard-code.
@@ -324,7 +281,6 @@ public:
 
 private:
     std::filesystem::path file_dir;
-
     std::chrono::milliseconds polling_cycle;
 };
 
@@ -387,12 +343,14 @@ public:
 
     // Grant exclusive ownership of a model (with a given name) to a caller.
     // The returned object MUST release any resources that it holds once it goes out of scope in the code of the caller.
-    virtual std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) = 0;
+    virtual std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) = 0;
 
     // To initialize the load balancer we first need a list of model names that are available on a server.
     // Typically, this can be achieved by simply running the model code and requesting the model names from the server.
     // Therefore, the implementation can most likely use the same mechanism that is also used for granting model access.
-    virtual std::vector<std::string> getModelNames() = 0;
+    virtual std::vector<std::string> getModelName(std::string url) = 0;
+    
+    virtual std::set<std::string> getModelNameArray() = 0;
 };
 
 
@@ -453,9 +411,9 @@ public:
     bool SupportsApplyHessian() override {
         return model->SupportsApplyHessian();
     }
-
+std::unique_ptr<Job> job;
 private:
-    std::unique_ptr<Job> job;
+    
     std::unique_ptr<umbridge::Model> model;
 };
 
@@ -473,37 +431,40 @@ public:
         int num_server) 
         : job_submitter(std::move(job_submitter)), job_comm_factory(std::move(job_comm_factory)), locator(std::move(locator)), num_server(num_server) {
             // Submit slurm jobs to start model server
+            std::filesystem::path job_script = locator.getDefaultJobScript();
+            std::unique_ptr<JobCommunicator> comm = job_comm_factory->create();
             for (int i = 0; i < num_server; i++) {
-                job_submitter->submit(job_script, comm->getInitMessage());
-                server_array.emplace_back()
+                std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());
+                std::string url = comm->getModelUrl(job->getJobId());
+                auto model_name = getModelName(url);
+                model_names.insert(model_name[0]);
+                auto model = std::make_unique<umbridge::HTTPModel>(url, model_name[0]);
+                server_array.emplace_back(std::make_shared<JobModel>(std::move(job), std::move(model)));
             }
-            
         }
 
-    std::unique_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override {
-        std::filesystem::path job_script = locator.selectJobScript(model_name);
-        std::unique_ptr<JobCommunicator> comm = job_comm_factory->create();
-        std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());
-        std::string url = comm->getModelUrl(job->getJobId());
-        auto model = std::make_unique<umbridge::HTTPModel>(url, model_name);
-        return std::make_unique<JobModel>(std::move(job), std::move(model));
+    std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override {
+        // Sould select an available model from the vector and return 
+        for (auto& server : server_array) {
+            if (!server->job->get_busyness()) return server;
+        }
     }
 
-    std::vector<std::string> getModelNames() override 
+    std::vector<std::string> getModelName(std::string url) override 
     {
-        std::filesystem::path job_script = locator.getDefaultJobScript();
-        std::unique_ptr<JobCommunicator> comm = job_comm_factory->create();
-        std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());
-        std::string url = comm->getModelUrl(job->getJobId());
         return umbridge::SupportedModels(url);
     }
     
+    std::set<std::string> getModelNameArray() override {
+        return model_names;
+    }
 private:
     std::unique_ptr<JobSubmitter> job_submitter;
     std::unique_ptr<JobCommunicatorFactory> job_comm_factory;
     JobScriptLocator locator;
     int num_server;
-    std::vector<JobModel> server_array;
+    std::vector<std::shared_ptr<JobModel>> server_array;
+    std::set<std::string> model_names;
 };
 
 

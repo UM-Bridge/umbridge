@@ -95,14 +95,14 @@ int main(int argc, char* argv[]) {
     JobScriptLocator locator {script_dir, "job.sh", "job_", ".sh"};
 
     std::shared_ptr<JobManager> job_manager = std::make_shared<CommandJobManager>(
-        std::move(job_submitter), std::move(comm_factory), locator);
+        std::move(job_submitter), std::move(comm_factory), locator, num_server);
 
 
     // Initialize load balancer for each available model on the model server.
-    std::vector<std::string> model_names = job_manager->getModelNames();
+    std::set<std::string> model_names = job_manager->getModelNameArray();
 
     // Inform the user about the available models and the job scripts that will be used.
-    locator.printModelJobScripts(model_names);    
+    // locator.printModelJobScripts(model_names);    
 
     // Prepare models and serve via network
     std::vector<LoadBalancer> LB_vector;
