@@ -19,7 +19,7 @@ class TestModel(umbridge.Model):
         time.sleep(int(os.getenv("TEST_DELAY", 0)) / 1000)
 
         posterior = 2*parameters[0][0]
-        return [["null"]]
+        return [[posterior]]
 
     def supports_evaluate(self):
         return True
