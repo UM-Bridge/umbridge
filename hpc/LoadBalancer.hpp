@@ -218,6 +218,7 @@ public:
     virtual ~JobCommunicatorFactory() = default;
 
     virtual std::unique_ptr<JobCommunicator> create() = 0;
+    virtual void print() = 0;
 };
 
 class FilesystemCommunicator : public JobCommunicator {
@@ -277,6 +278,10 @@ public:
 
     std::unique_ptr<JobCommunicator> create() override {
         return std::make_unique<FilesystemCommunicator>(file_dir, polling_cycle);
+    }
+    
+    void print() override {
+        std::cout << file_dir << std::endl;
     }
 
 private:
@@ -432,6 +437,7 @@ public:
         : job_submitter(std::move(job_submitter)), job_comm_factory(std::move(job_comm_factory)), locator(std::move(locator)), num_server(num_server) {
             // Submit slurm jobs to start model server
             std::filesystem::path job_script = locator.getDefaultJobScript();
+            job_comm_factory->print();
             std::unique_ptr<JobCommunicator> comm = job_comm_factory->create();
             for (int i = 0; i < num_server; i++) {
                 std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());

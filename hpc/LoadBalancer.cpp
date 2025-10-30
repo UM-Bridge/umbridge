@@ -20,17 +20,6 @@ void clear_url(const std::filesystem::path& directory) {
     }
 }
 
-void launch_hq_with_alloc_queue() {
-    std::system("./hq server stop &> /dev/null");
-
-    std::system("./hq server start &");
-    // Wait for the HQ server to start
-    std::system("until ./hq server info &> /dev/null; do sleep 1; done");
-
-    // Create HQ allocation queue
-    std::system("hq_scripts/allocation_queue.sh");
-}
-
 std::string get_arg(const std::vector<std::string>& args, const std::string& arg_name) {
     // Check if a string matches the format --<arg_name>=...
     const std::string search_string = "--" + arg_name + "=";
@@ -74,7 +63,7 @@ int main(int argc, char* argv[]) {
     std::string server_str = get_arg(args, "num-server");
     int num_server = 1;
     if (server_str.empty()) {
-        std::cout << "Argument --num-server not set ! Spawning one model server as default." << std::endl;
+        std::cout << "Argument --num-server not set! Spawning one model server as default." << std::endl;
     }
     else {
         num_server = std::stoi(server_str);
