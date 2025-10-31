@@ -70,10 +70,8 @@ int main(int argc, char* argv[]) {
     }
     
     // Assemble job manager
-    std::unique_ptr<JobSubmitter> job_submitter;
-    std::filesystem::path script_dir;
-    job_submitter = std::make_unique<SlurmSubmitter>(delay);
-    script_dir = "slurm_scripts";
+    std::filesystem::path script_dir = "slurm_scripts";
+    std::unique_ptr<JobSubmitter> job_submitter = std::make_unique<SlurmSubmitter>(delay);
 
     // Only filesystem communication is implemented. May implement network-based communication in the future.
     // Directory which stores URL files and polling cycle currently hard-coded.
