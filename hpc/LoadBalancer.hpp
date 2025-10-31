@@ -125,7 +125,6 @@ public:
                 }
         }
 	    remove_trailing_newline(id);
-        set_busyness(false);
     }
 
     void set_busyness(bool status) override {
@@ -146,7 +145,7 @@ public:
     
 private:
     std::string id;
-    bool is_busy;
+    bool is_busy = false;
 };
 
 
@@ -361,7 +360,9 @@ public:
     : umbridge::Model(model->GetName()), job(std::move(job)), model(std::move(model)) {}
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override {
-        return model->GetInputSizes(config_json);
+        auto inputsizes = model->GetInputSizes(config_json);
+        job
+        return inputsizes;
     }
 
     std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override {
@@ -411,9 +412,13 @@ public:
     bool SupportsApplyHessian() override {
         return model->SupportsApplyHessian();
     }
-std::unique_ptr<Job> job;
-private:
     
+    Job* getjob() {
+        return job.get();
+    }
+
+private:
+    std::unique_ptr<Job> job;
     std::unique_ptr<umbridge::Model> model;
 };
 
@@ -439,19 +444,23 @@ public:
                 auto model_name = getModelName(url);
                 model_names.insert(model_name[0]);
                 auto model = std::make_unique<umbridge::HTTPModel>(url, model_name[0]);
-                server_array.emplace_back(std::make_shared<JobModel>(std::move(job), std::move(model)));
+                server_array.emplace_back(std::make_shared<JobModel>(std::move(job), std::move(model))); // modify this to Job only
             }
         }
 
     std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override {
         // Sould select an available model from the vector and return 
+        // Make unique ptr to job model. so that destructor for JobModel marks busyness for Job
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
         for (auto& server : server_array) {
-            if (!server->job->get_busyness()) return server;
+            if (!server->getjob()->get_busyness()) {
+                server->getjob()->set_busyness(true);
+                return server;
+            }
         }
     }
 
-    std::vector<std::string> getModelName(std::string url) override 
-    {
+    std::vector<std::string> getModelName(std::string url) override {
         return umbridge::SupportedModels(url);
     }
     
