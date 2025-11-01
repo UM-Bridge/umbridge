@@ -361,7 +361,7 @@ public:
 
     std::vector<std::size_t> GetInputSizes(const json &config_json = json::parse("{}")) const override {
         auto inputsizes = model->GetInputSizes(config_json);
-        job
+        job->set_busyness(false);
         return inputsizes;
     }
 
