@@ -2,6 +2,7 @@ from aiohttp import web
 import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import signal
 
 class Model(object):
 
@@ -155,6 +156,14 @@ class HTTPModel(Model):
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
         return response["output"]
+
+    def terminate(self):
+        inputParams = {}
+        inputParams["name"] = self.name
+
+        response = requests.post(f"{self.url}/Terminate", json=inputParams).json()
+        print(response["status"])
+       
 
 def serve_models(models, port=4242, max_workers=1, error_checks=True):
 
@@ -435,6 +444,23 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
         response_body["protocolVersion"] = 1.0;
         response_body["models"] = [model.name for model in models]
         return web.json_response(response_body)
+
+
+    @routes.post('/Terminate')
+    async def terminate(request):
+        req_json = await request.json()
+        model_name = req_json["name"]
+        model = get_model_from_name(model_name)
+        
+        if model is None:
+            return model_not_found_response(req_json["name"])
+
+        print("Sending SIGTERM to model server")
+        signal.raise_signal(signal.SIGTERM)
+
+        return web.Response(text="{\"status\": \"Model server terminated.\"}")
+
+
 
 
     app = web.Application(client_max_size=None)
