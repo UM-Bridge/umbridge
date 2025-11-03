@@ -383,7 +383,9 @@ public:
                                  const std::vector<std::vector<double>> &inputs,
                                  const std::vector<double> &sens,
                                  json config_json = json::parse("{}")) override {
-        return model->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        auto gradient = model->Gradient(outWrt, inWrt, inputs, sens, config_json);
+        job->set_busyness(false);
+        return gradient;
     }
 
     std::vector<double> ApplyJacobian(unsigned int outWrt,
@@ -391,7 +393,9 @@ public:
                                       const std::vector<std::vector<double>> &inputs,
                                       const std::vector<double> &vec,
                                       json config_json = json::parse("{}")) override {
-        return model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+        auto apply_jacobian = model->ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+        job->set_busyness(false);
+        return apply_jacobian; 
     }
 
     std::vector<double> ApplyHessian(unsigned int outWrt,
@@ -401,7 +405,9 @@ public:
                                      const std::vector<double> &sens,
                                      const std::vector<double> &vec,
                                      json config_json = json::parse("{}")) override {
-        return model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+        auto apply_hessian = model->ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+        job->set_busyness(false);
+        return apply_hessian;
     }
 
     bool SupportsEvaluate() override {
@@ -464,7 +470,7 @@ public:
         // Sould select an available model from the vector and return 
         // Make unique ptr to job model. so that destructor for JobModel marks busyness for Job
         // Mutex here for first come first serve if any
-        // std::scoped_lock server_lock{server_mutex};
+        std::scoped_lock server_lock{server_mutex};
         bool busy_servers = true;
         while (busy_servers == true) {
             for (auto& server : server_array) {
@@ -474,7 +480,7 @@ public:
                     return server;
                 }
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds{500});
+            std::this_thread::sleep_for(std::chrono::milliseconds{100});
         }    
     }
 
