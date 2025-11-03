@@ -366,12 +366,16 @@ public:
     }
 
     std::vector<std::size_t> GetOutputSizes(const json &config_json = json::parse("{}")) const override {
-        return model->GetOutputSizes(config_json);
+        auto outputsizes = model->GetOutputSizes(config_json);
+        job->set_busyness(false);
+        return outputsizes;
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>> &inputs, 
                                               json config_json = json::parse("{}")) override {
-        return model->Evaluate(inputs, config_json);
+        auto output = model->Evaluate(inputs, config_json);
+        job->set_busyness(false);
+        return output;
     }
 
     std::vector<double> Gradient(unsigned int outWrt,
@@ -401,16 +405,24 @@ public:
     }
 
     bool SupportsEvaluate() override {
-        return model->SupportsEvaluate();
+        auto supports_evaluate = model->SupportsEvaluate();
+        job->set_busyness(false);
+        return supports_evaluate;
     }
     bool SupportsGradient() override {
-        return model->SupportsGradient();
+        auto supports_gradient = model->SupportsGradient();
+        job->set_busyness(false);
+        return supports_gradient;
     }
     bool SupportsApplyJacobian() override {
-        return model->SupportsApplyJacobian();
+        auto supports_jacobian = model->SupportsApplyJacobian();
+        job->set_busyness(false);
+        return supports_jacobian;
     }
     bool SupportsApplyHessian() override {
-        return model->SupportsApplyHessian();
+        auto supports_hessian = model->SupportsApplyHessian();
+        job->set_busyness(false);
+        return supports_hessian;
     }
     
     Job* getjob() {
@@ -451,13 +463,19 @@ public:
     std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override {
         // Sould select an available model from the vector and return 
         // Make unique ptr to job model. so that destructor for JobModel marks busyness for Job
-        std::this_thread::sleep_for(std::chrono::milliseconds{100});
-        for (auto& server : server_array) {
-            if (!server->getjob()->get_busyness()) {
-                server->getjob()->set_busyness(true);
-                return server;
+        // Mutex here for first come first serve if any
+        // std::scoped_lock server_lock{server_mutex};
+        bool busy_servers = true;
+        while (busy_servers == true) {
+            for (auto& server : server_array) {
+                if (!server->getjob()->get_busyness()) {
+                    server->getjob()->set_busyness(true);
+                    busy_servers = false;
+                    return server;
+                }
             }
-        }
+            std::this_thread::sleep_for(std::chrono::milliseconds{500});
+        }    
     }
 
     std::vector<std::string> getModelName(std::string url) override {
@@ -468,6 +486,7 @@ public:
         return model_names;
     }
 private:
+    std::mutex server_mutex;
     std::unique_ptr<JobSubmitter> job_submitter;
     std::unique_ptr<JobCommunicatorFactory> job_comm_factory;
     JobScriptLocator locator;
