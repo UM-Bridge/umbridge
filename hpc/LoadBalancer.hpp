@@ -99,8 +99,8 @@ public:
     virtual ~Job() = default;
 
     virtual std::string getJobId() const = 0;
-    virtual void set_busyness(bool status) = 0;
-    virtual bool get_busyness() = 0;
+    virtual void set_busyness(std::string id, bool status) = 0;
+    virtual bool get_busyness(std::string id) = 0;
 };
 
 
@@ -122,31 +122,33 @@ public:
     	  while (std::getline(stream, line)) {
 		        std::smatch match;
 		        if (std::regex_match(line, match, job_id_regex)) {
-			          id = match[1];
+			          job_id = match[1];
             }
         }
-	      remove_trailing_newline(id);
+	      remove_trailing_newline(job_id);
+          
     }
 
-    void set_busyness(bool status) override {
-        is_busy = status;
+    void set_busyness(std::string id, bool status) override {
+        busyness_map[id] = status;
     }
     
-    bool get_busyness() override {
-        return is_busy;
+    bool get_busyness(std::string id) override {
+        return busyness_map[id];
     }
 
     ~SlurmJob() override {
-        std::system(("scancel " + id).c_str());
+        std::system(("scancel " + job_id).c_str());
     }
 
     std::string getJobId() const override {
-        return id;
+        return job_id;
     }
     
 private:
-    std::string id;
-    bool is_busy = false;
+    std::string job_id;
+    std::vector<std::string> array_ids;
+    std::map<std::string, bool> busyness_map;
 };
 
 
