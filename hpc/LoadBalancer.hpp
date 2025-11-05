@@ -105,6 +105,7 @@ public:
 
 
 // Submits SLURM job to spawn model server in compute node
+// Suggestion: change into job arrays
 class SlurmJob : public Job {
 public:
     SlurmJob(const std::vector<std::string>& options, const std::string& target) {
@@ -114,17 +115,17 @@ public:
         command.addOption("--parsable");
         std::string output = get_command_output(command.toString());
 
-	    std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
-	    std::istringstream stream(output);
-    	std::string line;
+	      std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
+	      std::istringstream stream(output);
+      	std::string line;
 
-    	while (std::getline(stream, line)) {
-		std::smatch match;
-		if (std::regex_match(line, match, job_id_regex)) {
-			id = match[1];
-                }
+    	  while (std::getline(stream, line)) {
+		        std::smatch match;
+		        if (std::regex_match(line, match, job_id_regex)) {
+			          id = match[1];
+            }
         }
-	    remove_trailing_newline(id);
+	      remove_trailing_newline(id);
     }
 
     void set_busyness(bool status) override {
@@ -341,7 +342,6 @@ public:
     virtual ~JobManager() = default;
 
     // Grant exclusive ownership of a model (with a given name) to a caller.
-    // The returned object MUST release any resources that it holds once it goes out of scope in the code of the caller.
     virtual std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) = 0;
 
     // To initialize the load balancer we first need a list of model names that are available on a server.
@@ -454,22 +454,15 @@ public:
         int num_server) 
         : job_submitter(std::move(job_submitter)), job_comm_factory(std::move(job_comm_factory)), locator(std::move(locator)), num_server(num_server) {
             // Submit slurm jobs to start model server
-            std::filesystem::path job_script = this->locator.getDefaultJobScript();
-            std::unique_ptr<JobCommunicator> comm = this->job_comm_factory->create();
-            for (int i = 0; i < num_server; i++) {
-                std::unique_ptr<Job> job = this->job_submitter->submit(job_script, comm->getInitMessage());
-                std::string url = comm->getModelUrl(job->getJobId());
-                auto model_name = getModelName(url);
-                model_names.insert(model_name[0]);
-                auto model = std::make_unique<umbridge::HTTPModel>(url, model_name[0]);
-                server_array.emplace_back(std::make_shared<JobModel>(std::move(job), std::move(model))); // modify this to Job only
-            }
+            spawn_servers();
         }
+        // create spawn servers function to use in constructor and restarts
+        // adapt to use job arrays
 
     std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& model_name) override {
         // Sould select an available model from the vector and return 
-        // Make unique ptr to job model. so that destructor for JobModel marks busyness for Job
-        // Mutex here for first come first serve if any
+        // Suggestion: make a request class that destructs and mark busyness. Maybe a bad idea (many temps)
+        // Mutex here for first come first serve
         std::scoped_lock server_lock{server_mutex};
         bool busy_servers = true;
         while (busy_servers == true) {
@@ -482,6 +475,19 @@ public:
             }
             std::this_thread::sleep_for(std::chrono::milliseconds{100});
         }    
+    }
+
+    void spawn_servers() {
+        std::filesystem::path job_script = locator.getDefaultJobScript();
+        std::unique_ptr<JobCommunicator> comm = job_comm_factory->create();
+        for (int i = 0; i < num_server - server_array.size(); i++) {
+            std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());
+            std::string url = comm->getModelUrl(job->getJobId());
+            auto model_name = getModelName(url);
+            model_names.insert(model_name[0]); // Problem: May have multiple names in one server
+            auto model = std::make_unique<umbridge::HTTPModel>(url, model_name[0]);
+            server_array.emplace_back(std::make_shared<JobModel>(std::move(job), std::move(model)));
+        }
     }
 
     std::vector<std::string> getModelName(std::string url) override {
