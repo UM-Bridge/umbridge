@@ -99,8 +99,8 @@ public:
     virtual ~Job() = default;
 
     virtual std::string getJobId() const = 0;
-    virtual void set_busyness(std::string id, bool status) = 0;
-    virtual bool get_busyness(std::string id) = 0;
+    virtual void set_busyness(bool status) = 0;
+    virtual bool get_busyness() = 0;
 };
 
 
@@ -108,33 +108,14 @@ public:
 // Suggestion: change into job arrays
 class SlurmJob : public Job {
 public:
-    SlurmJob(const std::vector<std::string>& options, const std::string& target) {
-        Command command {"sbatch", options, target};
+    SlurmJob(const std::string id): job_id(id) {}
 
-        // Makes SLURM output "<job id>[;<cluster name>]\n"
-        command.addOption("--parsable");
-        std::string output = get_command_output(command.toString());
-
-	      std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
-	      std::istringstream stream(output);
-      	std::string line;
-
-    	  while (std::getline(stream, line)) {
-		        std::smatch match;
-		        if (std::regex_match(line, match, job_id_regex)) {
-			          job_id = match[1];
-            }
-        }
-	      remove_trailing_newline(job_id);
-          
-    }
-
-    void set_busyness(std::string id, bool status) override {
-        busyness_map[id] = status;
+    void set_busyness(bool status) override {
+        is_busy = status;
     }
     
-    bool get_busyness(std::string id) override {
-        return busyness_map[id];
+    bool get_busyness() override {
+        return is_busy;
     }
 
     ~SlurmJob() override {
@@ -147,8 +128,7 @@ public:
     
 private:
     std::string job_id;
-    std::vector<std::string> array_ids;
-    std::map<std::string, bool> busyness_map;
+    bool is_busy = false;
 };
 
 
@@ -158,7 +138,7 @@ class JobSubmitter {
 public:
     virtual ~JobSubmitter() = default;
 
-    virtual std::unique_ptr<Job> submit(const std::string& job_script, const std::map<std::string, std::string>& env) = 0;
+    virtual std::string submit(int num_server, const std::string& job_script, const std::map<std::string, std::string>& env) = 0;
 };
 
 class SlurmSubmitter : public JobSubmitter {
@@ -166,7 +146,7 @@ public:
     SlurmSubmitter(std::chrono::milliseconds submission_delay) 
     : submission_delay(submission_delay) {}
 
-    std::unique_ptr<Job> submit(const std::string& job_script, const std::map<std::string, std::string>& env) override {
+    std::string submit(int num_server, const std::string& job_script, const std::map<std::string, std::string>& env) override {
         // Add optional delay to job submissions to prevent issues in some cases.
         if (submission_delay > std::chrono::milliseconds::zero()) {
             std::lock_guard lock(submission_mutex);
@@ -175,9 +155,28 @@ public:
 
         // Submit job
         std::vector<std::string> options = env_to_options(env);
-        std::unique_ptr<Job> job = std::make_unique<SlurmJob>(options, job_script);
-        return job;
+        Command command {"sbatch", options, job_script};
+
+        // Makes SLURM output "<job id>[;<cluster name>]\n"
+        command.addOption("--parsable");
+        command.addOption("--array=1-" + std::to_string(num_server));
+        std::string output = get_command_output(command.toString());
+
+	    std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
+	    std::istringstream stream(output);
+      	std::string line;
+
+        std::string job_id;
+        while (std::getline(stream, line)) {
+            std::smatch match;
+            if (std::regex_match(line, match, job_id_regex)) {
+                job_id = match[1];
+            }
+        }
+        remove_trailing_newline(job_id);
+        return job_id;
     }
+    
 private:
     // SLURM environment variables: --export=KEY1=VAL1,KEY2=VAL2,...
     std::vector<std::string> env_to_options(const std::map<std::string, std::string>& env) const {
@@ -190,7 +189,7 @@ private:
 
         return {env_option};
     }
-
+    
     std::chrono::milliseconds submission_delay = std::chrono::milliseconds::zero();
     std::mutex submission_mutex;
 };
@@ -482,12 +481,14 @@ public:
     void spawn_servers() {
         std::filesystem::path job_script = locator.getDefaultJobScript();
         std::unique_ptr<JobCommunicator> comm = job_comm_factory->create();
-        for (int i = 0; i < num_server - server_array.size(); i++) {
-            std::unique_ptr<Job> job = job_submitter->submit(job_script, comm->getInitMessage());
-            std::string url = comm->getModelUrl(job->getJobId());
+        std::string job_id = job_submitter->submit(num_server, job_script, comm->getInitMessage());
+        for (int i = 1; i <= num_server; i++) {
+            std::string job_array_id = job_id + "_" + std::to_string(i);
+            std::string url = comm->getModelUrl(job_array_id);
             auto model_name = getModelName(url);
             model_names.insert(model_name[0]); // Problem: May have multiple names in one server
             auto model = std::make_unique<umbridge::HTTPModel>(url, model_name[0]);
+            std::unique_ptr<Job> job = std::make_unique<SlurmJob>(job_array_id);
             server_array.emplace_back(std::make_shared<JobModel>(std::move(job), std::move(model)));
         }
     }
