@@ -42,6 +42,6 @@ echo "Model server responded"
 
 # Write server URL to file identified by HQ job ID.
 mkdir -p $UMBRIDGE_LOADBALANCER_COMM_FILEDIR
-echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$SLURM_JOB_ID.txt"
+echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-${SLURM_ARRAY_JOB_ID}_$SLURM_ARRAY_TASK_ID.txt"
 
 sleep infinity # keep the job occupied
