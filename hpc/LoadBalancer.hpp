@@ -36,7 +36,8 @@ std::string get_command_output(const std::string& command) {
     return output;
 }
 
-// Wait until a file exists using polling.
+// Wait until a file exists using polling. 
+// Improvements: Use inotify instead to save cpu cycles
 void wait_for_file(const std::filesystem::path& file_path, std::chrono::milliseconds polling_cycle) {
     while (!std::filesystem::exists(file_path)) {
         std::this_thread::sleep_for(polling_cycle);
@@ -464,6 +465,9 @@ public:
         // Sould select an available model from the vector and return 
         // Suggestion: make a request class that destructs and mark busyness. Maybe a bad idea (many temps)
         // Mutex here for first come first serve
+        // Problem: deadlock here when more threads than available servers
+        // Cause: Running model crashes but leaves extra thread(s) dangling
+        // Solution: Kill all threads when crashes / Mark all threads as completed
         std::scoped_lock server_lock{server_mutex};
         bool busy_servers = true;
         while (busy_servers == true) {
