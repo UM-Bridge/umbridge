@@ -37,14 +37,16 @@ std::string get_command_output(const std::string& command) {
 }
 
 // Wait until a file exists using polling.
+/*
 void wait_for_file(const std::filesystem::path& file_path, std::chrono::milliseconds polling_cycle) {
     while (!std::filesystem::exists(file_path)) {
         std::this_thread::sleep_for(polling_cycle);
     }
 }
+*/
 
-bool waitForFileCreation(const std::string& directory, const std::string& filename) {
-    std::filesystem::path filePath = std::filesystem::path(directory) / filename;
+// Uses inotify to check for system events
+bool wait_for_file(const std::filesystem::path& file_path, std::chrono::milliseconds polling_cycle) {
 
     // Existence check
     if (std::filesystem::exists(filePath)) {
@@ -94,6 +96,7 @@ bool waitForFileCreation(const std::string& directory, const std::string& filena
 
             i += EVENT_SIZE + event->len;
         }
+        std::this_thread::sleep_for(polling_cycle);
     }
 }
 
