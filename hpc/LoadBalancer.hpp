@@ -11,6 +11,7 @@
 #include <vector>
 #include <regex>
 #include <sstream>
+#include <sys/inotify.h>
 
 // Run a shell command and get the result.
 // Warning: Prone to injection, do not call with user-supplied arguments.
@@ -41,6 +42,61 @@ void wait_for_file(const std::filesystem::path& file_path, std::chrono::millisec
         std::this_thread::sleep_for(polling_cycle);
     }
 }
+
+bool waitForFileCreation(const std::string& directory, const std::string& filename) {
+    std::filesystem::path filePath = std::filesystem::path(directory) / filename;
+
+    // Existence check
+    if (std::filesystem::exists(filePath)) {
+        return true;
+    }
+
+    constexpr size_t EVENT_SIZE = sizeof(struct inotify_event);
+    constexpr size_t BUF_LEN = 1024 * (EVENT_SIZE + NAME_MAX + 1);
+
+    int fd = inotify_init(); // blocking
+    if (fd < 0) {
+        throw std::runtime_error("inotify_init failed");
+    }
+
+    int wd = inotify_add_watch(
+        fd,
+        directory.c_str(),
+        IN_CREATE | IN_MOVED_TO
+    );
+
+    if (wd < 0) {
+        close(fd);
+        throw std::runtime_error("inotify_add_watch failed");
+    }
+
+    char buffer[BUF_LEN];
+
+    while (true) {
+        ssize_t length = read(fd, buffer, BUF_LEN);
+        if (length < 0) {
+            close(fd);
+            throw std::runtime_error("read failed");
+        }
+
+        size_t i = 0;
+        while (i < static_cast<size_t>(length)) {
+            auto* event = reinterpret_cast<inotify_event*>(&buffer[i]);
+
+            if ((event->mask & (IN_CREATE | IN_MOVED_TO)) &&
+                event->len > 0 &&
+                filename == event->name) {
+
+                inotify_rm_watch(fd, wd);
+                close(fd);
+                return true; // file detected
+            }
+
+            i += EVENT_SIZE + event->len;
+        }
+    }
+}
+
 
 std::string read_line_from_file(const std::filesystem::path& file_path) {
     std::ifstream file(file_path);
