@@ -46,10 +46,11 @@ void wait_for_file(const std::filesystem::path& file_path, std::chrono::millisec
 */
 
 // Uses inotify to check for system events
-bool wait_for_file(const std::filesystem::path& file_path, std::chrono::milliseconds polling_cycle) {
-
+bool wait_for_file(const std::filesystem::path& directory, const std::string& file_name, std::chrono::milliseconds polling_cycle) {
+    std::filesystem::path file_path = directory / file_name;
+    
     // Existence check
-    if (std::filesystem::exists(filePath)) {
+    if (std::filesystem::exists(file_path)) {
         return true;
     }
 
@@ -87,7 +88,7 @@ bool wait_for_file(const std::filesystem::path& file_path, std::chrono::millisec
 
             if ((event->mask & (IN_CREATE | IN_MOVED_TO)) &&
                 event->len > 0 &&
-                filename == event->name) {
+                file_name == event->name) {
 
                 inotify_rm_watch(fd, wd);
                 close(fd);
@@ -346,10 +347,11 @@ public:
     }
 
     std::string getModelUrl(const std::string& job_id) override {
-        file_path = file_dir / getUrlFileName(job_id);
+        std::string file_name = getUrlFileName(job_id);
+        file_path = file_dir / file_name;
 
         std::cout << "Waiting for URL file: " << file_path.string() << std::endl;
-        wait_for_file(file_path, polling_cycle);
+        wait_for_file(file_dir, file_name, polling_cycle);
 
         // TODO: What if opening the file fails?
         std::string url = read_line_from_file(file_path);
