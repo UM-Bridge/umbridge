@@ -46,7 +46,7 @@ void wait_for_file(const std::filesystem::path& file_path, std::chrono::millisec
 */
 
 // Uses inotify to check for system events
-bool wait_for_file(const std::filesystem::path& directory, const std::string& file_name, std::chrono::milliseconds polling_cycle) {
+bool wait_for_file(const std::filesystem::path& directory, const std::string& file_name, int fd, char* buffer) {
     std::filesystem::path file_path = directory / file_name;
     
     // Existence check
@@ -54,29 +54,8 @@ bool wait_for_file(const std::filesystem::path& directory, const std::string& fi
         return true;
     }
 
-    constexpr size_t EVENT_SIZE = sizeof(struct inotify_event);
-    constexpr size_t BUF_LEN = 1024 * (EVENT_SIZE + NAME_MAX + 1);
-
-    int fd = inotify_init(); // blocking
-    if (fd < 0) {
-        throw std::runtime_error("inotify_init failed");
-    }
-
-    int wd = inotify_add_watch(
-        fd,
-        directory.c_str(),
-        IN_CREATE | IN_MOVED_TO
-    );
-
-    if (wd < 0) {
-        close(fd);
-        throw std::runtime_error("inotify_add_watch failed");
-    }
-
-    char buffer[BUF_LEN];
-
     while (true) {
-        ssize_t length = read(fd, buffer, BUF_LEN);
+        ssize_t length = read(fd, buffer, sizeof(buffer));
         if (length < 0) {
             close(fd);
             throw std::runtime_error("read failed");
@@ -90,14 +69,11 @@ bool wait_for_file(const std::filesystem::path& directory, const std::string& fi
                 event->len > 0 &&
                 file_name == event->name) {
 
-                inotify_rm_watch(fd, wd);
-                close(fd);
                 return true; // file detected
             }
 
-            i += EVENT_SIZE + event->len;
+            i += sizeof(struct inotify_event) + event->len;
         }
-        std::this_thread::sleep_for(polling_cycle);
     }
 }
 
@@ -332,9 +308,27 @@ public:
 class FilesystemCommunicator : public JobCommunicator {
 public:
     FilesystemCommunicator(std::filesystem::path file_dir, std::chrono::milliseconds polling_cycle) 
-    : file_dir(std::move(file_dir)), polling_cycle(polling_cycle) {}
+    : file_dir(std::move(file_dir)), polling_cycle(polling_cycle) {
+        int fd = inotify_init(); // blocking
+        if (fd < 0) {
+            throw std::runtime_error("inotify_init failed");
+        }
+
+        int wd = inotify_add_watch(
+            fd,
+            file_dir.c_str(),
+            IN_CREATE | IN_MOVED_TO
+        );
+
+        if (wd < 0) {
+            close(fd);
+            throw std::runtime_error("inotify_add_watch failed");
+        }
+    }
 
     ~FilesystemCommunicator() override {
+        inotify_rm_watch(fd, wd);
+        close(fd);
         if(!file_path.empty()) {
             std::filesystem::remove(file_path);
         }
@@ -351,7 +345,7 @@ public:
         file_path = file_dir / file_name;
 
         std::cout << "Waiting for URL file: " << file_path.string() << std::endl;
-        wait_for_file(file_dir, file_name, polling_cycle);
+        wait_for_file(file_dir, file_name, fd, buffer);
 
         // TODO: What if opening the file fails?
         std::string url = read_line_from_file(file_path);
@@ -369,6 +363,10 @@ private:
     std::filesystem::path file_path;
 
     std::chrono::milliseconds polling_cycle;
+    
+    int fd;
+    int wd;
+    char buffer[4096];
 };
 
 class FilesystemCommunicatorFactory : public JobCommunicatorFactory {
