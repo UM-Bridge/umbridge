@@ -46,7 +46,7 @@ void wait_for_file(const std::filesystem::path& file_path, std::chrono::millisec
 */
 
 // Uses inotify to check for system events
-bool wait_for_file(const std::filesystem::path& directory, const std::string& file_name, int fd, char* buffer) {
+bool wait_for_file(const std::filesystem::path& directory, const std::string& file_name, int& fd, char* buffer) {
     std::filesystem::path file_path = directory / file_name;
     
     // Existence check
@@ -55,7 +55,7 @@ bool wait_for_file(const std::filesystem::path& directory, const std::string& fi
     }
 
     while (true) {
-        ssize_t length = read(fd, buffer, sizeof(buffer));
+        ssize_t length = read(fd, buffer, 4096); // As per buffer size define in class.
         if (length < 0) {
             close(fd);
             throw std::runtime_error("read failed");
@@ -64,10 +64,11 @@ bool wait_for_file(const std::filesystem::path& directory, const std::string& fi
         size_t i = 0;
         while (i < static_cast<size_t>(length)) {
             auto* event = reinterpret_cast<inotify_event*>(&buffer[i]);
+            std::cout << event->name << std::endl;
 
-            if ((event->mask & (IN_CREATE | IN_MOVED_TO)) &&
+            if ((event->mask & (IN_OPEN | IN_CLOSE)) &&
                 event->len > 0 &&
-                file_name == event->name) {
+                strstr(file_name.c_str(), event->name)) {
 
                 return true; // file detected
             }
@@ -309,15 +310,15 @@ class FilesystemCommunicator : public JobCommunicator {
 public:
     FilesystemCommunicator(std::filesystem::path file_dir, std::chrono::milliseconds polling_cycle) 
     : file_dir(std::move(file_dir)), polling_cycle(polling_cycle) {
-        int fd = inotify_init(); // blocking
+        fd = inotify_init1(0); // Blocking read
         if (fd < 0) {
             throw std::runtime_error("inotify_init failed");
         }
 
-        int wd = inotify_add_watch(
+        wd = inotify_add_watch(
             fd,
-            file_dir.c_str(),
-            IN_CREATE | IN_MOVED_TO
+            this->file_dir.c_str(),
+            (IN_OPEN | IN_CLOSE)
         );
 
         if (wd < 0) {
