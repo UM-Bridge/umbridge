@@ -468,6 +468,7 @@ public:
         // Problem: deadlock here when more threads than available servers
         // Cause: Running model crashes but leaves extra thread(s) dangling
         // Solution: Kill all threads when crashes / Mark all threads as completed
+        // even better: refactor code to account for crashed/terminated servers
         std::scoped_lock server_lock{server_mutex};
         bool busy_servers = true;
         while (busy_servers == true) {
@@ -493,7 +494,7 @@ public:
             model_names.insert(model_name[0]); // Problem: May have multiple names in one server
             auto model = std::make_unique<umbridge::HTTPModel>(url, model_name[0]);
             std::unique_ptr<Job> job = std::make_unique<SlurmJob>(job_array_id);
-            server_array.emplace_back(std::make_shared<JobModel>(std::move(job), std::move(model)));
+            server_array.insert({std::make_shared<JobModel>(std::move(job), std::move(model)), false});
         }
     }
 
@@ -510,8 +511,9 @@ private:
     std::unique_ptr<JobCommunicatorFactory> job_comm_factory;
     JobScriptLocator locator;
     int num_server;
-    std::vector<std::shared_ptr<JobModel>> server_array;
+    std::map<std::shared_ptr<JobModel>, bool> server_array;
     std::set<std::string> model_names;
+    std::map<int, bool> busyness_array;
 };
 
 
