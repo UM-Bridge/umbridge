@@ -433,6 +433,16 @@ public:
         return supports_hessian;
     }
     
+    bool job_status() {
+        try {
+            SupportsEvaluate();
+        }
+        catch (std::exception& e) {
+            return false;
+        }
+        return true;
+    }
+    
     Job* getjob() {
         return job.get();
     }
@@ -470,12 +480,20 @@ public:
         // Solution: Kill all threads when crashes / Mark all threads as completed
         // even better: refactor code to account for crashed/terminated servers
         std::scoped_lock server_lock{server_mutex};
-        bool busy_servers = true;
-        while (busy_servers == true) {
-            for (auto& server : server_array) {
-                if (!server->getjob()->get_busyness()) {
+        while (true) {
+            if (server_array.size() == 0) {
+                std::cout << "No available servers running." << std::endl; // Need to make it exit properly
+                return nullptr;
+            }
+            for (auto& tmp : server_array) { // to solve; server_array may contain duplicate slurm allocation when multiple model names are present in one server
+                auto& server = tmp.first;
+                if (!server->getjob()->get_busyness() && tmp.second) {
+                    bool server_status = server->job_status();
+                    if (server_status != tmp.second) {
+                        server_array.erase(tmp.first);
+                        continue;    
+                    }
                     server->getjob()->set_busyness(true);
-                    busy_servers = false;
                     return server;
                 }
             }
@@ -494,7 +512,7 @@ public:
             model_names.insert(model_name[0]); // Problem: May have multiple names in one server
             auto model = std::make_unique<umbridge::HTTPModel>(url, model_name[0]);
             std::unique_ptr<Job> job = std::make_unique<SlurmJob>(job_array_id);
-            server_array.insert({std::make_shared<JobModel>(std::move(job), std::move(model)), false});
+            server_array.insert({std::make_shared<JobModel>(std::move(job), std::move(model)), true});
         }
     }
 
@@ -513,7 +531,6 @@ private:
     int num_server;
     std::map<std::shared_ptr<JobModel>, bool> server_array;
     std::set<std::string> model_names;
-    std::map<int, bool> busyness_array;
 };
 
 
