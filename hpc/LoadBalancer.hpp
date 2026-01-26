@@ -438,6 +438,7 @@ public:
             SupportsEvaluate();
         }
         catch (std::exception& e) {
+            std::cout << "Model server is no longer running" << std::endl;
             return false;
         }
         return true;
@@ -480,6 +481,7 @@ public:
         // Solution: Kill all threads when crashes / Mark all threads as completed
         // even better: refactor code to account for crashed/terminated servers
         std::scoped_lock server_lock{server_mutex};
+        int iter = 0;
         while (true) {
             if (server_array.size() == 0) {
                 std::cout << "No available servers running." << std::endl; // Need to make it exit properly
@@ -487,17 +489,18 @@ public:
             }
             for (auto& tmp : server_array) { // to solve; server_array may contain duplicate slurm allocation when multiple model names are present in one server
                 auto& server = tmp.first;
-                if (!server->getjob()->get_busyness() && tmp.second) {
+                if (!server->getjob()->get_busyness()) {
+                    server->getjob()->set_busyness(true);
+                    return server;
+                }
+                if (iter == 50) {
                     bool server_status = server->job_status();
-                    if (server_status != tmp.second) {
+                    if (tmp.second != server_status) {
                         server_array.erase(tmp.first);
-                    }
-                    else {
-                        server->getjob()->set_busyness(true);
-                        return server;
                     }
                 }
             }
+            iter++; // will overflow for long duration
             std::this_thread::sleep_for(std::chrono::milliseconds{100});
         }    
     }
