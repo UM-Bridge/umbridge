@@ -491,10 +491,11 @@ public:
                     bool server_status = server->job_status();
                     if (server_status != tmp.second) {
                         server_array.erase(tmp.first);
-                        continue;    
                     }
-                    server->getjob()->set_busyness(true);
-                    return server;
+                    else {
+                        server->getjob()->set_busyness(true);
+                        return server;
+                    }
                 }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds{100});
