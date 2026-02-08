@@ -500,7 +500,7 @@ public:
                     }
                 }
             }
-            iter = (iter == 50) ? 0: iter++; // To prevent overflow for long runs
+            iter = (iter == 50) ? 0: iter + 1; // To prevent overflow for long runs
             std::this_thread::sleep_for(std::chrono::milliseconds{100});
         }    
     }
