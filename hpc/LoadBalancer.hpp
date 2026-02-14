@@ -435,7 +435,7 @@ public:
     
     bool job_status() {
         try {
-            SupportsEvaluate();
+            GetInputSizes(json::parse("{}"));
         }
         catch (std::exception& e) {
             std::cout << "Model server is no longer running" << std::endl;
