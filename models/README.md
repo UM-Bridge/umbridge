@@ -24,7 +24,15 @@ docker run -p 4242:4242 linusseelinger/model-testmodel-python:latest
 
 ## Implementation
 
-A model may make use of the existing integrations below. They take care of the entire HTTP communication transparently, and provide easy to implement model interfaces. Refer to the models in this repository for working examples of the server integrations shown in the following.
+A model may make use of the existing integrations below. They take care of the entire HTTP communication transparently, and provide easy to implement model interfaces. However, there are some features that are language specific. The table below briefly summarises these differences.
+
+| Implementation | Optional Error Checks | Allow Parallel Requests | Allow `Inf` & `NaN` Output |
+|----------------|-----------------------|-------------------------|----------------------------|
+| Python         | Yes                   | Yes                     | WIP                        |
+| C++            | Yes                   | Yes                     | No                         |
+| Julia          |  No                   | Yes                     | Yes                        |
+
+Refer to the models in this repository for working examples of the server integrations shown in the following.
 
 ### Python server
 
@@ -159,6 +167,7 @@ testmodel = UMBridge.Model(name="forward", inputSizes=[1], outputSizes=[1])
 UMBridge.define_evaluate(testmodel, evaluate)
 UMBridge.serve_models([testmodel], 4232)
 ```
+[Full example sources here.](https://github.com/UM-Bridge/umbridge/tree/main/models/testmodel-julia)
 
 ## MUQ server
 
