@@ -3,6 +3,7 @@ import requests
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
+from functools import partial
 
 class Model(object):
 
@@ -37,14 +38,15 @@ def supported_models(url):
       raise RuntimeWarning("Model has unsupported protocol version!")
   return response["models"]
 
-def retry(func, num_retries = 0, delay = 0): 
+def retry(func, num_retries = 1, delay = 0): 
     for attempt in range(1, num_retries + 1):
         try:
             return func()
         except Exception as e:
             if attempt == num_retries:
-                raise
-            print(f"Function {func.__name__} failed {attempt} with error: {e}. Retrying after {delay}s")
+                raise Exception(f"Function {func.func.__qualname__} failed all attempts with error: {e}")
+            print(f"Function {func.func.__qualname__} failed at {attempt} out of {num_retries} attempts \
+                  with error: {e}. Retrying after {delay}s")
             time.sleep(delay)
 
 class HTTPModel(Model):
@@ -107,7 +109,7 @@ class HTTPModel(Model):
         inputParams["name"] = self.name
         inputParams["input"] = parameters
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/Evaluate", json=inputParams)
+        response = retry(partial(requests.post, f"{self.url}/Evaluate", json=inputParams), self.num_retries, self.delay)
         response = response.json()
 
         if "error" in response:
@@ -126,7 +128,8 @@ class HTTPModel(Model):
         inputParams["input"] = parameters
         inputParams["sens"] = sens
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/Gradient", json=inputParams).json()
+        response = retry(partial(requests.post, f"{self.url}/Gradient", json=inputParams), self.num_retries, self.delay)
+        response = response.json()
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
@@ -144,7 +147,8 @@ class HTTPModel(Model):
         inputParams["input"] = parameters
         inputParams["vec"] = vec
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/ApplyJacobian", json=inputParams).json()
+        response = retry(partial(requests.post, f"{self.url}/ApplyJacobian", json=inputParams), self.num_retries, self.delay)
+        response = response.json()
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
@@ -164,7 +168,8 @@ class HTTPModel(Model):
         inputParams["sens"] = sens
         inputParams["vec"] = vec
         inputParams["config"] = config
-        response = requests.post(f"{self.url}/ApplyHessian", json=inputParams).json()
+        response = retry(partial(requests.post, f"{self.url}/ApplyHessian", json=inputParams), self.num_retries, self.delay)
+        response = response.json()
 
         if "error" in response:
             raise Exception(f'Model returned error of type {response["error"]["type"]}: {response["error"]["message"]}')
