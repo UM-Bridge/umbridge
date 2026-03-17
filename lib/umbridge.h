@@ -86,6 +86,18 @@ namespace umbridge {
       throw std::runtime_error("GET Info failed with error type '" + to_string(res.error()) + "'");
     }
   }
+  
+  auto retry(auto func, int num_retries = 1, int delay_ms = 0) {
+    for (int attempt = 1; attempt <= num_retries; attempt++) {
+      try {
+        return func();
+      } catch (const std::exception& e) {
+        if (attempt == num_retries) {
+          
+        }
+      }
+    }
+  }
 
   // Client-side Model connecting to a server for the actual evaluations etc.
   class HTTPModel : public Model {
