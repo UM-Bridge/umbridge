@@ -12,27 +12,74 @@
 #include <regex>
 #include <sstream>
 
-// Run a shell command and get the result.
-// Warning: Prone to injection, do not call with user-supplied arguments.
-// Note: POSIX specific and may not run on other platforms (e.g. Windows), but most HPC systems are POSIX-compliant.
-// Using an external library (e.g. Boost) would be cleaner, but not worth the effort of managing another dependency.
-std::string get_command_output(const std::string& command) {
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), &pclose);
+#include <spawn.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-    if (!pipe) {
-        std::string error_msg = "Failed to run command: " + command + "\n"
-                              + "popen failed with error: " + std::strerror(errno) + "\n"; 
-        throw std::runtime_error(error_msg);
+// Run a shell command and capture its stdout.
+// Uses posix_spawn instead of popen for thread safety:
+// posix_spawn uses clone() on Linux, avoiding the full address-space duplication
+// that fork() (used by popen) performs. This prevents memory exhaustion when many
+// threads spawn commands concurrently on systems with high core counts.
+std::string get_command_output(const std::string& command) {
+    int pipefd[2];
+    if (pipe(pipefd) != 0) {
+        throw std::runtime_error("Failed to create pipe for command: " + command + "\n"
+                               + "pipe() error: " + std::strerror(errno));
     }
 
-    // Buffer size can be small and is largely unimportant since most commands we use only return a single line.
+    posix_spawn_file_actions_t file_actions;
+    posix_spawn_file_actions_init(&file_actions);
+    posix_spawn_file_actions_adddup2(&file_actions, pipefd[1], STDOUT_FILENO);
+    posix_spawn_file_actions_addclose(&file_actions, pipefd[0]);
+    posix_spawn_file_actions_addclose(&file_actions, pipefd[1]);
+
+    const char* argv[] = {"/bin/sh", "-c", command.c_str(), nullptr};
+    pid_t pid;
+    extern char** environ;
+    int spawn_err = posix_spawn(&pid, "/bin/sh", &file_actions, nullptr,
+                                const_cast<char* const*>(argv), environ);
+    posix_spawn_file_actions_destroy(&file_actions);
+
+    if (spawn_err != 0) {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        throw std::runtime_error("Failed to run command: " + command + "\n"
+                               + "posix_spawn error: " + std::strerror(spawn_err));
+    }
+
+    // Close write end in parent; read all output from the child.
+    close(pipefd[1]);
+
     std::array<char, 128> buffer;
     std::string output;
-    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get())) {
-        output += buffer.data();
+    ssize_t bytes_read;
+    while ((bytes_read = read(pipefd[0], buffer.data(), buffer.size())) > 0) {
+        output.append(buffer.data(), static_cast<size_t>(bytes_read));
     }
+    close(pipefd[0]);
+
+    int child_status;
+    waitpid(pid, &child_status, 0);
 
     return output;
+}
+
+// Thread-safe fire-and-forget command execution using posix_spawn.
+// Used where we don't need to capture output (e.g., scancel in destructors).
+void run_command_no_output(const std::string& command) {
+    const char* argv[] = {"/bin/sh", "-c", command.c_str(), nullptr};
+    pid_t pid;
+    extern char** environ;
+    int spawn_err = posix_spawn(&pid, "/bin/sh", nullptr, nullptr,
+                                const_cast<char* const*>(argv), environ);
+    if (spawn_err != 0) {
+        std::cerr << "Warning: Failed to run command: " << command
+                  << " (posix_spawn error: " << std::strerror(spawn_err) << ")" << std::endl;
+        return;
+    }
+    int child_status;
+    waitpid(pid, &child_status, 0);
 }
 
 // Wait until a file exists using polling.
@@ -135,7 +182,7 @@ public:
         command.addOption("--parsable");
         std::string output = get_command_output(command.toString());
 
-	std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
+	static const std::regex job_id_regex(R"(^(\d+)(?:;[a-zA-Z0-9_-]+)?$)");
 	std::istringstream stream(output);
     	std::string line;
 
@@ -149,7 +196,7 @@ public:
     }
 
     ~SlurmJob() override {
-        std::system(("scancel " + id).c_str());
+        run_command_no_output("scancel " + id);
     }
 
     std::string getJobId() const override {
@@ -214,9 +261,12 @@ public:
     : submission_delay(submission_delay) {}
 
     std::unique_ptr<Job> submit(const std::string& job_script, const std::map<std::string, std::string>& env) override {
-        // Add optional delay to job submissions to prevent issues in some cases.
+        // When a submission delay is configured, hold the mutex for the entire
+        // submit cycle (delay + sbatch call) so that rate-limiting actually works.
+        // Without a delay, no lock is taken — submissions proceed fully in parallel.
+        std::unique_lock lock(submission_mutex, std::defer_lock);
         if (submission_delay > std::chrono::milliseconds::zero()) {
-            std::lock_guard lock(submission_mutex);
+            lock.lock();
             std::this_thread::sleep_for(submission_delay);
         }
 
