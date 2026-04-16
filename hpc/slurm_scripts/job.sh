@@ -32,7 +32,11 @@ export PORT=$port
 ./testmodel & # CHANGE ME!
 
 
-host="${SLURMD_NODENAME:-$(hostname -s)}opa.sng.lrz.de"
+if [ -z "$SLURMD_NODENAME" ]; then
+    echo "Error: SLURMD_NODENAME is not set."
+    exit 1
+fi
+host="${SLURMD_NODENAME}opa.sng.lrz.de"
 
 echo "Waiting for model server to respond at $host:$port..."
 while ! curl -s "http://$host:$port/Info" > /dev/null; do
