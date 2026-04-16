@@ -32,7 +32,7 @@ export PORT=$port
 ./testmodel & # CHANGE ME!
 
 
-host=$(hostname -I | awk '{print $1}')
+host="${SLURMD_NODENAME:-$(hostname -s)}opa.sng.lrz.de"
 
 echo "Waiting for model server to respond at $host:$port..."
 while ! curl -s "http://$host:$port/Info" > /dev/null; do
