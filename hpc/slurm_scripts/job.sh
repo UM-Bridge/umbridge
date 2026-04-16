@@ -50,13 +50,24 @@ if [ -z "$probe_host" ]; then
 fi
 
 echo "Waiting for model server to respond at $probe_host:$port..."
-while ! curl -s "http://$probe_host:$port/Info" > /dev/null; do
+while ! curl --noproxy "*" -s "http://$probe_host:$port/Info" > /dev/null; do
     sleep 1
 done
 echo "Model server responded"
 
 # Write server URL to file identified by HQ job ID.
-mkdir -p $UMBRIDGE_LOADBALANCER_COMM_FILEDIR
-echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$SLURM_JOB_ID.txt"
+if [ -z "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR" ]; then
+    echo "Error: UMBRIDGE_LOADBALANCER_COMM_FILEDIR is not set."
+    exit 1
+fi
+if [ -z "$SLURM_JOB_ID" ]; then
+    echo "Error: SLURM_JOB_ID is not set."
+    exit 1
+fi
+
+mkdir -p "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR" || exit 1
+url_file="$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$SLURM_JOB_ID.txt"
+echo "http://$host:$port" > "$url_file" || exit 1
+echo "Wrote model server URL to $url_file"
 
 sleep infinity # keep the job occupied
