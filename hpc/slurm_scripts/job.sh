@@ -42,9 +42,15 @@ if [ -z "$node" ]; then
 fi
 
 host="${node}opa.sng.lrz.de"
+probe_host="$(hostname -I | awk '{print $1}')"
 
-echo "Waiting for model server to respond at $host:$port..."
-while ! curl -s "http://$host:$port/Info" > /dev/null; do
+if [ -z "$probe_host" ]; then
+    echo "Error: could not determine local probe host from hostname -I."
+    exit 1
+fi
+
+echo "Waiting for model server to respond at $probe_host:$port..."
+while ! curl -s "http://$probe_host:$port/Info" > /dev/null; do
     sleep 1
 done
 echo "Model server responded"
