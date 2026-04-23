@@ -551,6 +551,7 @@ public:
     }
     
     ~CommandJobManager() {
+        stopHealthCheck = true;
         healthCheckThread.join();
     }
 
@@ -558,10 +559,10 @@ private:
     // Probes liveness of every JobModel and updates its alive flag.
     // Dead entries are erased immediately. When the last JobModel sharing a Job is
     // erased, the shared_ptr refcount drops to zero and SlurmJob's destructor fires,
-    // cancelling the allocation automatically.
+    // cancelling the allocation automatically. Ideally this only happens when time runs out.
+    // Unable to handle server crashes yet.
     // Must be called with serverMutex held.
     // The for loop can be rewritten using std::erase_if.
-    // Not used yet.
     void checkServerArrayLiveness() {
         for (auto it = serverArray.begin(); it != serverArray.end(); ) {
             auto& [jobModel, alive] = it->second;
@@ -572,7 +573,7 @@ private:
                 ++it;
             }
             else {
-                alive = false;
+                it = serverArray.erase(it);
             }
         }
     }
