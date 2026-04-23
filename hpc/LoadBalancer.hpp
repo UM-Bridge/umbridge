@@ -40,7 +40,7 @@ std::string getCommandOutput(const std::string& command) {
 
 // Wait until a file exists using polling. 
 // Improvements: Use inotify instead to save cpu cycles
-void waitForFile(const std::file./lo    
+void waitForFile(const std::filesystem::path& filePath, std::chrono::milliseconds pollingCycle) {
     while (!std::filesystem::exists(filePath)) {
         std::this_thread::sleep_for(pollingCycle);
     }
