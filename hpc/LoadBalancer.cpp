@@ -83,7 +83,9 @@ int main(int argc, char* argv[]) {
 
     std::shared_ptr<JobManager> jobManager = std::make_shared<CommandJobManager>(
         std::move(jobSubmitter), std::move(commFactory), locator, numServer);
-
+        
+    // Start SLURM job arrays
+    jobManager->spawnServers();
 
     // Initialize load balancer for each available model on the model server.
     std::set<std::string> modelNames = jobManager->getModelNameArray();
