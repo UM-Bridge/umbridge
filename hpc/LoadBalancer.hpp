@@ -352,6 +352,8 @@ public:
 
     // Grant exclusive ownership of a model (with a given name) to a caller.
     virtual std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& modelName) = 0;
+    
+    virtual void waitForFirstServer() = 0;
 
     // To initialize the load balancer we first need a list of model names that are available on a server.
     // Typically, this can be achieved by simply running the model code and requesting the model names from the server.
@@ -518,13 +520,22 @@ public:
             auto job = std::make_shared<SlurmJob>(jobArrayID);
             job->setFreeNotifier([this] () { this->serverCV.notify_all(); });
 
-            for (const auto& name : names) {
-                modelNames.insert(name);
-                auto model = std::make_unique<umbridge::HTTPModel>(url, name);
-                auto jobModel = std::make_shared<JobModel>(job, std::move(model));
-                serverArray.emplace(name, std::make_pair(jobModel, true));
+            {
+                std::unique_lock lock{serverMutex};
+                for (const auto& name : names) {
+                    modelNames.insert(name);
+                    auto model = std::make_unique<umbridge::HTTPModel>(url, name);
+                    auto jobModel = std::make_shared<JobModel>(job, std::move(model));
+                    serverArray.emplace(name, std::make_pair(jobModel, true));
+                }
             }
+            serverCV.notify_all();
         }
+    }
+    
+    void waitForFirstServer() override {
+        std::unique_lock lock{serverMutex};
+        serverCV.wait(lock, [this] () { return !serverArray.empty(); });
     }
 
     std::vector<std::string> getModelName(std::string url) const override {
