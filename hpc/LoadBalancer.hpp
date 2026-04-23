@@ -301,9 +301,11 @@ struct JobScriptLocator {
         // Use model specific job script if available, default otherwise.
         if (std::filesystem::exists(scriptModelSpecific)) {
             return scriptModelSpecific;
-        } else if (std::filesystem::exists(scriptDefault)) {
+        } 
+        else if (std::filesystem::exists(scriptDefault)) {
             return scriptDefault;
-        } else {
+        } 
+        else {
             std::string errorMsg = "Job script not found: Check that file '" + scriptDefault.string() + "' exists.\n";
             throw std::runtime_error(errorMsg);
         }
@@ -353,7 +355,7 @@ public:
     // Grant exclusive ownership of a model (with a given name) to a caller.
     virtual std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& modelName) = 0;
     
-    virtual void waitForFirstServer() = 0;
+    virtual void startUpRoutine() = 0;
 
     // To initialize the load balancer we first need a list of model names that are available on a server.
     // Typically, this can be achieved by simply running the model code and requesting the model names from the server.
@@ -481,8 +483,9 @@ public:
         std::unique_ptr<JobSubmitter> jobSubmitter, 
         std::unique_ptr<JobCommunicatorFactory> jobCommFactory,
         JobScriptLocator locator,
-        int numServer) 
-        : jobSubmitter(std::move(jobSubmitter)), jobCommFactory(std::move(jobCommFactory)), locator(std::move(locator)), numServer(numServer) {}
+        int numServer,
+        int idleTimeout) 
+        : jobSubmitter(std::move(jobSubmitter)), jobCommFactory(std::move(jobCommFactory)), locator(std::move(locator)), numServer(numServer), idleTimeout(idleTimeout) {}
 
     std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& modelName) override {
         std::unique_lock lock{serverMutex};
@@ -529,21 +532,26 @@ public:
                     serverArray.emplace(name, std::make_pair(jobModel, true));
                 }
             }
+            
             serverCV.notify_all();
         }
     }
     
-    void waitForFirstServer() override {
-        std::unique_lock lock{serverMutex};
-        serverCV.wait(lock, [this] () { return !serverArray.empty(); });
+    void startUpRoutine() override {
+        waitForFirstServer();
+        initiateHealthCheck();
     }
-
+    
     std::vector<std::string> getModelName(std::string url) const override {
         return umbridge::SupportedModels(url);
     }
 
     std::set<std::string> getModelNameArray() const override {
         return this->modelNames;
+    }
+    
+    ~CommandJobManager() {
+        healthCheckThread.join();
     }
 
 private:
@@ -560,11 +568,11 @@ private:
             
             alive = jobModel->checkJobModelLiveness();
             
-            if (!alive) {
-                it = serverArray.erase(it);
-            } 
-            else {
+            if (alive) {
                 ++it;
+            }
+            else {
+                alive = false;
             }
         }
     }
@@ -579,14 +587,44 @@ private:
         }
         return false;
     }
+    
+    void initiateHealthCheck() {
+        healthCheckThread = std::thread([this] {
+            while (!stopHeathCheck) {
+                std::this_thread::sleep_for(healthCheckInterval);
+                std::unique_lock lock{serverMutex};
+                checkServerArrayLiveness();
+
+                // TODO: If the queue has been empty for longer than the idle timeout
+                // and there are no busy servers. End SLURM allocation and LB
+                /*
+                if idleTimeout > 0{
+                    if (idleConditions) {
+                        // handle the idling here
+                    }
+                }
+                */
+                serverCV.notify_all();
+            }
+        });
+    }
+    
+    void waitForFirstServer() {
+        std::unique_lock lock{serverMutex};
+        serverCV.wait(lock, [this] () { return !serverArray.empty(); });
+    }
 
     std::mutex serverMutex;
     std::condition_variable serverCV;
+    std::thread healthCheckThread;
     std::queue<std::thread::id> requestQueue;
     std::unique_ptr<JobSubmitter> jobSubmitter;
     std::unique_ptr<JobCommunicatorFactory> jobCommFactory;
     JobScriptLocator locator;
+    int idleTimeout;
     int numServer;
+    bool stopHeathCheck = false;
+    std::chrono::seconds healthCheckInterval{600}; // Health check every 10 minutes
     // Keyed by model name; multiple entries per name when multiple allocations serve it.
     // Value: (JobModel, alive). JobModels sharing the same allocation share a Job via shared_ptr.
     std::multimap<std::string, std::pair<std::shared_ptr<JobModel>, bool>> serverArray;

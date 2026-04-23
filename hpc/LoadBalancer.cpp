@@ -60,13 +60,23 @@ int main(int argc, char* argv[]) {
     }
 
     // Number of servers to spawn
-    std::string serverStr = getArg(args, "num-server");
+    std::string numServerStr = getArg(args, "num-server");
     int numServer = 1;
-    if (serverStr.empty()) {
+    if (numServerStr.empty()) {
         std::cout << "Argument --num-server not set! Spawning one model server as default." << std::endl;
     }
     else {
-        numServer = std::stoi(serverStr);
+        numServer = std::stoi(numServerStr);
+    }
+    
+    // How long before LB timeout
+    std::string idleTimeoutStr = getArg(args, "idle-timeout");
+    int idleTimeout = 0;
+    if (idleTimeoutStr.empty()) {
+        std::cout << "Argument --idle-timeout not set! Using no timeout as default." << std::endl;
+    }
+    else {
+        idleTimeout = std::stoi(idleTimeoutStr);
     }
     
     // Assemble job manager
@@ -82,14 +92,14 @@ int main(int argc, char* argv[]) {
     JobScriptLocator locator {scriptDir, "job.sh", "job_", ".sh"};
 
     std::shared_ptr<JobManager> jobManager = std::make_shared<CommandJobManager>(
-        std::move(jobSubmitter), std::move(commFactory), locator, numServer);
+        std::move(jobSubmitter), std::move(commFactory), locator, numServer, idleTimeout);
         
     // Start SLURM job arrays asynchronously and wait for first server
     std::thread spawnServersThread([&jobManager] () {
         jobManager->spawnServers();
     });
     spawnServersThread.detach();
-    jobManager->waitForFirstServer();
+    jobManager->startUpRoutine();
 
     // Initialize load balancer for each available model on the model server.
     std::set<std::string> modelNames = jobManager->getModelNameArray();
