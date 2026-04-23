@@ -453,7 +453,7 @@ public:
             model->GetInputSizes(json::parse("{}"));
         } 
         catch (std::exception&) {
-            std::cout << "Named model '" << GetName() << "' is no longer running." << std::endl;
+            std::cout << "Named model '" << GetName() << "' in allocation" << job->getJobId() << "is no longer running." << std::endl;
             return false;
         }
         return true;
@@ -590,12 +590,15 @@ private:
     }
     
     void initiateHealthCheck() {
-        healthCheckThread = std::thread([this] {
-            while (!stopHeathCheck) {
+        healthCheckThread = std::thread([this] () {
+            while (!stopHealthCheck) {
                 std::this_thread::sleep_for(healthCheckInterval);
                 std::unique_lock lock{serverMutex};
                 checkServerArrayLiveness();
 
+                if (serverArray.empty()) {
+                    throw std::runtime_error("No alive UM-Bridge servers");
+                }
                 // TODO: If the queue has been empty for longer than the idle timeout
                 // and there are no busy servers. End SLURM allocation and LB
                 /*
@@ -624,8 +627,8 @@ private:
     JobScriptLocator locator;
     int idleTimeout;
     int numServer;
-    bool stopHeathCheck = false;
-    std::chrono::seconds healthCheckInterval{600}; // Health check every 10 minutes
+    bool stopHealthCheck = false;
+    std::chrono::seconds healthCheckInterval{900}; // Health check every 15 minutes
     // Keyed by model name; multiple entries per name when multiple allocations serve it.
     // Value: (JobModel, alive). JobModels sharing the same allocation share a Job via shared_ptr.
     std::multimap<std::string, std::pair<std::shared_ptr<JobModel>, bool>> serverArray;

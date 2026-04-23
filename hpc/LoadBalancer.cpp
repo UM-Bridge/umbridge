@@ -117,7 +117,12 @@ int main(int argc, char* argv[]) {
     std::vector<umbridge::Model *> LBPtrVector(LBVector.size());
     std::transform(LBVector.begin(), LBVector.end(), LBPtrVector.begin(),
                    [](LoadBalancer& obj) { return &obj; });
-
-    umbridge::serveModels(LBPtrVector, "0.0.0.0", port, true, false);
+    try {
+        umbridge::serveModels(LBPtrVector, "0.0.0.0", port, true, false);
+    }
+    catch(const std::exception&) {
+      return EXIT_FAILURE;
+    }
+        
 }
 
