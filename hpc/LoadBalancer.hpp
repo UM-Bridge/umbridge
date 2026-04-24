@@ -269,7 +269,7 @@ private:
     // The naming of the URL file is hard-coded.
     // In the future, it might be better to have the communicator itself generate the filename and then send it to the job script.
     std::string getUrlFileName(const std::string& jobID) {
-        std::string urlFilename = "url" + jobID + ".txt";
+        std::string urlFilename = "url-" + jobID + ".txt";
         urlFilenames.push_back(urlFilename);
         return urlFilename;
     }
