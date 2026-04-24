@@ -240,11 +240,14 @@ public:
     : fileDir(std::move(fileDir)), pollingCycle(pollingCycle) {}
 
     ~FilesystemCommunicator() override {
-        if(!filePath.empty()) {
-            std::filesystem::remove(filePath);
+        for (auto name: urlFilenames) {
+            std::string removableUrlFile = fileDir / name;
+            if(!removableUrlFile.empty()) {
+                std::filesystem::remove(removableUrlFile);
+            }
         }
-    }
-
+    } 
+        
     // Tell the job script which directory the URL file should be written to.
     std::map<std::string, std::string> getInitMessage() const override {
         std::map<std::string, std::string> msg {{"UMBRIDGE_LOADBALANCER_COMM_FILEDIR", fileDir.string()}};
@@ -265,12 +268,16 @@ public:
 private:
     // The naming of the URL file is hard-coded.
     // In the future, it might be better to have the communicator itself generate the filename and then send it to the job script.
-    std::string getUrlFileName(const std::string& jobID) const {
-        return "url-" + jobID + ".txt";
+    std::string getUrlFileName(const std::string& jobID) {
+        std::string urlFilename = "url" + jobID + ".txt";
+        urlFilenames.push_back(urlFilename);
+        return urlFilename;
     }
 
     std::filesystem::path fileDir;
     std::filesystem::path filePath;
+    
+    std::vector<std::string> urlFilenames;
 
     std::chrono::milliseconds pollingCycle;
 };
@@ -547,7 +554,7 @@ public:
     }
 
     std::set<std::string> getModelNameArray() const override {
-        return this->modelNames;
+        return modelNames;
     }
     
     ~CommandJobManager() {
