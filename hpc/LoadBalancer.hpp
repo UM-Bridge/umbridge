@@ -546,7 +546,7 @@ public:
     
     void startUpRoutine() override {
         waitForFirstServer();
-        initiateHealthCheck();
+        // initiateHealthCheck();
     }
     
     std::vector<std::string> getModelName(std::string url) const override {
@@ -570,6 +570,8 @@ private:
     // Unable to handle server crashes yet.
     // Must be called with serverMutex held.
     // The for loop can be rewritten using std::erase_if.
+    // Should be pushed into the queue like others
+    // Not used for now
     void checkServerArrayLiveness() {
         for (auto it = serverArray.begin(); it != serverArray.end(); ) {
             auto& [jobModel, alive] = it->second;
