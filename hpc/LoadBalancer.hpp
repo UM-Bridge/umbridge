@@ -39,7 +39,6 @@ std::string getCommandOutput(const std::string& command) {
 }
 
 // Wait until a file exists using polling. 
-// Improvements: Use inotify instead to save cpu cycles
 void waitForFile(const std::filesystem::path& filePath, std::chrono::milliseconds pollingCycle) {
     while (!std::filesystem::exists(filePath)) {
         std::this_thread::sleep_for(pollingCycle);
@@ -108,7 +107,6 @@ public:
 
 
 // Submits SLURM job to spawn model server in compute node
-// Suggestion: change into job arrays
 class SlurmJob : public Job {
 public:
     SlurmJob(const std::string id): jobID(id) {}
@@ -362,6 +360,8 @@ public:
     // Grant exclusive ownership of a model (with a given name) to a caller.
     virtual std::shared_ptr<umbridge::Model> requestModelAccess(const std::string& modelName) = 0;
     
+    // Enables load balancer to run even when not all allocations are ready + initiate regular
+    // healthchecks.
     virtual void startUpRoutine() = 0;
 
     // To initialize the load balancer we first need a list of model names that are available on a server.
@@ -455,15 +455,22 @@ public:
     }
 
     // Probes whether this named model is still responding.
-    bool checkJobModelLiveness() const {
-        try {
-            model->GetInputSizes(json::parse("{}"));
-        } 
-        catch (std::exception&) {
-            std::cout << "Named model '" << GetName() << "' in allocation" << job->getJobId() << "is no longer running." << std::endl;
+    // Has to create a new client to connect to the UM-Bridge server because the same HTTP model pointer
+    // would contest with the ongoing request and be blocked until the current request finishes.
+    bool checkJobModelLiveness(std::string url, std::string modelName) const {
+        httplib::Client client{url.c_str()};
+        httplib::Headers headers{httplib::Headers()};
+        
+        json request_body;
+        request_body["name"] = modelName;
+        
+        if (auto res = client.Post("/InputSizes", headers, request_body.dump(), "application/json")) {
+            return true;
+        }
+        else {
+            std::cout << "Named model '" << GetName() << "' in allocation " << job->getJobId() << " is no longer running." << std::endl;
             return false;
         }
-        return true;
     }
 
     bool checkJobBusyness() const {
@@ -508,8 +515,8 @@ public:
         // Find the first free and alive JobModel for the requested name and mark it busy.
         auto range = serverArray.equal_range(modelName);
         for (auto it = range.first; it != range.second; ++it) {
-            auto& [jobModel, alive] = it->second;
-            if (alive && !jobModel->checkJobBusyness()) {
+            auto& [jobModel, url] = it->second;
+            if (!jobModel->checkJobBusyness()) {
                 jobModel->setJobBusyness(true);
                 return jobModel;
             }
@@ -536,7 +543,7 @@ public:
                     modelNames.insert(name);
                     auto model = std::make_unique<umbridge::HTTPModel>(url, name);
                     auto jobModel = std::make_shared<JobModel>(job, std::move(model));
-                    serverArray.emplace(name, std::make_pair(jobModel, true));
+                    serverArray.emplace(name, std::make_pair(jobModel, url));
                 }
             }
             
@@ -563,20 +570,19 @@ public:
     }
 
 private:
-    // Probes liveness of every JobModel and updates its alive flag.
+    // Probes liveness of every JobModel.
     // Dead entries are erased immediately. When the last JobModel sharing a Job is
     // erased, the shared_ptr refcount drops to zero and SlurmJob's destructor fires,
     // cancelling the allocation automatically. Ideally this only happens when time runs out.
     // Unable to handle server crashes yet.
     // Must be called with serverMutex held.
     // The for loop can be rewritten using std::erase_if.
-    // Should be pushed into the queue like others
-    // Not used for now
     void checkServerArrayLiveness() {
-        for (auto it = serverArray.begin(); it != serverArray.end(); ) {
-            auto& [jobModel, alive] = it->second;
+        std::unique_lock lock{serverMutex};
+        for (auto it = serverArray.begin(); it != serverArray.end();) {
+            auto& [jobModel, url] = it->second;
             
-            alive = jobModel->checkJobModelLiveness();
+            bool alive = jobModel->checkJobModelLiveness(url, it->first);
             
             if (alive) {
                 ++it;
@@ -585,6 +591,7 @@ private:
                 it = serverArray.erase(it);
             }
         }
+        serverCV.notify_all();
     }
 
     // Returns true if at least one JobModel for the requested name is free and alive.
@@ -592,8 +599,8 @@ private:
     bool hasAvailableServer(const std::string& modelName) const {
         auto range = serverArray.equal_range(modelName);
         for (auto it = range.first; it != range.second; ++it) {
-            const auto& [jobModel, alive] = it->second; // Retrieve tuple from std::pair
-            if (alive && !jobModel->checkJobBusyness()) return true;
+            const auto& [jobModel, url] = it->second; // Retrieve tuple from std::pair
+            if (!jobModel->checkJobBusyness()) return true;
         }
         return false;
     }
@@ -602,7 +609,7 @@ private:
         healthCheckThread = std::thread([this] () {
             while (!stopHealthCheck) {
                 std::this_thread::sleep_for(healthCheckInterval);
-                std::unique_lock lock{serverMutex};
+                
                 checkServerArrayLiveness();
 
                 if (serverArray.empty()) {
@@ -639,8 +646,8 @@ private:
     bool stopHealthCheck = false;
     std::chrono::seconds healthCheckInterval{900}; // Health check every 15 minutes
     // Keyed by model name; multiple entries per name when multiple allocations serve it.
-    // Value: (JobModel, alive). JobModels sharing the same allocation share a Job via shared_ptr.
-    std::multimap<std::string, std::pair<std::shared_ptr<JobModel>, bool>> serverArray;
+    // Value: (JobModel, url). JobModels sharing the same allocation share a Job via shared_ptr.
+    std::multimap<std::string, std::pair<std::shared_ptr<JobModel>, std::string>> serverArray;
     std::set<std::string> modelNames;
 };
 
