@@ -553,7 +553,7 @@ public:
     
     void startUpRoutine() override {
         waitForFirstServer();
-        // initiateHealthCheck();
+        initiateHealthCheck();
     }
     
     std::vector<std::string> getModelName(std::string url) const override {
