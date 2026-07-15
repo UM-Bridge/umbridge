@@ -175,6 +175,25 @@ Output key       | Value type       | Purpose
 -----------------|------------------|-------------
 output           | Array of numbers | Gradient of objective
 
+Input example:
+```json
+{
+  "name": "posterior",
+  "inWrt": 0,
+  "outWrt": 0,
+  "sens": [1.1],
+  "input": [[0.0, 0.0]],
+  "config": {}
+}
+```
+
+Output example:
+```json
+{
+  "output":[-0.01957508257895159, 0.01957508257895159]
+}
+```
+
 ### POST /ApplyJacobian
 
 Input key        | Value type       | Purpose
@@ -189,6 +208,25 @@ config           | Any              | Optional and model-specific JSON structure
 Output key       | Value type       | Purpose
 -----------------|------------------|-------------
 output           | Array of numbers | Jacobian of output `outWrt` with respect to input parameter `inWrt` applied to vector `vec`
+
+Input example:
+```json
+{
+  "name": "posterior",
+  "inWrt": 0,
+  "outWrt": 0,
+  "vec": [1.1, 0.5],
+  "input": [[0.0, 0.0]],
+  "config": {}
+}
+```
+
+Output example:
+```json
+{
+  "output":[-0.01067731777033723]
+}
+```
 
 ### POST /ApplyHessian
 
@@ -206,6 +244,26 @@ config           | Any              | Optional and model-specific JSON structure
 Output key       | Value type       | Purpose
 -----------------|------------------|-------------
 output           | Array of numbers | Hessian at `input` applied to vector `vec`
+
+```json
+{
+  "name": "posterior",
+  "inWrt1": 0,
+  "inWrt2": 0,
+  "outWrt": 0,
+  "vec": [1.1, 0.5],
+  "sens": [0.1],
+  "input": [[0.0, 0.0]],
+  "config": {}
+}
+```
+
+Output example:
+```json
+{
+  "output":[-0.27076762180664354]
+}
+```
 
 ### Errors
 
