@@ -34,7 +34,9 @@ if __name__ == "__main__":
     with pm.Model() as model:
         # UM-Bridge models with a single 1D output implementing a PDF
         # may be used as a PyMC density that in turn may be sampled
-        posterior = pm.DensityDist('posterior',logp=op,shape=input_dim)
+        def umbridge_logp(value):
+            return op(value)
+        posterior = pm.CustomDist('posterior', logp=umbridge_logp, shape=input_dim)
 
         map_estimate = pm.find_MAP()
         print(f"MAP estimate of posterior is {map_estimate['posterior']}")
