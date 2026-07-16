@@ -28,6 +28,8 @@ jobs:
           # Pinned to Python 3.12: tinyDA pins arviz<0.19, whose use of the
           # matplotlib.style.core internal API only works with old matplotlib
           # versions
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y software-properties-common
+          add-apt-repository -y ppa:deadsnakes/ppa
           apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3.12 python3.12-venv
           python3.12 -m venv venv
           . venv/bin/activate
