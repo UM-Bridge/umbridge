@@ -25,7 +25,7 @@ jobs:
        -
         name: APT Dependencies
         run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y r-base libcurl4-gnutls-dev libxml2-dev libfontconfig1-dev libfreetype6 libharfbuzz-dev libfribidi-dev libtiff-dev libssl-dev libgit2-dev pkg-config
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y r-base libcurl4-gnutls-dev libxml2-dev libfontconfig1-dev libfreetype6 libharfbuzz-dev libfribidi-dev libtiff-dev libssl-dev libgit2-dev pkg-config libuv1-dev
        -
         name: R Dependencies
         run: |
