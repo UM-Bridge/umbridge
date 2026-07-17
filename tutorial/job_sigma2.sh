@@ -1,13 +1,13 @@
 #! /bin/bash
+#SBATCH --account=nn14000k
+#SBATCH --partition=normal
+#SBATCH --reservation=geilo_winter_school
+#SBATCH --mem-per-cpu=1GB
+#SBATCH --ntasks=1
+#SBATCH --time=00:05:00
 
-#HQ --cpus=1
-#HQ --time-request=1m
-#HQ --time-limit=2m
-#HQ --stdout none
-#HQ --stderr none
 
-# Launch model server, send back server URL
-# and wait to ensure that HQ won't schedule any more jobs to this allocation.
+# Launch model server, send back server URL and wait so that SLURM does not cancel the allocation.
 
 function get_available_port {
     # Define the range of ports to select from
@@ -31,10 +31,10 @@ export PORT=$port
 
 # Assume that server sets the port according to the environment variable 'PORT'.
 # Otherwise the job script will be stuck waiting for model server's response.
-./testmodel & # CHANGE ME!
+./testmodel &
 
 
-host=$(hostname -I | awk '{print $1}')
+host=$(hostname -i | awk '{print $1}')
 
 echo "Waiting for model server to respond at $host:$port..."
 while ! curl -s "http://$host:$port/Info" > /dev/null; do
@@ -44,6 +44,6 @@ echo "Model server responded"
 
 # Write server URL to file identified by HQ job ID.
 mkdir -p $UMBRIDGE_LOADBALANCER_COMM_FILEDIR
-echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$HQ_JOB_ID.txt"
+echo "http://$host:$port" > "$UMBRIDGE_LOADBALANCER_COMM_FILEDIR/url-$SLURM_JOB_ID.txt"
 
 sleep infinity # keep the job occupied

@@ -1,4 +1,4 @@
-name: client-python-example
+name: client-julia-example
 
 on:
   push:
@@ -23,14 +23,8 @@ jobs:
         name: Checkout
         uses: actions/checkout@v2
        -
-        name: Dependencies
-        run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip python3-venv
-          python3 -m venv venv
-          . venv/bin/activate
-          pip3 install umbridge
+        uses: julia-actions/setup-julia@latest
        -
         name: Build and run
         run: |
-          . venv/bin/activate
-          cd clients/python && python3 umbridge-client.py http://model:4242
+          cd clients/julia && julia -e 'using Pkg; Pkg.add("UMBridge")' juliaClient.jl

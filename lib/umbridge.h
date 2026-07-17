@@ -14,7 +14,7 @@
 
 // Increase timeout to allow for long-running models.
 // This should be (to be on the safe side) significantly greater than the maximum time your model may take
-#define CPPHTTPLIB_READ_TIMEOUT_SECOND 60*60
+#define CPPHTTPLIB_READ_TIMEOUT_SECOND 60*60*24*365
 
 #include <string>
 #include <vector>
@@ -30,6 +30,7 @@ namespace umbridge {
   class Model {
   public:
     Model(std::string name) : name(name) {}
+    virtual ~Model() {}
 
     virtual std::vector<std::size_t> GetInputSizes(const json& config_json = json::parse("{}")) const = 0;
     virtual std::vector<std::size_t> GetOutputSizes(const json& config_json = json::parse("{}")) const = 0;
