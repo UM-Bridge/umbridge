@@ -1,6 +1,15 @@
 #ifndef UMBRIDGE
 #define UMBRIDGE
 
+// Only enable shared memory functionality on Linux as it supports POSIX standard (Apple Mac probably too, needs testing of shared memory and pthread_self).
+// TO-DO?: Future support for Windows will require a shared memory vector implementation using WinAPI considering different behaviour than POSIX.
+#if defined __linux__
+#define SUPPORT_POSIX_SHMEM
+#endif
+#ifdef SUPPORT_POSIX_SHMEM
+#include <sys/mman.h>
+#include <pthread.h>
+#endif
 // #define LOGGING
 
 // Increase timeout to allow for long-running models.
@@ -87,6 +96,59 @@ namespace umbridge {
     }
   }
 
+#ifdef SUPPORT_POSIX_SHMEM
+  class SharedMemoryVector
+  {
+  public:
+    SharedMemoryVector(std::size_t size, std::string shmem_name, bool create)
+        : length(size * sizeof(double)), shmem_name(shmem_name) {
+      int oflags = O_RDWR;
+      if (create) {
+        created = true;
+        oflags |= O_CREAT;
+      }
+
+      int fd = shm_open(shmem_name.c_str(), oflags, 0644); // Create shared memory
+      ftruncate(fd, length);                               // Set size of shared memory
+      if(fd < 0){
+        throw std::runtime_error("Shared Memory object could not be created or found by name");
+      }
+
+      ptr = (u_char *)mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); // Map shared memory to process
+      close(fd);
+
+      assert(ptr);
+    }
+
+    SharedMemoryVector(const std::vector<double>& vector, std::string shmem_name)
+        : SharedMemoryVector(vector.size(), shmem_name, true) {
+      SetVector(vector);
+    }
+
+    std::vector<double> GetVector() {
+      std::vector<double> vector(length / sizeof(double));
+      memcpy(vector.data(), ptr, length);
+      return vector;
+    }
+
+    void SetVector(const std::vector<double>& vector) {
+      memcpy(ptr, vector.data(), length);
+    }
+
+    ~SharedMemoryVector() {
+      munmap(ptr, length);
+      if (created)
+        shm_unlink(shmem_name.c_str());
+    }
+
+  private:
+    bool created = false;
+    u_char *ptr = nullptr;
+    off_t length = 0;
+    std::string shmem_name;
+  };
+#endif
+
   // Client-side Model connecting to a server for the actual evaluations etc.
   class HTTPModel : public Model {
   public:
@@ -115,9 +177,34 @@ namespace umbridge {
         supportsGradient = supported_features.value("Gradient", false);
         supportsApplyJacobian = supported_features.value("ApplyJacobian", false);
         supportsApplyHessian = supported_features.value("ApplyHessian", false);
+#ifdef SUPPORT_POSIX_SHMEM
+        supportsEvaluateShMem = supported_features.value("EvaluateShMem", false);
+        supportsGradientShMem = supported_features.value("GradientShMem", false);
+        supportsApplyJacobianShMem = supported_features.value("ApplyJacobianShMem", false);
+        supportsApplyHessianShMem = supported_features.value("ApplyHessianShMem", false);
+#endif
       } else {
         throw std::runtime_error("POST ModelInfo failed with error type '" + to_string(res.error()) + "'");
       }
+#ifdef SUPPORT_POSIX_SHMEM
+      // Test whether client and server are able to communicate through shared memory. Disables ShMem if test fails.
+      unsigned long int tid = pthread_self();
+      request_body["tid"] = std::to_string(tid);
+      std::vector<double> testvec = {12345.0};
+      SharedMemoryVector shmem_input(testvec, "/umbridge_test_shmem_in_" + std::to_string(tid));
+      SharedMemoryVector shmem_output(1, "/umbridge_test_shmem_out_" + std::to_string(tid), true);
+      auto res = cli.Post("/TestShMem", headers, request_body.dump(), "application/json");
+
+      if (shmem_output.GetVector()[0] != testvec[0]) {
+        supportsEvaluateShMem = false;
+        supportsApplyJacobianShMem = false;
+        supportsApplyHessianShMem = false;
+        supportsGradientShMem = false;
+        std::cout << "Server not accessible via shared memory" << std::endl;
+      } else {
+        std::cout << "Server accessible via shared memory" << std::endl;
+      }
+#endif
     }
 
     std::vector<std::size_t> GetInputSizes(const json& config_json = json::parse("{}")) const override {
@@ -155,9 +242,43 @@ namespace umbridge {
     }
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config_json = json::parse("{}")) override {
+#ifdef SUPPORT_POSIX_SHMEM
+      if (supportsEvaluateShMem) {
+        unsigned int tid = pthread_self();
+        std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
+        for (int i = 0; i < inputs.size(); i++) {
+          shmem_inputs.push_back(std::make_unique<SharedMemoryVector>(inputs[i], "/umbridge_in_" + std::to_string(tid) + "_" + std::to_string(i)));
+        }
+        std::vector<std::unique_ptr<SharedMemoryVector>> shmem_outputs;
+        std::vector<std::size_t> output_sizes = GetOutputSizes(config_json); // Potential optimization: Avoid this call (e.g. share output memory with appropriate dimension from server side, sync with client via POSIX semaphore)
+        for (int i = 0; i < output_sizes.size(); i++) {
+          shmem_outputs.push_back(std::make_unique<SharedMemoryVector>(output_sizes[i], "/umbridge_out_" + std::to_string(tid) + "_" + std::to_string(i), true));
+        }
 
-      json request_body;
-      request_body["name"] = name;
+        json request_body;
+        request_body["tid"] = std::to_string(tid);
+        request_body["name"] = name;
+        request_body["config"] = config_json;
+        request_body["shmem_name"] = "/umbridge";
+        request_body["shmem_num_inputs"] = inputs.size();
+        for (int i = 0; i < inputs.size(); i++) {
+          request_body["shmem_size_" + std::to_string(i)] = inputs[i].size();
+        }
+        if (auto res = cli.Post("/EvaluateShMem", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
+
+          std::vector<std::vector<double>> outputs(output_sizes.size());
+          for (int i = 0; i < output_sizes.size(); i++) {
+            outputs[i] = shmem_outputs[i]->GetVector();
+          }
+          return outputs;
+        } else {
+          throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
+        }
+      } else {
+#endif
+        json request_body;
+        request_body["name"] = name;
 
       request_body["input"] = json::parse("[]");
       for (std::size_t i = 0; i < inputs.size(); i++) {
@@ -165,17 +286,20 @@ namespace umbridge {
       }
       request_body["config"] = config_json;
 
-      if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "application/json")) {
-        json response_body = parse_result_with_error_handling(res);
+        if (auto res = cli.Post("/Evaluate", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
 
-        std::vector<std::vector<double>> outputs(response_body["output"].size());
-        for (std::size_t i = 0; i < response_body["output"].size(); i++) {
-          outputs[i] = response_body["output"][i].get<std::vector<double>>();
+          std::vector<std::vector<double>> outputs(response_body["output"].size());
+          for (std::size_t i = 0; i < response_body["output"].size(); i++) {
+            outputs[i] = response_body["output"][i].get<std::vector<double>>();
+          }
+          return outputs;
+        } else {
+          throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
         }
-        return outputs;
-      } else {
-        throw std::runtime_error("POST Evaluate failed with error type '" + to_string(res.error()) + "'");
+#ifdef SUPPORT_POSIX_SHMEM
       }
+#endif
     }
 
     std::vector<double> Gradient(unsigned int outWrt,
@@ -185,23 +309,58 @@ namespace umbridge {
                   json config_json = json::parse("{}")) override
     {
 
-      json request_body;
-      request_body["name"] = name;
-      request_body["outWrt"] = outWrt;
-      request_body["inWrt"] = inWrt;
-      for (std::size_t i = 0; i < inputs.size(); i++) {
-        request_body["input"][i] = inputs[i];
-      }
-      request_body["sens"] = sens;
-      request_body["config"] = config_json;
+#ifdef SUPPORT_POSIX_SHMEM
+      if (supportsGradientShMem) {
+        unsigned int tid = pthread_self();
+        std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
+        for (int i = 0; i < inputs.size(); i++) {
+          shmem_inputs.push_back(std::make_unique<SharedMemoryVector>(inputs[i], "/umbridge_in_" + std::to_string(tid) + "_" + std::to_string(i)));
+        }
+        SharedMemoryVector shmem_output(inputs[inWrt].size(), "/umbridge_out_" + std::to_string(tid) + "_" + std::to_string(0), true);
 
-      if (auto res = cli.Post("/Gradient", headers, request_body.dump(), "application/json")) {
-        json response_body = parse_result_with_error_handling(res);
+        json request_body;
+        request_body["tid"] = std::to_string(tid);
+        request_body["name"] = name;
+        request_body["config"] = config_json;
+        request_body["outWrt"] = outWrt;
+        request_body["inWrt"] = inWrt;
+        request_body["shmem_name"] = "/umbridge";
+        request_body["sens"] = sens;
+        request_body["shmem_num_inputs"] = inputs.size();
+        for (int i = 0; i < inputs.size(); i++) {
+          request_body["shmem_size_" + std::to_string(i)] = inputs[i].size();
+        }
+        if (auto res = cli.Post("/GradientShMem", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
 
-        return response_body["output"].get<std::vector<double>>();
+          std::vector<double> output(inputs[inWrt].size());
+          output = shmem_output.GetVector();
+          return output;
+        } else {
+          throw std::runtime_error("POST Gradient failed with error type '" + to_string(res.error()) + "'");
+        }
       } else {
-        throw std::runtime_error("POST Gradient failed with error type '" + to_string(res.error()) + "'");
+#endif
+        json request_body;
+        request_body["name"] = name;
+        request_body["outWrt"] = outWrt;
+        request_body["inWrt"] = inWrt;
+        for (std::size_t i = 0; i < inputs.size(); i++) {
+          request_body["input"][i] = inputs[i];
+        }
+        request_body["sens"] = sens;
+        request_body["config"] = config_json;
+
+        if (auto res = cli.Post("/Gradient", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
+
+          return response_body["output"].get<std::vector<double>>();
+        } else {
+          throw std::runtime_error("POST Gradient failed with error type '" + to_string(res.error()) + "'");
+        }
+#ifdef SUPPORT_POSIX_SHMEM
       }
+#endif
     }
 
     std::vector<double> ApplyJacobian(unsigned int outWrt,
@@ -210,23 +369,59 @@ namespace umbridge {
                               const std::vector<double>& vec,
                               json config_json = json::parse("{}")) override {
 
-      json request_body;
-      request_body["name"] = name;
-      request_body["outWrt"] = outWrt;
-      request_body["inWrt"] = inWrt;
-      for (std::size_t i = 0; i < inputs.size(); i++) {
-        request_body["input"][i] = inputs[i];
-      }
-      request_body["vec"] = vec;
-      request_body["config"] = config_json;
+#ifdef SUPPORT_POSIX_SHMEM
+      if (supportsApplyJacobianShMem) {
+        unsigned int tid = pthread_self();
+        std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
+        for (int i = 0; i < inputs.size(); i++) {
+          shmem_inputs.push_back(std::make_unique<SharedMemoryVector>(inputs[i], "/umbridge_in_" + std::to_string(tid) + "_" + std::to_string(i)));
+        }
+        std::vector<std::size_t> output_sizes = GetOutputSizes(config_json); // Potential optimization: Avoid this call (e.g. share output memory with appropriate dimension from server side, sync with client via POSIX semaphore)
+        SharedMemoryVector shmem_output(output_sizes[outWrt], "/umbridge_out_" + std::to_string(tid) + "_" + std::to_string(0), true);
 
-      if (auto res = cli.Post("/ApplyJacobian", headers, request_body.dump(), "application/json")) {
-        json response_body = parse_result_with_error_handling(res);
+        json request_body;
+        request_body["tid"] = std::to_string(tid);
+        request_body["name"] = name;
+        request_body["config"] = config_json;
+        request_body["outWrt"] = outWrt;
+        request_body["inWrt"] = inWrt;
+        request_body["vec"] = vec;
+        request_body["shmem_name"] = "/umbridge";
+        request_body["shmem_num_inputs"] = inputs.size();
+        for (int i = 0; i < inputs.size(); i++) {
+          request_body["shmem_size_" + std::to_string(i)] = inputs[i].size();
+        }
+        if (auto res = cli.Post("/ApplyJacobianShMem", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
 
-        return response_body["output"].get<std::vector<double>>();
+          std::vector<double> output(output_sizes[outWrt]);
+          output = shmem_output.GetVector();
+          return output;
+        } else {
+          throw std::runtime_error("POST ApplyJacobian failed with error type '" + to_string(res.error()) + "'");
+        }
       } else {
-        throw std::runtime_error("POST ApplyJacobian failed with error type '" + to_string(res.error()) + "'");
+#endif
+        json request_body;
+        request_body["name"] = name;
+        request_body["outWrt"] = outWrt;
+        request_body["inWrt"] = inWrt;
+        for (std::size_t i = 0; i < inputs.size(); i++) {
+          request_body["input"][i] = inputs[i];
+        }
+        request_body["vec"] = vec;
+        request_body["config"] = config_json;
+
+        if (auto res = cli.Post("/ApplyJacobian", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
+
+          return response_body["output"].get<std::vector<double>>();
+        } else {
+          throw std::runtime_error("POST ApplyJacobian failed with error type '" + to_string(res.error()) + "'");
+        }
+#ifdef SUPPORT_POSIX_SHMEM
       }
+#endif
     }
 
     std::vector<double> ApplyHessian(unsigned int outWrt,
@@ -237,25 +432,64 @@ namespace umbridge {
                       const std::vector<double>& vec,
                       json config_json = json::parse("{}")) override {
 
-      json request_body;
-      request_body["name"] = name;
-      request_body["outWrt"] = outWrt;
-      request_body["inWrt1"] = inWrt1;
-      request_body["inWrt2"] = inWrt2;
-      for (std::size_t i = 0; i < inputs.size(); i++) {
-        request_body["input"][i] = inputs[i];
-      }
-      request_body["sens"] = sens;
-      request_body["vec"] = vec;
-      request_body["config"] = config_json;
+#ifdef SUPPORT_POSIX_SHMEM
+      if (supportsApplyHessianShMem) {
+        unsigned int tid = pthread_self();
+        std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
+        for (int i = 0; i < inputs.size(); i++) {
+          shmem_inputs.push_back(std::make_unique<SharedMemoryVector>(inputs[i], "/umbridge_in_" + std::to_string(tid) + "_" + std::to_string(i)));
+        }
+        std::vector<std::size_t> output_sizes = GetOutputSizes(config_json); // Potential optimization: Avoid this call (e.g. share output memory with appropriate dimension from server side, sync with client via POSIX semaphore)
 
-      if (auto res = cli.Post("/ApplyHessian", headers, request_body.dump(), "application/json")) {
-        json response_body = parse_result_with_error_handling(res);
+        SharedMemoryVector shmem_output(output_sizes[outWrt], "/umbridge_out_" + std::to_string(tid) + "_" + std::to_string(0), true);
 
-        return response_body["output"].get<std::vector<double>>();
+        json request_body;
+        request_body["tid"] = std::to_string(tid);
+        request_body["name"] = name;
+        request_body["config"] = config_json;
+        request_body["outWrt"] = outWrt;
+        request_body["inWrt1"] = inWrt1;
+        request_body["inWrt2"] = inWrt2;
+        request_body["shmem_name"] = "/umbridge";
+        request_body["sens"] = sens;
+        request_body["vec"] = vec;
+        request_body["shmem_num_inputs"] = inputs.size();
+        for (int i = 0; i < inputs.size(); i++) {
+          request_body["shmem_size_" + std::to_string(i)] = inputs[i].size();
+        }
+        if (auto res = cli.Post("/ApplyHessianShMem", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
+
+          std::vector<double> output(output_sizes[outWrt]);
+          output = shmem_output.GetVector();
+          return output;
+        } else {
+          throw std::runtime_error("POST ApplyHessian failed with error type '" + to_string(res.error()) + "'");
+        }
       } else {
-        throw std::runtime_error("POST ApplyHessian failed with error type '" + to_string(res.error()) + "'");
+#endif
+        json request_body;
+        request_body["name"] = name;
+        request_body["outWrt"] = outWrt;
+        request_body["inWrt1"] = inWrt1;
+        request_body["inWrt2"] = inWrt2;
+        for (std::size_t i = 0; i < inputs.size(); i++) {
+          request_body["input"][i] = inputs[i];
+        }
+        request_body["sens"] = sens;
+        request_body["vec"] = vec;
+        request_body["config"] = config_json;
+
+        if (auto res = cli.Post("/ApplyHessian", headers, request_body.dump(), "application/json")) {
+          json response_body = parse_result_with_error_handling(res);
+
+          return response_body["output"].get<std::vector<double>>();
+        } else {
+          throw std::runtime_error("POST ApplyHessian failed with error type '" + to_string(res.error()) + "'");
+        }
+#ifdef SUPPORT_POSIX_SHMEM
       }
+#endif
     }
 
     bool SupportsEvaluate() override {
@@ -280,6 +514,10 @@ namespace umbridge {
     bool supportsGradient = false;
     bool supportsApplyJacobian = false;
     bool supportsApplyHessian = false;
+    bool supportsEvaluateShMem = false;
+    bool supportsGradientShMem = false;
+    bool supportsApplyJacobianShMem = false;
+    bool supportsApplyHessianShMem = false;
 
     json parse_result_with_error_handling(const httplib::Result& res) const {
       json response_body;
@@ -483,7 +721,47 @@ namespace umbridge {
 
       res.set_content(response_body.dump(), "application/json");
     });
+#ifdef SUPPORT_POSIX_SHMEM
+    svr.Post("/EvaluateShMem", [&](const httplib::Request &req, httplib::Response &res) {
+      json request_body = json::parse(req.body);
+      if (!check_model_exists(models, request_body["name"], res))
+        return;
+      Model& model = get_model_from_name(models, request_body["name"]);
 
+      if (!model.SupportsEvaluate()) {
+        write_unsupported_feature_response(res, "Evaluate");
+        return;
+      }
+
+      std::vector<std::vector<double>> inputs;
+      for (int i = 0; i < request_body["shmem_num_inputs"].get<int>(); i++) {
+        SharedMemoryVector shmem_input(request_body["shmem_size_" + std::to_string(i)].get<int>(), request_body["shmem_name"].get<std::string>() + "_in_" + request_body["tid"].get<std::string>() + "_" + std::to_string(i), false);
+        inputs.push_back(shmem_input.GetVector());
+      }
+      std::vector<std::unique_ptr<SharedMemoryVector>> shmem_outputs;
+      for (int i = 0; i < model.GetOutputSizes().size(); i++) {
+        shmem_outputs.push_back(std::make_unique<SharedMemoryVector>(model.GetOutputSizes()[i], request_body["shmem_name"].get<std::string>() + "_out_" + request_body["tid"].get<std::string>() + "_" + std::to_string(i), false));
+      }
+
+      json empty_default_config;
+      json config_json = request_body.value("config", empty_default_config);
+
+      if (!check_input_sizes(inputs, config_json, model, res))
+        return;
+
+      const std::lock_guard<std::mutex> model_lock(model_mutex);
+      std::vector<std::vector<double>> outputs = model.Evaluate(inputs, config_json);
+
+      if (!check_output_sizes(outputs, config_json, model, res))
+        return;
+
+      for (std::size_t i = 0; i < outputs.size(); i++) {
+        shmem_outputs[i]->SetVector(outputs[i]);
+      }
+
+      json response_body;
+      res.set_content(response_body.dump(), "application/json"); });
+#endif
     svr.Post("/Gradient", [&](const httplib::Request &req, httplib::Response &res) {
       json request_body = json::parse(req.body);
       if (error_checks && !check_model_exists(models, request_body["name"], res))
@@ -532,6 +810,52 @@ namespace umbridge {
 
       res.set_content(response_body.dump(), "application/json");
     });
+#ifdef SUPPORT_POSIX_SHMEM
+    svr.Post("/GradientShMem", [&](const httplib::Request &req, httplib::Response &res) {
+      json request_body = json::parse(req.body);
+      if (!check_model_exists(models, request_body["name"], res))
+        return;
+      Model& model = get_model_from_name(models, request_body["name"]);
+
+      if (!model.SupportsGradient()) {
+        write_unsupported_feature_response(res, "Gradient");
+        return;
+      }
+
+      unsigned int inWrt = request_body.at("inWrt");
+      unsigned int outWrt = request_body.at("outWrt");
+
+      std::vector<std::vector<double>> inputs;
+      for (int i = 0; i < request_body["shmem_num_inputs"].get<int>(); i++) {
+        SharedMemoryVector shmem_input(request_body["shmem_size_" + std::to_string(i)].get<int>(), request_body["shmem_name"].get<std::string>() + "_in_" + request_body["tid"].get<std::string>() + "_" + std::to_string(i), false);
+        inputs.push_back(shmem_input.GetVector());
+      }
+      SharedMemoryVector shmem_output(inputs[inWrt].size(), request_body["shmem_name"].get<std::string>() + "_out_" + request_body["tid"].get<std::string>() + "_" + std::to_string(0), false);
+
+      std::vector<double> sens = request_body.at("sens");
+
+      json empty_default_config;
+      json config_json = request_body.value("config", empty_default_config);
+
+      if (!check_input_wrt(inWrt, config_json, model, res))
+        return;
+      if (!check_output_wrt(outWrt, config_json, model, res))
+        return;
+      if (!check_input_sizes(inputs, config_json, model, res))
+        return;
+      if (!check_sensitivity_size(sens, outWrt, config_json, model, res))
+        return;
+
+      const std::lock_guard<std::mutex> model_lock(model_mutex);
+      std::vector<double> gradient = model.Gradient(outWrt, inWrt, inputs, sens, config_json);
+
+      shmem_output.SetVector(gradient);
+      json response_body;
+
+
+      res.set_content(response_body.dump(), "application/json");
+    });
+#endif
 
     svr.Post("/ApplyJacobian", [&](const httplib::Request &req, httplib::Response &res) {
       json request_body = json::parse(req.body);
@@ -579,9 +903,51 @@ namespace umbridge {
       json response_body;
       response_body["output"] = jacobian_action;
 
-      res.set_content(response_body.dump(), "application/json");
-    });
+      res.set_content(response_body.dump(), "application/json"); });
+#ifdef SUPPORT_POSIX_SHMEM
+    svr.Post("/ApplyJacobianShMem", [&](const httplib::Request &req, httplib::Response &res) {
+      json request_body = json::parse(req.body);
+      if (!check_model_exists(models, request_body["name"], res))
+        return;
+      Model& model = get_model_from_name(models, request_body["name"]);
 
+      if (!model.SupportsApplyJacobian()) {
+        write_unsupported_feature_response(res, "ApplyJacobian");
+        return;
+      }
+
+      unsigned int inWrt = request_body.at("inWrt");
+      unsigned int outWrt = request_body.at("outWrt");
+
+      std::vector<std::vector<double>> inputs;
+      for (int i = 0; i < request_body["shmem_num_inputs"].get<int>(); i++) {
+        SharedMemoryVector shmem_input(request_body["shmem_size_" + std::to_string(i)].get<int>(), request_body["shmem_name"].get<std::string>() + "_in_" + request_body["tid"].get<std::string>() + "_" + std::to_string(i), false);
+        inputs.push_back(shmem_input.GetVector());
+      }
+      SharedMemoryVector shmem_output(model.GetOutputSizes()[outWrt], request_body["shmem_name"].get<std::string>() + "_out_" + request_body["tid"].get<std::string>() + "_" + std::to_string(0), false);
+
+      std::vector<double> vec = request_body.at("vec");
+
+      json empty_default_config;
+      json config_json = request_body.value("config", empty_default_config);
+
+      if (!check_input_wrt(inWrt, config_json, model, res))
+        return;
+      if (!check_output_wrt(outWrt, config_json, model, res))
+        return;
+      if (!check_input_sizes(inputs, config_json, model, res))
+        return;
+      if (!check_vector_size(vec, inWrt, config_json, model, res))
+        return;
+
+      const std::lock_guard<std::mutex> model_lock(model_mutex);
+      std::vector<double> jacobian_action = model.ApplyJacobian(outWrt, inWrt, inputs, vec, config_json);
+
+      json response_body;
+      shmem_output.SetVector(jacobian_action);
+
+      res.set_content(response_body.dump(), "application/json"); });
+#endif
     svr.Post("/ApplyHessian", [&](const httplib::Request &req, httplib::Response &res) {
       json request_body = json::parse(req.body);
       if (error_checks && !check_model_exists(models, request_body["name"], res))
@@ -634,7 +1000,55 @@ namespace umbridge {
 
       res.set_content(response_body.dump(), "application/json");
     });
+#ifdef SUPPORT_POSIX_SHMEM
+    svr.Post("/ApplyHessianShMem", [&](const httplib::Request &req, httplib::Response &res) {
+      json request_body = json::parse(req.body);
+      if (!check_model_exists(models, request_body["name"], res))
+        return;
+      Model& model = get_model_from_name(models, request_body["name"]);
 
+      if (!model.SupportsApplyHessian()) {
+        write_unsupported_feature_response(res, "ApplyHessian");
+        return;
+      }
+
+      unsigned int outWrt = request_body.at("outWrt");
+      unsigned int inWrt1 = request_body.at("inWrt1");
+      unsigned int inWrt2 = request_body.at("inWrt2");
+
+      std::vector<std::vector<double>> inputs;
+      for (int i = 0; i < request_body["shmem_num_inputs"].get<int>(); i++) {
+        SharedMemoryVector shmem_input(request_body["shmem_size_" + std::to_string(i)].get<int>(), request_body["shmem_name"].get<std::string>() + "_in_" + request_body["tid"].get<std::string>() + "_" + std::to_string(i), false);
+        inputs.push_back(shmem_input.GetVector());
+      }
+      SharedMemoryVector shmem_output(model.GetOutputSizes()[outWrt], request_body["shmem_name"].get<std::string>() + "_out_" + request_body["tid"].get<std::string>() + "_" + std::to_string(0), false);
+
+      std::vector<double> sens = request_body.at("sens");
+      std::vector<double> vec = request_body.at("vec");
+
+      json empty_default_config;
+      json config_json = request_body.value("config", empty_default_config);
+
+      if (!check_input_wrt(inWrt1, config_json, model, res))
+        return;
+      if (!check_input_wrt(inWrt2, config_json, model, res))
+        return;
+      if (!check_output_wrt(outWrt, config_json, model, res))
+        return;
+      if (!check_input_sizes(inputs, config_json, model, res))
+        return;
+      if (!check_sensitivity_size(sens, outWrt, config_json, model, res))
+        return;
+
+      const std::lock_guard<std::mutex> model_lock(model_mutex);
+      std::vector<double> hessian_action = model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
+
+      json response_body;
+      shmem_output.SetVector(hessian_action);
+
+      res.set_content(response_body.dump(), "application/json");
+    });
+#endif
     svr.Get("/Info", [&](const httplib::Request &, httplib::Response &res) {
       json response_body;
       response_body["protocolVersion"] = 1.0;
@@ -656,10 +1070,13 @@ namespace umbridge {
       json response_body;
       response_body["support"] = {};
       response_body["support"]["Evaluate"] = model.SupportsEvaluate();
+      response_body["support"]["EvaluateShMem"] = model.SupportsEvaluate();
       response_body["support"]["Gradient"] = model.SupportsGradient();
+      response_body["support"]["GradientShMem"] = model.SupportsGradient();
       response_body["support"]["ApplyJacobian"] = model.SupportsApplyJacobian();
+      response_body["support"]["ApplyJacobianShMem"] = model.SupportsApplyJacobian();
       response_body["support"]["ApplyHessian"] = model.SupportsApplyHessian();
-
+      response_body["support"]["ApplyHessianShMem"] = model.SupportsApplyHessian();
       res.set_content(response_body.dump(), "application/json");
     });
 
@@ -692,7 +1109,24 @@ namespace umbridge {
 
       res.set_content(response_body.dump(), "application/json");
     });
-
+#ifdef SUPPORT_POSIX_SHMEM
+    svr.Post("/TestShMem", [&](const httplib::Request &req, httplib::Response &res) {
+      json request_body = json::parse(req.body);
+      if (!check_model_exists(models, request_body["name"], res))
+        return;
+      Model &model = get_model_from_name(models, request_body["name"]);
+      json response_body;
+      try {
+        SharedMemoryVector shmem_input(1, "/umbridge_test_shmem_in_" + request_body["tid"].get<std::string>(), false);
+        SharedMemoryVector shmem_output(1, "/umbridge_test_shmem_out_" + request_body["tid"].get<std::string>(), false);
+        std::vector<double> value = shmem_input.GetVector();
+        shmem_output.SetVector(value);
+        response_body["value"] = value;
+      }
+      catch(std::exception){}
+      res.set_content(response_body.dump(), "application/json");
+    });
+#endif
     std::cout << "Listening on port " << port << "..." << std::endl;
 
 #ifdef LOGGING
