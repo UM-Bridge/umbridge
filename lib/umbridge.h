@@ -177,12 +177,7 @@ namespace umbridge {
         supportsGradient = supported_features.value("Gradient", false);
         supportsApplyJacobian = supported_features.value("ApplyJacobian", false);
         supportsApplyHessian = supported_features.value("ApplyHessian", false);
-#ifdef SUPPORT_POSIX_SHMEM
-        supportsEvaluateShMem = supported_features.value("EvaluateShMem", false);
-        supportsGradientShMem = supported_features.value("GradientShMem", false);
-        supportsApplyJacobianShMem = supported_features.value("ApplyJacobianShMem", false);
-        supportsApplyHessianShMem = supported_features.value("ApplyHessianShMem", false);
-#endif
+        
       } else {
         throw std::runtime_error("POST ModelInfo failed with error type '" + to_string(res.error()) + "'");
       }
@@ -196,12 +191,9 @@ namespace umbridge {
       auto res = cli.Post("/TestShMem", headers, request_body.dump(), "application/json");
 
       if (shmem_output.GetVector()[0] != testvec[0]) {
-        supportsEvaluateShMem = false;
-        supportsApplyJacobianShMem = false;
-        supportsApplyHessianShMem = false;
-        supportsGradientShMem = false;
         std::cout << "Server not accessible via shared memory" << std::endl;
       } else {
+        supportsShMem = true;
         std::cout << "Server accessible via shared memory" << std::endl;
       }
 #endif
@@ -243,7 +235,7 @@ namespace umbridge {
 
     std::vector<std::vector<double>> Evaluate(const std::vector<std::vector<double>>& inputs, json config_json = json::parse("{}")) override {
 #ifdef SUPPORT_POSIX_SHMEM
-      if (supportsEvaluateShMem) {
+      if (supportsShMem) {
         unsigned int tid = pthread_self();
         std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
         for (int i = 0; i < inputs.size(); i++) {
@@ -310,7 +302,7 @@ namespace umbridge {
     {
 
 #ifdef SUPPORT_POSIX_SHMEM
-      if (supportsGradientShMem) {
+      if (supportsShMem) {
         unsigned int tid = pthread_self();
         std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
         for (int i = 0; i < inputs.size(); i++) {
@@ -370,7 +362,7 @@ namespace umbridge {
                               json config_json = json::parse("{}")) override {
 
 #ifdef SUPPORT_POSIX_SHMEM
-      if (supportsApplyJacobianShMem) {
+      if (supportsShMem) {
         unsigned int tid = pthread_self();
         std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
         for (int i = 0; i < inputs.size(); i++) {
@@ -433,7 +425,7 @@ namespace umbridge {
                       json config_json = json::parse("{}")) override {
 
 #ifdef SUPPORT_POSIX_SHMEM
-      if (supportsApplyHessianShMem) {
+      if (supportsShMem) {
         unsigned int tid = pthread_self();
         std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
         for (int i = 0; i < inputs.size(); i++) {
@@ -514,11 +506,10 @@ namespace umbridge {
     bool supportsGradient = false;
     bool supportsApplyJacobian = false;
     bool supportsApplyHessian = false;
-    bool supportsEvaluateShMem = false;
-    bool supportsGradientShMem = false;
-    bool supportsApplyJacobianShMem = false;
-    bool supportsApplyHessianShMem = false;
-
+#ifdef SUPPORT_POSIX_SHMEM
+    bool supportsShMem = false;
+#endif
+    
     json parse_result_with_error_handling(const httplib::Result& res) const {
       json response_body;
       try {
@@ -1070,13 +1061,9 @@ namespace umbridge {
       json response_body;
       response_body["support"] = {};
       response_body["support"]["Evaluate"] = model.SupportsEvaluate();
-      response_body["support"]["EvaluateShMem"] = model.SupportsEvaluate();
       response_body["support"]["Gradient"] = model.SupportsGradient();
-      response_body["support"]["GradientShMem"] = model.SupportsGradient();
       response_body["support"]["ApplyJacobian"] = model.SupportsApplyJacobian();
-      response_body["support"]["ApplyJacobianShMem"] = model.SupportsApplyJacobian();
       response_body["support"]["ApplyHessian"] = model.SupportsApplyHessian();
-      response_body["support"]["ApplyHessianShMem"] = model.SupportsApplyHessian();
       res.set_content(response_body.dump(), "application/json");
     });
 
