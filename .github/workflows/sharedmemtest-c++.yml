@@ -4,6 +4,7 @@ env:
   usingSharedMem: ''
 on:
   push:
+  pull-request:
     branches:
       - 'main'
 

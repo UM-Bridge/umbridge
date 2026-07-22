@@ -2,6 +2,7 @@ name: shared-mem-test-python
 
 on:
   push:
+  pull-request:
     branches:
       - 'main'
 
