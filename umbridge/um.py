@@ -140,7 +140,7 @@ class HTTPModel(Model):
 
             for i in range(len(output_sizes)):
                 shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{i}", create=True, size=output_sizes[i]*8)
-                raw_shmem_input = np.ndarray((output_sizes[i],), dtype=np.float64, buffer=shm_c_in.buf)
+                raw_shmem_output = np.ndarray((output_sizes[i],), dtype=np.float64, buffer=shm_c_out.buf)
                 buffers.append(shm_c_out)
             response = requests.post(f"{self.url}/EvaluateShMem", json=inputParams).json()
             output = []
@@ -194,7 +194,7 @@ class HTTPModel(Model):
                 buffers.append(shm_c_in)
 
             shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{0}", create=True, size=len(parameters[in_wrt])*8)
-            raw_shmem_input = np.ndarray((len(parameters[in_wrt]),), dtype=np.float64, buffer=shm_c_in.buf)
+            raw_shmem_output = np.ndarray((len(parameters[in_wrt]),), dtype=np.float64, buffer=shm_c_out.buf)
             buffers.append(shm_c_out)
             response = requests.post(f"{self.url}/GradientShMem", json=inputParams).json()
 
@@ -252,7 +252,7 @@ class HTTPModel(Model):
             output_sizes = self.get_output_sizes(config)
 
             shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{0}", create=True, size=output_sizes[out_wrt]*8)
-            raw_shmem_input = np.ndarray((output_sizes[out_wrt],), dtype=np.float64, buffer=shm_c_in.buf)
+            raw_shmem_output = np.ndarray((output_sizes[out_wrt],), dtype=np.float64, buffer=shm_c_out.buf)
             buffers.append(shm_c_out)
             
             response = requests.post(f"{self.url}/ApplyJacobianShMem", json=inputParams).json()
@@ -312,7 +312,7 @@ class HTTPModel(Model):
             output_sizes = self.get_output_sizes(config)
 
             shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{0}", create=True, size=output_sizes[out_wrt]*8)
-            raw_shmem_input = np.ndarray((output_sizes[out_wrt],), dtype=np.float64, buffer=shm_c_in.buf)
+            raw_shmem_output = np.ndarray((output_sizes[out_wrt],), dtype=np.float64, buffer=shm_c_out.buf)
             buffers.append(shm_c_out)
             
             response = requests.post(f"{self.url}/ApplyHessianShMem", json=inputParams).json()
