@@ -54,10 +54,7 @@ class HTTPModel(Model):
         self.__supports_gradient = response["support"].get("Gradient", False)
         self.__supports_apply_jacobian = response["support"].get("ApplyJacobian", False)
         self.__supports_apply_hessian = response["support"].get("ApplyHessian", False)
-        self.__supports_evaluate_shmem = response["support"].get("EvaluateShMem", False)
-        self.__supports_gradient_shmem = response["support"].get("GradientShMem", False)
-        self.__supports_apply_jacobian_shmem = response["support"].get("ApplyJacobianShMem", False)
-        self.__supports_apply_hessian_shmem = response["support"].get("ApplyHessianShMem", False)
+        self.__supports_shmem = False
 
         #Test whether client and server are able to communicate through shared memory. Disables ShMem if test fails.
         testvec = [12345.0]
@@ -78,12 +75,9 @@ class HTTPModel(Model):
         shm_c_out.unlink()
 
         if(result[0] != testvec[0]):
-            self.__supports_evaluate_shmem = False
-            self.__supports_gradient_shmem = False
-            self.__supports_apply_jacobian_shmem = False
-            self.__supports_apply_hessian_shmem = False
             print("Server not accessible via shared memory")
         else:
+            self.__supports_shmem= True
             print("Server accessible via shared memory")
 
 
@@ -113,17 +107,8 @@ class HTTPModel(Model):
     def supports_apply_hessian(self):
         return self.__supports_apply_hessian
 
-    def supports_evaluate_shmem(self):
-        return self.__supports_evaluate_shmem
-    
-    def supports_gradient_shmem(self):
-        return self.__supports_gradient_shmem
-    
-    def supports_apply_jacobian_shmem(self):
-        return self.__supports_apply_jacobian_shmem
-    
-    def supports_apply_hessian_shmem(self):
-        return self.__supports_apply_hessian_shmem
+    def supports_shmem(self):
+        return self.__supports_shmem
     
     def __check_input_is_list_of_lists(self,parameters):
         if not isinstance(parameters, list):
@@ -135,7 +120,7 @@ class HTTPModel(Model):
         if not self.supports_evaluate():
             raise Exception('Evaluation not supported by model!')
         self.__check_input_is_list_of_lists(parameters)
-        if(self.supports_evaluate_shmem()):
+        if(self.supports_shmem()):
             tid = threading.get_native_id()
             inputParams = {}
             inputParams["tid"] = str(tid)
@@ -188,7 +173,7 @@ class HTTPModel(Model):
         if not self.supports_gradient():
             raise Exception('Gradient not supported by model!')
         self.__check_input_is_list_of_lists(parameters)
-        if(self.supports_gradient_shmem()):
+        if(self.supports_shmem()):
             tid = threading.get_native_id()
             inputParams = {}
             inputParams["tid"] = str(tid)
@@ -244,7 +229,7 @@ class HTTPModel(Model):
         if not self.supports_apply_jacobian():
             raise Exception('ApplyJacobian not supported by model!')
         self.__check_input_is_list_of_lists(parameters)
-        if(self.supports_apply_jacobian_shmem()):
+        if(self.supports_shmem()):
             tid = threading.get_native_id()
             inputParams = {}
             inputParams["tid"] = str(tid)
@@ -302,7 +287,7 @@ class HTTPModel(Model):
         if not self.supports_apply_hessian():
             raise Exception('ApplyHessian not supported by model!')
         self.__check_input_is_list_of_lists(parameters)
-        if(self.supports_apply_hessian_shmem()):
+        if(self.supports_shmem()):
             tid = threading.get_native_id()
             inputParams = {}
             inputParams["tid"] = str(tid)
@@ -856,13 +841,9 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
             return model_not_found_response(req_json["name"])
         response_body = {"support": {}}
         response_body["support"]["Evaluate"] = model.supports_evaluate()
-        response_body["support"]["EvaluateShMem"] = model.supports_evaluate()
         response_body["support"]["Gradient"] = model.supports_gradient()
-        response_body["support"]["GradientShMem"] = model.supports_gradient()
         response_body["support"]["ApplyJacobian"] = model.supports_apply_jacobian()
-        response_body["support"]["ApplyJacobianShMem"] = model.supports_apply_jacobian()
         response_body["support"]["ApplyHessian"] = model.supports_apply_hessian()
-        response_body["support"]["ApplyHessianShMem"] = model.supports_apply_hessian()
 
         return web.json_response(response_body)
 

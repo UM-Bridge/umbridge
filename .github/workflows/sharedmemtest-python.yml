@@ -2,6 +2,7 @@ name: shared-mem-test-python
 
 on:
   push:
+  pull_request:
     branches:
       - 'main'
 
@@ -25,14 +26,15 @@ jobs:
        -
         name: Dependencies
         run: |
-          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip && pip3 install umbridge
+          apt update && DEBIAN_FRONTEND="noninteractive" apt install -y python3-pip python3-venv
        -
         name: Build and run
         run: |
+          python3 -m venv venv
+          . venv/bin/activate && pip3 install umbridge
           cd clients/python && checkShMem=$(python3 umbridge-client.py http://model:4242 | grep -o "not accessible"); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
        - 
         name: Check if Shared Memory is used
         if: env.CheckShMem == 'not accessible'
         run: |
             echo "Shared Memory not available, failed"; exit 1
-       
