@@ -19,7 +19,7 @@ jobs:
         image: linusseelinger/model-exahype-tsunami
         ports:
         - 4242:4242
-        options: --ipc=host
+        options: --ipc=host --shm-size=1gb
 
     steps:
        -
@@ -32,5 +32,9 @@ jobs:
        -
         name: Build and run
         run: |
-          cd clients/c++ && ./build.sh && ./http-client model:4242
-
+          cd clients/c++ && ./build.sh && checkShMem=$(./http-client model:4242 | grep -o "not accessible"); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
+       -
+        name: Check if Shared Memory is used
+        if: env.CheckShMem == 'not accessible'
+        run: |
+            echo "Shared Memory not available, failed"; exit 1
