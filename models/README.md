@@ -24,13 +24,13 @@ docker run -p 4242:4242 linusseelinger/model-testmodel-python:latest
 
 ## Implementation
 
-A model may make use of the existing integrations below. They take care of the entire HTTP communication transparently, and provide easy to implement model interfaces. However, there are some features that are language specific. The table below briefly summarises these differences.
+A model may make use of the existing integrations below. They take care of the entire client-server communication transparently, and provide easy to implement model interfaces. However, there are some features that are language specific. The table below briefly summarises these differences.
 
-| Implementation | Optional Error Checks | Allow Parallel Requests | Allow `Inf` & `NaN` Output |
-|----------------|-----------------------|-------------------------|----------------------------|
-| Python         | Yes                   | Yes                     | WIP                        |
-| C++            | Yes                   | Yes                     | No                         |
-| Julia          |  No                   | Yes                     | Yes                        |
+| Implementation | Optional Error Checks | Allow Parallel Requests | Allow `Inf` & `NaN` Output | Allow Shared Memory Communication |
+|----------------|-----------------------|-------------------------|----------------------------| --------------------------------- |
+| Python         | Yes                   | Yes                     | WIP                        | Yes                               |
+| C++            | Yes                   | Yes                     | No                         | Yes                               |
+| Julia          |  No                   | Yes                     | Yes                        | No                                |
 
 Refer to the models in this repository for working examples of the server integrations shown in the following.
 
