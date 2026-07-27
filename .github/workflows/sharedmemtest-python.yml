@@ -10,7 +10,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    container: ubuntu:latest
+    container: 
+      image: ubuntu:latest
+      options: --ipc=host
 
     services:
       model:
@@ -32,7 +34,7 @@ jobs:
         run: |
           python3 -m venv venv
           . venv/bin/activate && pip3 install umbridge
-          cd clients/python && checkShMem=$(python3 umbridge-client.py http://model:4242 | grep -o "not accessible"); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
+          cd clients/python && checkShMem=$(python3 umbridge-client.py http://model:4242 | grep -o "not accessible" || true); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
        - 
         name: Check if Shared Memory is used
         if: env.CheckShMem == 'not accessible'

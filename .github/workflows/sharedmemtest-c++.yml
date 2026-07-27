@@ -12,11 +12,13 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    container: ubuntu:latest
+    container: 
+      image: ubuntu:latest
+      options: --ipc=host
 
     services:
       model:
-        image: linusseelinger/model-exahype-tsunami
+        image: linusseelinger/model-exahype-tsunami:latest
         ports:
         - 4242:4242
         options: --ipc=host
@@ -32,7 +34,7 @@ jobs:
        -
         name: Build and run
         run: |
-          cd clients/c++ && ./build.sh && checkShMem=$(./http-client model:4242 | grep -o "not accessible"); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
+          cd clients/c++ && ./build.sh && checkShMem=$(./http-client model:4242 | grep -o "not accessible" || true); echo "CheckShMem=$checkShMem" >> $GITHUB_ENV
        -
         name: Check if Shared Memory is used
         if: env.CheckShMem == 'not accessible'
