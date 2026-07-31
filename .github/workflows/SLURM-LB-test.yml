@@ -28,7 +28,7 @@ jobs:
         run: |
          dnf -y install gcc-g++ libstdc++-static
          python3 -m venv venv && . venv/bin/activate && pip3 install umbridge
-         git clone https://github.com/UM-Bridge/umbridge.git && cd umbridge/hpc && make 
+         cd umbridge/hpc && make 
          sed -i -e 's|--partition=devel|--partition=normal|' slurm_scripts/job.sh
          ./load-balancer --scheduler=slurm &
          sleep 20 && 
