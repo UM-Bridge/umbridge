@@ -153,7 +153,7 @@ namespace umbridge {
   class HTTPModel : public Model {
   public:
 
-    HTTPModel(std::string host, std::string name, httplib::Headers headers = httplib::Headers())
+    HTTPModel(std::string host, std::string name, bool useShMem = false, httplib::Headers headers = httplib::Headers())
     : Model(name), cli(host.c_str()), headers(headers)
     {
       // Check if requested model is available on server
@@ -183,18 +183,20 @@ namespace umbridge {
       }
 #ifdef SUPPORT_POSIX_SHMEM
       // Test whether client and server are able to communicate through shared memory. Disables ShMem if test fails.
-      unsigned long int tid = pthread_self();
-      request_body["tid"] = std::to_string(tid);
-      std::vector<double> testvec = {12345.0};
-      SharedMemoryVector shmem_input(testvec, "/umbridge_test_shmem_in_" + std::to_string(tid));
-      SharedMemoryVector shmem_output(1, "/umbridge_test_shmem_out_" + std::to_string(tid), true);
-      auto res = cli.Post("/TestShMem", headers, request_body.dump(), "application/json");
+      if (useShMem) {
+        unsigned long int tid = pthread_self();
+        request_body["tid"] = std::to_string(tid);
+        std::vector<double> testvec = {12345.0};
+        SharedMemoryVector shmem_input(testvec, "/umbridge_test_shmem_in_" + std::to_string(tid));
+        SharedMemoryVector shmem_output(1, "/umbridge_test_shmem_out_" + std::to_string(tid), true);
+        auto res = cli.Post("/TestShMem", headers, request_body.dump(), "application/json");
 
-      if (shmem_output.GetVector()[0] != testvec[0]) {
-        std::cout << "Server not accessible via shared memory" << std::endl;
-      } else {
-        supportsShMem = true;
-        std::cout << "Server accessible via shared memory" << std::endl;
+        if (shmem_output.GetVector()[0] != testvec[0]) {
+          std::cout << "Server not accessible via shared memory" << std::endl;
+        } else {
+          supportsShMem = true;
+          std::cout << "Server accessible via shared memory" << std::endl;
+        }
       }
 #endif
     }

@@ -51,7 +51,7 @@ def supported_models(url):
   return response["models"]
 
 class HTTPModel(Model):
-    def __init__(self, url, name):
+    def __init__(self, url, name, use_shmem=False):
         super().__init__(name)
         self.url = url
 
@@ -67,29 +67,30 @@ class HTTPModel(Model):
         self.__supports_apply_hessian = response["support"].get("ApplyHessian", False)
         self.__supports_shmem = False
 
-        #Test whether client and server are able to communicate through shared memory. Disables ShMem if test fails.
-        testvec = [12345.0]
-        tid = threading.get_native_id()
-        input["tid"] = str(tid)
-        shm_c_in = shared_memory.SharedMemory("/umbridge_test_shmem_in_" + str(tid), True, 8)
-        raw_shmem_input = np.ndarray(1, dtype=np.float64, buffer=shm_c_in.buf)
-        raw_shmem_input[:] = testvec[0]
-        shm_c_out = shared_memory.SharedMemory("/umbridge_test_shmem_out_" + str(tid), create=True, size=8)
-        raw_shmem_output = np.ndarray(1, dtype=np.float64, buffer=shm_c_out.buf)
-        try: response = requests.post(f"{self.url}/TestShMem", json=input).json()
-        except: pass
-        result = []
-        result.append(raw_shmem_output.tolist()[0])
-        shm_c_in.close()
-        shm_c_in.unlink()
-        shm_c_out.close()
-        shm_c_out.unlink()
+        if use_shmem:
+            #Test whether client and server are able to communicate through shared memory. Disables ShMem if test fails.
+            testvec = [12345.0]
+            tid = threading.get_native_id()
+            input["tid"] = str(tid)
+            shm_c_in = shared_memory.SharedMemory("/umbridge_test_shmem_in_" + str(tid), True, 8)
+            raw_shmem_input = np.ndarray(1, dtype=np.float64, buffer=shm_c_in.buf)
+            raw_shmem_input[:] = testvec[0]
+            shm_c_out = shared_memory.SharedMemory("/umbridge_test_shmem_out_" + str(tid), create=True, size=8)
+            raw_shmem_output = np.ndarray(1, dtype=np.float64, buffer=shm_c_out.buf)
+            try: response = requests.post(f"{self.url}/TestShMem", json=input).json()
+            except: pass
+            result = []
+            result.append(raw_shmem_output.tolist()[0])
+            shm_c_in.close()
+            shm_c_in.unlink()
+            shm_c_out.close()
+            shm_c_out.unlink()
 
-        if(result[0] != testvec[0]):
-            print("Server not accessible via shared memory")
-        else:
-            self.__supports_shmem= True
-            print("Server accessible via shared memory")
+            if(result[0] != testvec[0]):
+                print("Server not accessible via shared memory")
+            else:
+                self.__supports_shmem= True
+                print("Server accessible via shared memory")
 
 
     def get_input_sizes(self, config={}):
