@@ -6,6 +6,17 @@ from multiprocessing import shared_memory
 import numpy as np
 import threading
 
+
+def _to_native(value):
+    # Convert numpy scalar/array types to native Python types.
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, list):
+        return [_to_native(v) for v in value]
+    return value
+
 class Model(object):
 
     def __init__(self, name):
@@ -413,7 +424,7 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
                 if len(output[i]) != output_sizes[i]:
                     return error_response("InvalidOutput", f"Output vector {i} has invalid length! Model declared {output_sizes[i]} but returned {len(output[i])}.", 500)
 
-        return web.Response(text=f"{{\"output\": {output} }}")
+        return web.Response(text=f"{{\"output\": {_to_native(output)} }}")
 
     @routes.post('/EvaluateShMem')
     async def evaluate(request):
@@ -519,7 +530,7 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
             if len(output) != input_sizes[in_wrt]:
                 return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {input_sizes[in_wrt]} but returned {len(output)}.", 500)
 
-        return web.Response(text=f"{{\"output\": {output} }}")
+        return web.Response(text=f"{{\"output\": {_to_native(output)} }}")
 
     
     @routes.post('/GradientShMem')
@@ -631,7 +642,7 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
             if len(output) != output_sizes[out_wrt]:
                 return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {output_sizes[out_wrt]} but returned {len(output)}.", 500)
 
-        return web.Response(text=f"{{\"output\": {output} }}")
+        return web.Response(text=f"{{\"output\": {_to_native(output)} }}")
 
     @routes.post('/ApplyJacobianShMem')
     async def applyjacobian(request):
@@ -744,7 +755,7 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
             if len(output) != output_sizes[out_wrt]:
                 return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {output_sizes[out_wrt]} but returned {len(output)}.", 500)
 
-        return web.Response(text=f"{{\"output\": {output} }}")
+        return web.Response(text=f"{{\"output\": {_to_native(output)} }}")
     
     @routes.post('/ApplyHessianShMem')
     async def applyhessian(request):
@@ -817,7 +828,7 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
         model = get_model_from_name(model_name)
         if model is None:
             return model_not_found_response(req_json["name"])
-        return web.Response(text=f"{{\"inputSizes\": {model.get_input_sizes(config)} }}")
+        return web.Response(text=f"{{\"inputSizes\": {_to_native(model.get_input_sizes(config))} }}")
 
     @routes.post('/OutputSizes')
     async def get_output_sizes(request):
@@ -830,7 +841,7 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
         model = get_model_from_name(model_name)
         if model is None:
             return model_not_found_response(req_json["name"])
-        return web.Response(text=f"{{\"outputSizes\": {model.get_output_sizes(config)} }}")
+        return web.Response(text=f"{{\"outputSizes\": {_to_native(model.get_output_sizes(config))} }}")
 
     @routes.post('/ModelInfo')
     async def modelinfo(request):
