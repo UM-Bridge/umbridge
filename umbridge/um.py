@@ -142,13 +142,16 @@ class HTTPModel(Model):
             inputParams["shmem_num_inputs"] = len(parameters)
             buffers = []
 
-            if len(parameters[0]) > 0: # Edge case where input is an empty list
-                for i in range(len(parameters)):
-                    inputParams["shmem_size_" + str(i)] = len(parameters[i])
+            for i in range(len(parameters)):
+                inputParams["shmem_size_" + str(i)] = len(parameters[i])
+                if len(parameters[i]) > 0:
                     shm_c_in = shared_memory.SharedMemory(inputParams["shmem_name"] + "_in_" + str(tid) + f"_{i}", create=True, size=len(parameters[i])*8)
                     raw_shmem_input = np.ndarray((len(parameters[i]),), dtype=np.float64, buffer=shm_c_in.buf)
                     raw_shmem_input[:] = parameters[i]
                     buffers.append(shm_c_in)
+                else: # Handles edge case with empty list
+                    continue
+                
             output_sizes = self.get_output_sizes(config)
 
             for i in range(len(output_sizes)):
@@ -444,10 +447,13 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
 
         parameters = []
         for i in range(req_json["shmem_num_inputs"]):
-            shm_c_in = shared_memory.SharedMemory(req_json["shmem_name"] + "_in_" + str(req_json["tid"]) + f"_{i}", False, req_json[f"shmem_size_{i}"])
-            raw_shmem_parameter = np.ndarray((req_json[f"shmem_size_{i}"],), dtype=np.float64, buffer=shm_c_in.buf)
-            parameters.append(raw_shmem_parameter.tolist())
-            shm_c_in.close()
+            if req_json[f"shmem_size_{i}"] == 0: # Handles edge case with empty list
+                parameters.append([])
+            else:
+                shm_c_in = shared_memory.SharedMemory(req_json["shmem_name"] + "_in_" + str(req_json["tid"]) + f"_{i}", False, req_json[f"shmem_size_{i}"])
+                raw_shmem_parameter = np.ndarray((req_json[f"shmem_size_{i}"],), dtype=np.float64, buffer=shm_c_in.buf)
+                parameters.append(raw_shmem_parameter.tolist())
+                shm_c_in.close()
 
         # Check if parameter dimensions match model input sizes
         if len(parameters) != len(model.get_input_sizes(config)):

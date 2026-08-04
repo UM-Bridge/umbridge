@@ -241,7 +241,9 @@ namespace umbridge {
         unsigned int tid = pthread_self();
         std::vector<std::unique_ptr<SharedMemoryVector>> shmem_inputs;
         for (int i = 0; i < inputs.size(); i++) {
-          shmem_inputs.push_back(std::make_unique<SharedMemoryVector>(inputs[i], "/umbridge_in_" + std::to_string(tid) + "_" + std::to_string(i)));
+          if (inputs[i].size() > 0) { // Handles edges with empty vector
+            shmem_inputs.push_back(std::make_unique<SharedMemoryVector>(inputs[i], "/umbridge_in_" + std::to_string(tid) + "_" + std::to_string(i)));
+          }
         }
         std::vector<std::unique_ptr<SharedMemoryVector>> shmem_outputs;
         std::vector<std::size_t> output_sizes = GetOutputSizes(config_json); // Potential optimization: Avoid this call (e.g. share output memory with appropriate dimension from server side, sync with client via POSIX semaphore)
@@ -728,8 +730,13 @@ namespace umbridge {
 
       std::vector<std::vector<double>> inputs;
       for (int i = 0; i < request_body["shmem_num_inputs"].get<int>(); i++) {
-        SharedMemoryVector shmem_input(request_body["shmem_size_" + std::to_string(i)].get<int>(), request_body["shmem_name"].get<std::string>() + "_in_" + request_body["tid"].get<std::string>() + "_" + std::to_string(i), false);
-        inputs.push_back(shmem_input.GetVector());
+        if (request_body["shmem_size_" + std::to_string(i)] == 0) { // Handles edge case with empty vector
+        inputs.push_back(std::vector<double>{});
+        }
+        else{
+          SharedMemoryVector shmem_input(request_body["shmem_size_" + std::to_string(i)].get<int>(), request_body["shmem_name"].get<std::string>() + "_in_" + request_body["tid"].get<std::string>() + "_" + std::to_string(i), false);
+          inputs.push_back(shmem_input.GetVector());
+        }
       }
       std::vector<std::unique_ptr<SharedMemoryVector>> shmem_outputs;
       for (int i = 0; i < model.GetOutputSizes().size(); i++) {
