@@ -122,7 +122,7 @@ class HTTPModel(Model):
     def supports_shmem(self):
         return self.__supports_shmem
     
-    def __check_input_is_list_of_lists(self,parameters):
+    def __check_input_is_list_of_lists(self, parameters):
         if not isinstance(parameters, list):
             raise Exception("Parameters must be a list of lists!")
         if not all(isinstance(x, list) for x in parameters):
@@ -142,12 +142,13 @@ class HTTPModel(Model):
             inputParams["shmem_num_inputs"] = len(parameters)
             buffers = []
 
-            for i in range(len(parameters)):
-                inputParams["shmem_size_" + str(i)] = len(parameters[i])
-                shm_c_in = shared_memory.SharedMemory(inputParams["shmem_name"] + "_in_" + str(tid) + f"_{i}", create=True, size=len(parameters[i])*8)
-                raw_shmem_input = np.ndarray((len(parameters[i]),), dtype=np.float64, buffer=shm_c_in.buf)
-                raw_shmem_input[:] = parameters[i]
-                buffers.append(shm_c_in)
+            if len(parameters[0]) > 0: # Edge case where input is an empty list
+                for i in range(len(parameters)):
+                    inputParams["shmem_size_" + str(i)] = len(parameters[i])
+                    shm_c_in = shared_memory.SharedMemory(inputParams["shmem_name"] + "_in_" + str(tid) + f"_{i}", create=True, size=len(parameters[i])*8)
+                    raw_shmem_input = np.ndarray((len(parameters[i]),), dtype=np.float64, buffer=shm_c_in.buf)
+                    raw_shmem_input[:] = parameters[i]
+                    buffers.append(shm_c_in)
             output_sizes = self.get_output_sizes(config)
 
             for i in range(len(output_sizes)):
