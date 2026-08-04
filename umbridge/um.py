@@ -87,7 +87,7 @@ class HTTPModel(Model):
             shm_c_out.unlink()
 
             if(result[0] != testvec[0]):
-                print("Server not accessible via shared memory")
+                print("Server not accessible via shared memory. Using HTTP instead.")
             else:
                 self.__supports_shmem= True
                 print("Server accessible via shared memory")

@@ -192,7 +192,7 @@ namespace umbridge {
         auto res = cli.Post("/TestShMem", headers, request_body.dump(), "application/json");
 
         if (shmem_output.GetVector()[0] != testvec[0]) {
-          std::cout << "Server not accessible via shared memory" << std::endl;
+          std::cout << "Server not accessible via shared memory. Using HTTP instead." << std::endl;
         } else {
           supportsShMem = true;
           std::cout << "Server accessible via shared memory" << std::endl;
