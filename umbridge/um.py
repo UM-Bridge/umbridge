@@ -814,8 +814,8 @@ def serve_models(models, port=4242, max_workers=1, error_checks=True):
             return error_response("InvalidOutput", "Model output is not a list!", 500)
 
         # Check if output dimension matches model output size outWrt
-        if len(output) != model.get_output_sizes(config)[out_wrt]:
-            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_output_sizes(config)[out_wrt]} but returned {len(output)}.", 500)
+        if len(output) != model.get_input_sizes(config)[in_wrt1]:
+            return error_response("InvalidOutput", f"Output vector has invalid length! Model declared {model.get_input_sizes(config)[in_wrt1]} but returned {len(output)}.", 500)
         
         # Write output to shared memory
         shm_c_out = shared_memory.SharedMemory(req_json["shmem_name"] + "_out_" + str(req_json["tid"]) + f"_{0}", create=False, size=len(output)*8)
