@@ -328,8 +328,8 @@ class HTTPModel(Model):
             input_sizes = self.get_input_sizes(config)
             hessian_output_size = input_sizes[in_wrt1]
 
-            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + "_0",  create=True,  size=hessian_output_size*8)
-            raw_shmem_output = np.ndarray((hessian_output_size,),  dtype=np.float64,  buffer=shm_c_out.buf)
+            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + "_0", create=True, size=hessian_output_size*8)
+            raw_shmem_output = np.ndarray((hessian_output_size,), dtype=np.float64, buffer=shm_c_out.buf)
             buffers.append(shm_c_out)
             
             response = requests.post(f"{self.url}/ApplyHessianShMem", json=inputParams).json()
