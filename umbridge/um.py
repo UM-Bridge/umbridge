@@ -209,13 +209,13 @@ class HTTPModel(Model):
                 raw_shmem_input[:] = parameters[i]
                 buffers.append(shm_c_in)
 
-            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{0}", create=True, size=len(parameters[in_wrt])*8)
+            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + "_0", create=True, size=len(parameters[in_wrt])*8)
             raw_shmem_output = np.ndarray((len(parameters[in_wrt]),), dtype=np.float64, buffer=shm_c_out.buf)
             buffers.append(shm_c_out)
             response = requests.post(f"{self.url}/GradientShMem", json=inputParams).json()
 
             output = []
-            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{0}", create=False, size=len(parameters[in_wrt])*8)
+            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + "_0", create=False, size=len(parameters[in_wrt])*8)
             raw_shmem_output = np.ndarray((len(parameters[in_wrt]),), dtype=np.float64, buffer=shm_c_out.buf)
             output = raw_shmem_output.tolist()
             for buffer in buffers:
@@ -267,14 +267,14 @@ class HTTPModel(Model):
 
             output_sizes = self.get_output_sizes(config)
 
-            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{0}", create=True, size=output_sizes[out_wrt]*8)
+            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + "_0", create=True, size=output_sizes[out_wrt]*8)
             raw_shmem_output = np.ndarray((output_sizes[out_wrt],), dtype=np.float64, buffer=shm_c_out.buf)
             buffers.append(shm_c_out)
             
             response = requests.post(f"{self.url}/ApplyJacobianShMem", json=inputParams).json()
 
             output = []
-            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{0}", create=False, size=output_sizes[out_wrt]*8)
+            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + "_0", create=False, size=output_sizes[out_wrt]*8)
             raw_shmem_output = np.ndarray((output_sizes[out_wrt],), dtype=np.float64, buffer=shm_c_out.buf)
             output = raw_shmem_output.tolist()
             for buffer in buffers:
@@ -325,17 +325,18 @@ class HTTPModel(Model):
                 raw_shmem_input[:] = parameters[i]
                 buffers.append(shm_c_in)
 
-            output_sizes = self.get_output_sizes(config)
+            input_sizes = self.get_input_sizes(config)
+            hessian_output_size = input_sizes[in_wrt1]
 
-            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{0}", create=True, size=output_sizes[out_wrt]*8)
-            raw_shmem_output = np.ndarray((output_sizes[out_wrt],), dtype=np.float64, buffer=shm_c_out.buf)
+            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + "_0",  create=True,  size=hessian_output_size*8)
+            raw_shmem_output = np.ndarray((hessian_output_size,),  dtype=np.float64,  buffer=shm_c_out.buf)
             buffers.append(shm_c_out)
             
             response = requests.post(f"{self.url}/ApplyHessianShMem", json=inputParams).json()
             
             output = []
-            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + f"_{0}", create=False, size=output_sizes[out_wrt]*8)
-            raw_shmem_output = np.ndarray((output_sizes[out_wrt],), dtype=np.float64, buffer=shm_c_out.buf)
+            shm_c_out = shared_memory.SharedMemory(inputParams["shmem_name"] + "_out_" + str(tid) + "_0", create=False, size=hessian_output_size*8)
+            raw_shmem_output = np.ndarray((hessian_output_size,), dtype=np.float64, buffer=shm_c_out.buf)
             output = raw_shmem_output.tolist()
             for buffer in buffers:
                 buffer.close()
