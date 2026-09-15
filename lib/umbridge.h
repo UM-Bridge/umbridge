@@ -1043,6 +1043,15 @@ namespace umbridge {
       const std::lock_guard<std::mutex> model_lock(model_mutex);
       std::vector<double> hessian_action = model.ApplyHessian(outWrt, inWrt1, inWrt2, inputs, sens, vec, config_json);
 
+      if (hessian_action.size() != model.GetInputSizes(config_json)[inWrt1]) {
+        json response_body;
+        response_body["error"]["type"] = "InvalidOutput";
+        response_body["error"]["message"] = "Output vector size mismatch! Expected " + std::to_string(model.GetInputSizes(config_json)[inWrt1]) + " but got " + std::to_string(hessian_action.size());
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 400;
+        return;
+      }
+
       json response_body;
       shmem_output.SetVector(hessian_action);
 
