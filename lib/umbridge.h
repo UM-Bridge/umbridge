@@ -435,9 +435,10 @@ namespace umbridge {
         for (int i = 0; i < inputs.size(); i++) {
           shmem_inputs.push_back(std::make_unique<SharedMemoryVector>(inputs[i], "/umbridge_in_" + std::to_string(tid) + "_" + std::to_string(i)));
         }
-        std::vector<std::size_t> output_sizes = GetOutputSizes(config_json); // Potential optimization: Avoid this call (e.g. share output memory with appropriate dimension from server side, sync with client via POSIX semaphore)
+        // Potential optimization: Avoid this call (e.g. share output memory with appropriate dimension from server side, sync with client via POSIX semaphore)
+        std::vector<std::size_t> output_sizes = GetInputSizes(config_json); // Output vector of Hessian is input-sized
 
-        SharedMemoryVector shmem_output(output_sizes[outWrt], "/umbridge_out_" + std::to_string(tid) + "_" + std::to_string(0), true);
+        SharedMemoryVector shmem_output(output_sizes[inWrt1], "/umbridge_out_" + std::to_string(tid) + "_" + std::to_string(0), true);
 
         json request_body;
         request_body["tid"] = std::to_string(tid);
@@ -456,7 +457,7 @@ namespace umbridge {
         if (auto res = cli.Post("/ApplyHessianShMem", headers, request_body.dump(), "application/json")) {
           json response_body = parse_result_with_error_handling(res);
 
-          std::vector<double> output(output_sizes[outWrt]);
+          std::vector<double> output(output_sizes[inWrt1]);
           output = shmem_output.GetVector();
           return output;
         } else {
@@ -995,6 +996,15 @@ namespace umbridge {
         model_lock.unlock();  // for safety, although should unlock after request finished
       }
 
+      if (hessian_action.size() != model.GetInputSizes(config_json)[inWrt1]) {
+        json response_body;
+        response_body["error"]["type"] = "InvalidOutput";
+        response_body["error"]["message"] = "Output vector size mismatch! Expected " + std::to_string(model.GetInputSizes(config_json)[inWrt1]) + " but got " + std::to_string(hessian_action.size());
+        res.set_content(response_body.dump(), "application/json");
+        res.status = 400;
+        return;
+      }
+
       json response_body;
       response_body["output"] = hessian_action;
 
@@ -1021,7 +1031,7 @@ namespace umbridge {
         SharedMemoryVector shmem_input(request_body["shmem_size_" + std::to_string(i)].get<int>(), request_body["shmem_name"].get<std::string>() + "_in_" + request_body["tid"].get<std::string>() + "_" + std::to_string(i), false);
         inputs.push_back(shmem_input.GetVector());
       }
-      SharedMemoryVector shmem_output(model.GetOutputSizes()[outWrt], request_body["shmem_name"].get<std::string>() + "_out_" + request_body["tid"].get<std::string>() + "_" + std::to_string(0), false);
+      SharedMemoryVector shmem_output(model.GetInputSizes()[inWrt1], request_body["shmem_name"].get<std::string>() + "_out_" + request_body["tid"].get<std::string>() + "_" + std::to_string(0), false);
 
       std::vector<double> sens = request_body.at("sens");
       std::vector<double> vec = request_body.at("vec");
