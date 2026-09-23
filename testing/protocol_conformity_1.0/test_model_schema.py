@@ -46,6 +46,8 @@ def test_evaluate(model_url, input_value):
         assert len(inputParams["input"][i]) == inputSizesJSON_i
 
     resp = requests.post(f'{model_url}/Evaluate', headers={}, data=json.dumps(inputParams,indent=4))
+    if resp.status_code == 200:
+        print(resp.json())
 
     assert resp.status_code == 200
 
